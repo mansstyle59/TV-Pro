@@ -1,0 +1,110 @@
+import React from "react";
+import { Channel } from "../types";
+import { motion } from "motion/react";
+
+interface ChannelGridProps {
+  title: string;
+  channels: Channel[];
+  onChannelSelect: (channel: Channel) => void;
+  selectedChannelId?: number;
+}
+
+const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) => {
+  const [error, setError] = React.useState(false);
+
+  // Clean initials matching standard French acronym entries
+  const initials = React.useMemo(() => {
+    return name
+      .replace(/[^a-zA-Z0-9 ]/g, "")
+      .split(" ")
+      .map(p => p[0])
+      .join("")
+      .slice(0, 3)
+      .toUpperCase() || name.slice(0, 2).toUpperCase();
+  }, [name]);
+  
+  if (error || !logo) {
+    return (
+      <span className="text-xs font-black text-white/70 bg-gradient-to-br from-neutral-800 to-neutral-900 border border-white/5 rounded-xl w-full h-full flex items-center justify-center uppercase select-none p-1">
+        {initials}
+      </span>
+    );
+  }
+  
+  return (
+    <img 
+      src={logo} 
+      alt={name}
+      className="w-full h-full object-contain filter group-hover:brightness-125 transition-all duration-300 drop-shadow-lg"
+      referrerPolicy="no-referrer"
+      onError={() => setError(true)}
+    />
+  );
+};
+
+export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onChannelSelect, selectedChannelId }) => {
+  if (channels.length === 0) return null;
+
+  return (
+    <div className="space-y-6 px-4 sm:px-8">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+           <div className="w-1 h-10 bg-brand-500 rounded-full shadow-[0_0_15px_#0ea5e9]" />
+           <div className="flex flex-col">
+              <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.4em]">Découverte</span>
+              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter">{title}</h2>
+           </div>
+        </div>
+      </div>
+      
+      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
+        {channels.map((channel, index) => {
+          const isSelected = selectedChannelId === channel.id;
+          return (
+            <motion.button
+              key={channel.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.01 }}
+              onClick={() => onChannelSelect(channel)}
+              className={`aspect-square relative group bg-neutral-900 border overflow-hidden rounded-xl md:rounded-2xl transition-all flex flex-col items-center justify-center p-2.5 sm:p-4 hover:scale-110 active:scale-95 duration-500 ${
+                isSelected ? "border-brand-500 shadow-2xl shadow-brand-500/20" : "border-white/5 hover:border-white/20"
+              }`}
+            >
+              {/* Background Glow on Hover */}
+              <div className="absolute inset-0 bg-linear-to-br from-brand-500/0 to-brand-500/0 group-hover:from-brand-500/5 group-hover:to-brand-500/10 transition-all" />
+              
+              <div className="w-full h-full relative z-10 flex items-center justify-center">
+                 <LogoImage logo={channel.logo} name={channel.name} />
+              </div>
+              
+              {/* Hover Badge */}
+              <div className="absolute inset-x-0 bottom-2 px-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-1 group-hover:translate-y-0 duration-300">
+                 <div className="bg-black/60 backdrop-blur-md py-1 rounded-full text-center border border-white/5">
+                    <span className="text-[8px] font-black text-white uppercase tracking-tighter truncate block px-2">
+                       {channel.name}
+                    </span>
+                 </div>
+              </div>
+
+              {/* Quality Label */}
+              {channel.qualityLabel && (
+                 <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-20">
+                    <span className={`text-[6px] sm:text-[8px] font-black px-1 sm:px-1.5 py-0.5 rounded-sm sm:rounded-md shadow-2xl ${
+                      channel.qualityLabel.includes('SD') ? 'bg-orange-500 text-white' : 'bg-emerald-500 text-white'
+                    }`}>
+                       {channel.qualityLabel}
+                    </span>
+                 </div>
+              )}
+
+              {isSelected && (
+                <div className="absolute top-3 right-3 w-2 h-2 bg-brand-500 rounded-full shadow-[0_0_8px_#0ea5e9] animate-pulse" />
+              )}
+            </motion.button>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
