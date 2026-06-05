@@ -18,7 +18,8 @@ jobs:
     # Étape 1 : Vérifier le code source du dépôt
     - name: Checkout code
       uses: actions/checkout@v3
-
+    - name: Make gradlew executable
+      run: chmod +x ./gradlew
     # Étape 2 : Définir le cache pour Gradle (accélère la construction)
     - name: Set up Gradle cache
       uses: actions/cache@v3
