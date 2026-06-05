@@ -46,7 +46,7 @@ jobs:
 
     # Étape 4 : Construire l'application Android
     - name: Build Android TV APK
-      run: bash ./gradlew assembleRelease
+      run: ./gradlew assembleRelease
 
     # Étape 5 : Ajouter les APK générées aux artefacts (optionnel)
     - name: Upload APK Artifact
