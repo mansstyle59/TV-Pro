@@ -1416,11 +1416,33 @@ async function fetchWithRedirects(initialUrl: string, maxRedirects = 5, timeoutM
       headers["X-VAVOO-SIGNATURE"] = sig;
     }
 
-    const response = await fetch(currentUrl, {
+    let response = await fetch(currentUrl, {
       redirect: "manual",
       headers,
       signal: AbortSignal.timeout(timeoutMs)
     });
+    
+    // If the response failed with errors (like 502, 503, 504, 403, etc.) and we used signature headers,
+    // retry with a basic header configuration (excluding signature headers) to maximize compatibility
+    if ((response.status >= 400 && response.status !== 401 && response.status !== 404) && sig) {
+      console.warn(`URL ${currentUrl} failed with status ${response.status} using signature. Retrying without signature headers...`);
+      const fallbackHeaders: Record<string, string> = {
+        "User-Agent": "VAVOO/2.6",
+        "X-VAVOO-CLIENT": "2.6"
+      };
+      try {
+        const fbResponse = await fetch(currentUrl, {
+          redirect: "manual",
+          headers: fallbackHeaders,
+          signal: AbortSignal.timeout(timeoutMs)
+        });
+        if (fbResponse.ok || (fbResponse.status >= 301 && fbResponse.status <= 308)) {
+          response = fbResponse;
+        }
+      } catch (fbErr) {
+        console.error(`Fallback fetch failed for ${currentUrl}:`, fbErr);
+      }
+    }
     
     if (response.status === 301 || response.status === 302 || response.status === 303 || response.status === 307 || response.status === 308) {
       const location = response.headers.get("location");
@@ -1585,7 +1607,7 @@ app.get("/api/stream-ts", async (req, res) => {
 
       // High-performance optimization: Since HLS TS chunks are final CDN leaf files, they do not redirect.
       // We fetch them directly with native redirect handling and Keep-Alive connection pooling.
-      let response = await fetch(signedUrl, {
+       let response = await fetch(signedUrl, {
         headers,
         signal: AbortSignal.timeout(30000) // 30 seconds timeout
       });
@@ -1594,6 +1616,27 @@ app.get("/api/stream-ts", async (req, res) => {
       if (response.status === 301 || response.status === 302 || response.status === 303 || response.status === 307 || response.status === 308) {
         const redirectResult = await fetchWithRedirects(signedUrl, 5, 25000);
         response = redirectResult.response;
+      }
+
+      // If the response failed with errors (like 502, 503, 504, 403, etc.) and we used signature headers,
+      // retry with a basic header configuration (excluding signature headers) to maximize compatibility
+      if ((response.status >= 400 && response.status !== 401 && response.status !== 404) && sig) {
+        console.warn(`Segment URL ${signedUrl} failed with status ${response.status} using signature. Retrying without signature headers...`);
+        const fallbackHeaders: Record<string, string> = {
+          "User-Agent": "VAVOO/2.6",
+          "X-VAVOO-CLIENT": "2.6"
+        };
+        try {
+          const fbResponse = await fetch(signedUrl, {
+            headers: fallbackHeaders,
+            signal: AbortSignal.timeout(30000)
+          });
+          if (fbResponse.ok) {
+            response = fbResponse;
+          }
+        } catch (fbErr) {
+          console.error(`Fallback segment fetch failed for ${signedUrl}:`, fbErr);
+        }
       }
 
       if (response.ok) {
