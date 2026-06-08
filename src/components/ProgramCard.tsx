@@ -6,6 +6,7 @@ import { formatEpgTime, getEpgProgress } from "../utils/epgUtils";
 export interface ProgramCardProps {
   channel: Channel;
   onClick: (channel: Channel) => void;
+  onMouseEnter?: (channel: Channel) => void;
   isPlaying?: boolean;
   className?: string;
 }
@@ -35,6 +36,7 @@ const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) =>
     <img 
       src={logo} 
       alt={name}
+      loading="lazy"
       className="w-full h-full object-contain"
       referrerPolicy="no-referrer"
       onError={() => setError(true)}
@@ -42,102 +44,105 @@ const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) =>
   );
 };
 
-export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, isPlaying, className }) => {
+export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMouseEnter, isPlaying, className }) => {
   const currentProgram = channel.epg?.current;
   const progress = currentProgram ? getEpgProgress(currentProgram.start, currentProgram.stop) : 0;
 
   return (
     <motion.div
-      whileHover={{ scale: 1.03, y: -2 }}
+      whileHover={{ scale: 1.02, y: -4 }}
       whileTap={{ scale: 0.98 }}
       onClick={() => onClick(channel)}
-      className={`relative flex-shrink-0 ${className || "w-52 sm:w-72 md:w-[360px]"} rounded-[1.25rem] md:rounded-[2rem] overflow-hidden cursor-pointer transition-all duration-300 group mb-2 outline-none ${
-        isPlaying ? "ring-[3px] ring-brand-500 shadow-[0_0_30px_rgba(30,136,255,0.4)]" : ""
-      }`}
-    >
-      {/* Thumbnail Area */}
-      <div className="aspect-video relative overflow-hidden bg-neutral-900 shadow-xl rounded-[1.25rem] md:rounded-[2rem]">
+      onMouseEnter={() => onMouseEnter?.(channel)}
+      className={`relative flex-shrink-0 ${className || "w-52 sm:w-72 md:w-[360px]"} group cursor-pointer transition-all duration-500 ease-out`}
+     >
+      {/* Thumbnail Area with Enhanced Border/Shadow */}
+      <div className={`aspect-video relative overflow-hidden bg-neutral-900 rounded-xl border transition-all duration-500 ${
+        isPlaying 
+          ? "border-brand-500/50 ring-4 ring-brand-500/10 shadow-2xl shadow-brand-500/20" 
+          : "border-white/5 group-hover:border-white/10 shadow-xl"
+      }`}>
         {currentProgram?.image || currentProgram?.icon || channel.logo ? (
           <img
             src={currentProgram?.image || currentProgram?.icon || channel.logo}
             alt={currentProgram?.title || channel.name}
-            className={`w-full h-full transition-transform duration-700 ease-out group-hover:scale-105 ${
-              currentProgram?.image || currentProgram?.icon ? "object-cover" : "object-contain p-6 md:p-8 opacity-50"
+            loading="lazy"
+            className={`w-full h-full transition-transform duration-1000 ease-out group-hover:scale-110 ${
+              currentProgram?.image || currentProgram?.icon ? "object-cover" : "object-contain p-8 opacity-40"
             }`}
             referrerPolicy="no-referrer"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center bg-neutral-900 border border-white/5">
-             <span className="text-[9px] md:text-[10px] font-black uppercase text-neutral-600 tracking-widest">{channel.name}</span>
+             <span className="text-[10px] font-black uppercase text-neutral-700 tracking-[0.2em]">{channel.name}</span>
           </div>
         )}
         
-        {/* Subtle Dark Gradient Overlay at bottom for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
+        {/* Deep Gradient Overlays */}
+        <div className="absolute inset-0 bg-linear-to-t from-neutral-950 via-neutral-950/20 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-500" />
+        <div className="absolute inset-0 bg-linear-to-b from-neutral-950/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
         
         {/* Badges Overlay */}
-        <div className="absolute top-2 left-2 right-2 md:top-3 md:left-3 md:right-3 flex justify-between items-start">
-           {/* Quality & Live */}
-           <div className="flex gap-1.5 md:gap-2">
-             {currentProgram && (
-                <div className="px-1.5 md:px-2 py-0.5 md:py-1 bg-red-600/90 backdrop-blur-xl text-[7px] md:text-[8px] font-black text-white rounded-[4px] md:rounded-[6px] flex items-center gap-1 md:gap-1.5 uppercase tracking-widest shadow-xl">
-                  <div className="w-1 md:w-1.5 h-1 md:h-1.5 bg-white rounded-full animate-pulse object-cover" />
-                  DIRECT
-                </div>
-             )}
-             {channel.qualityLabel && (
-                <div className={`px-1.5 md:px-2 py-0.5 md:py-1 ${channel.qualityLabel.includes('SD') ? 'bg-orange-500/80' : 'bg-emerald-500/80'} backdrop-blur-xl text-[7px] md:text-[8px] font-black text-white rounded-[4px] md:rounded-[6px] flex items-center uppercase tracking-widest shadow-xl border border-white/10`}>
-                  {channel.qualityLabel}
-                </div>
-             )}
-           </div>
+        <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
+            <div className="flex gap-1.5">
+              {currentProgram && (
+                 <div className="px-2 py-1 bg-black/60 backdrop-blur-xl border border-white/10 text-[7px] md:text-[9px] font-black text-white rounded-lg flex items-center gap-1.5 uppercase tracking-[0.1em] shadow-2xl">
+                   <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                   EN DIRECT
+                 </div>
+              )}
+              {channel.qualityLabel && (
+                 <div className={`px-2 py-1 ${channel.qualityLabel.includes('SD') ? 'bg-orange-500/80' : 'bg-emerald-500/80'} backdrop-blur-xl border border-white/10 text-[7px] md:text-[9px] font-black text-white rounded-lg flex items-center uppercase tracking-widest shadow-2xl`}>
+                   {channel.qualityLabel}
+                 </div>
+              )}
+            </div>
 
-            {/* Channel Logo */}
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-neutral-900/80 backdrop-blur-2xl rounded-lg md:rounded-xl border border-white/10 flex items-center justify-center p-1 md:p-1.5 shadow-2xl overflow-hidden group-hover:scale-110 transition-transform">
+            {/* Channel Logo Container */}
+            <div className={`w-8 h-8 md:w-10 md:h-10 bg-white/10 backdrop-blur-2xl rounded-xl border border-white/10 flex items-center justify-center p-1.5 md:p-2 shadow-2xl transition-all duration-500 group-hover:bg-white/20 group-hover:scale-110`}>
               <LogoImage logo={channel.logo} name={channel.name} />
             </div>
         </div>
 
-        {/* Play Icon overlay on hover */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-           <div className="w-10 h-10 md:w-12 md:h-12 bg-black/50 backdrop-blur-md border border-white/20 rounded-full flex items-center justify-center shadow-2xl pl-1 text-white">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        {/* Play Icon - Polished Design */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
+           <div className="w-12 h-12 md:w-14 md:h-14 bg-[#FF7900]/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,121,0,0.4)] text-white">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="ml-1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
            </div>
         </div>
 
-        {/* Progress Bar (Attached strictly to bottom edge) */}
-        {currentProgram && (
-           <div className="absolute inset-x-0 bottom-0 h-1 md:h-1.5 bg-white/10">
+        {/* Progress Bar - Thicker and Glowy */}
+        {currentProgram && progress > 0 && (
+           <div className="absolute inset-x-0 bottom-0 h-1 bg-white/5 overflow-hidden">
               <motion.div 
-                className="h-full bg-brand-500 shadow-[0_0_10px_rgba(30,136,255,0.8)]"
+                className="h-full bg-[#FF7900] shadow-[0_0_15px_rgba(255,121,0,1)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
+                transition={{ duration: 1.5, ease: "easeOut" }}
               />
            </div>
         )}
       </div>
 
-      {/* Info Area (Below thumbnail like YouTube) */}
-      <div className="pt-2.5 px-0.5 pb-1">
-         <h4 className="text-xs md:text-sm font-bold text-white leading-tight line-clamp-2 group-hover:text-brand-500 transition-colors">
-            {currentProgram?.title || channel.name}
-         </h4>
-         <div className="flex items-center gap-1.5 md:gap-2 mt-1 md:mt-1.5 line-clamp-1">
-            <span className="text-[9px] md:text-[11px] font-medium text-neutral-400">{channel.name}</span>
-            {currentProgram && Array.isArray(currentProgram) === false && (
-               <>
-                  <div className="w-0.5 md:w-1 h-0.5 md:h-1 bg-neutral-600 rounded-full shrink-0" />
-                  <span className="text-[9px] md:text-[11px] font-bold text-brand-500 truncate whitespace-nowrap">
-                     {formatEpgTime(currentProgram.start)} - {formatEpgTime(currentProgram.stop)}
-                  </span>
-               </>
-            )}
-            {currentProgram?.category && (
-               <>
-                  <div className="w-0.5 md:w-1 h-0.5 md:h-1 bg-neutral-600 rounded-full shrink-0" />
-                  <span className="text-[9px] md:text-[11px] font-medium text-neutral-500 truncate">{currentProgram.category}</span>
-               </>
-            )}
+      {/* Enhanced Info Area */}
+      <div className="mt-2.5 px-2 space-y-1">
+         <div className="flex items-center justify-between gap-3">
+           <h4 className="text-xs md:text-sm font-black text-white tracking-tight leading-tight line-clamp-1 group-hover:text-[#FF7900] transition-colors duration-300">
+              {currentProgram?.title || channel.name}
+           </h4>
+           {currentProgram && (
+             <span className="text-[9px] font-mono font-bold text-neutral-500 bg-neutral-900 border border-white/5 px-2 py-0.5 rounded-full shrink-0">
+               {formatEpgTime(currentProgram.start)}
+             </span>
+           )}
+         </div>
+         
+         <div className="flex items-center gap-2">
+            <span className="text-[9px] md:text-[10px] font-black text-neutral-500 uppercase tracking-widest">{channel.name}</span>
+            <div className="w-1 h-1 bg-neutral-800 rounded-full" />
+            <span className="text-[9px] md:text-[10px] font-bold text-[#FF7900]/60 uppercase tracking-widest">
+              {channel.categoryOverride || channel.category}
+            </span>
          </div>
       </div>
     </motion.div>

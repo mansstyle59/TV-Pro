@@ -18,6 +18,9 @@ import {
   User,
   Settings,
   X,
+  Bell,
+  BellOff,
+  Plus,
   Film,
   Music,
   Layers,
@@ -32,7 +35,8 @@ import {
   LogOut,
   CreditCard,
   Zap,
-  Globe
+  Globe,
+  Plug
 } from "lucide-react";
 import { Channel, RegisteredUser } from "./types";
 import { HlsPlayer } from "./components/HlsPlayer";
@@ -42,7 +46,15 @@ import { BottomNav } from "./components/BottomNav";
 import { Sidebar } from "./components/Sidebar";
 import { ChannelGrid } from "./components/ChannelGrid";
 import { ChannelAdmin } from "./components/ChannelAdmin";
+import { EpgTimeline } from "./components/EpgTimeline";
+import { SplashScreen } from "./components/SplashScreen";
+import { SportsCenter } from "./components/SportsCenter";
+import { AuthComponent } from "./components/AuthComponent";
+import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
+import { useFirebase } from "./context/FirebaseProvider";
+
+import { Integrations } from "./components/Integrations";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -70,11 +82,37 @@ function ChannelLogo({ logo, name, className = "w-full h-full object-contain" }:
       .toUpperCase() || name.slice(0, 2).toUpperCase();
   }, [name]);
 
+  const gradientClass = useMemo(() => {
+    const gradients = [
+      "from-sky-600 to-indigo-600",
+      "from-violet-600 to-fuchsia-600",
+      "from-rose-600 to-pink-600",
+      "from-emerald-600 to-teal-600",
+      "from-amber-500 to-orange-600",
+      "from-purple-600 to-blue-600"
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % gradients.length;
+    return gradients[index];
+  }, [name]);
+
   if (!logo || error) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-neutral-800 to-neutral-900 rounded-xl overflow-hidden border border-white/5 shadow-inner p-1">
-        <span className="text-white/80 font-black text-center text-[9px] tracking-tighter select-none uppercase leading-none truncate">
+      <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${gradientClass} rounded-xl overflow-hidden border border-white/10 shadow-[inner_0_4px_12px_rgba(255,255,255,0.15)] p-1.5 relative group-hover:scale-105 transition-transform duration-500`}>
+        {/* Subtle television scanlines design overlay */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,_rgba(0,0,0,0.15)_50%)] bg-[size:100%_4px] opacity-20 pointer-events-none rounded-xl" />
+        
+        {/* Slick top gloss overlay */}
+        <div className="absolute top-0 inset-x-0 h-[45%] bg-white/10 rounded-t-xl skew-y-1 pointer-events-none" />
+        
+        <span className="text-white font-[900] text-center text-[10px] leading-none tracking-tight select-none uppercase drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)] z-10 font-sans">
           {initials}
+        </span>
+        <span className="text-white/60 text-[6px] font-mono leading-none tracking-widest uppercase mt-1 z-10 font-[850] max-w-full truncate px-0.5">
+          {name.slice(0, 8)}
         </span>
       </div>
     );
@@ -84,6 +122,7 @@ function ChannelLogo({ logo, name, className = "w-full h-full object-contain" }:
     <img 
       src={logo} 
       alt={name}
+      loading="lazy"
       className={className} 
       onError={() => setError(true)} 
       referrerPolicy="no-referrer"
@@ -162,23 +201,168 @@ function getCoreName(name: string): string {
   return n;
 }
 
+let LCN_MAP: Record<string, number> = {
+  // TNT & Généralistes (French channels standard LCN 1 to 27)
+  "tf1": 1,
+  "france2": 2,
+  "france3": 3,
+  "canalplus": 4,
+  "france5": 5,
+  "m6": 6,
+  "arte": 7,
+  "c8": 8,
+  "w9": 9,
+  "tmc": 10,
+  "tfx": 11,
+  "nrj12": 12,
+  "lcp": 13,
+  "france4": 14,
+  "culturebox": 14,
+  "bfmtv": 15,
+  "bfm": 15,
+  "cnews": 16,
+  "cstar": 17,
+  "gulli": 18,
+  "franceo": 19,
+  "tf1seriesfilms": 20,
+  "tf1series": 20,
+  "lequipe": 21,
+  "6ter": 22,
+  "rmcstory": 23,
+  "rmcdecouverte": 24,
+  "cherie25": 25,
+  "lci": 26,
+  "franceinfo": 27,
+
+  // Sports
+  "canalplusfoot": 101,
+  "canalplussport": 102,
+  "beinsports1": 103,
+  "beinsports2": 104,
+  "beinsports3": 105,
+  "beinsportsmax4": 106,
+  "beinsportsmax5": 107,
+  "beinsportsmax6": 108,
+  "beinsportsmax7": 109,
+  "beinsportsmax8": 110,
+  "beinsportsmax9": 111,
+  "beinsportsmax10": 112,
+  "eurosport1": 113,
+  "eurosport2": 114,
+  "rmcsport1": 115,
+  "rmcsport2": 116,
+  "rmcsportuhd": 117,
+
+  // Cinéma & Séries
+  "canalpluscinema": 201,
+  "canalplusboxoffice": 202,
+  "canalplusseries": 203,
+  "ocsmax": 204,
+  "ocspulp": 205,
+  "ocsgeants": 206,
+  "cinepluspremier": 207,
+  "cineplusfrisson": 208,
+  "cineplusemotion": 209,
+  "cineplusfamiz": 210,
+  "cineplusclub": 211,
+  "cineplusclassic": 212,
+  "syfy": 213,
+  "13emerue": 214,
+  "paramountchannel": 215,
+  "alticestudio": 216,
+  "warnertv": 217,
+  "polarplus": 218,
+
+  // Belgique
+  "laune": 301,
+  "tipik": 302,
+  "latrois": 303,
+  "rtltvi": 304,
+  "clubrtl": 305,
+  "plugrtl": 306,
+  "ab3": 307,
+  "abxplore": 308,
+  "ln24": 309,
+};
+
+function getChannelSortWeight(c: { name: string; category: string; core: string; qualityLabel?: string }): number {
+  const core = c.core;
+  let baseWeight = 9999;
+  
+  if (LCN_MAP[core] !== undefined) {
+    baseWeight = LCN_MAP[core];
+  } else {
+    // Base values for categories when not explicitly defined in LCN_MAP
+    let categoryBase = 5000;
+    switch (c.category) {
+      case "TNT & Généralistes":
+        categoryBase = 1000;
+        break;
+      case "Sports":
+        categoryBase = 2000;
+        break;
+      case "Cinéma & Séries":
+        categoryBase = 3000;
+        break;
+      case "Documentaires":
+        categoryBase = 4000;
+        break;
+      case "Actualités":
+        categoryBase = 4500;
+        break;
+      case "Belgique 🇧🇪":
+        categoryBase = 5000;
+        break;
+      case "Jeunesse":
+        categoryBase = 6000;
+        break;
+      case "Divertissement":
+        categoryBase = 7000;
+        break;
+      case "Musique":
+        categoryBase = 8000;
+        break;
+      case "À La Carte":
+        categoryBase = 9000;
+        break;
+    }
+
+    // Fractional key based on core name characters (alphabetical fallback)
+    let alphaVal = 0;
+    for (let i = 0; i < Math.min(core.length, 5); i++) {
+       const code = core.charCodeAt(i) - 97;
+       alphaVal += (code >= 0 && code < 26 ? code : 25) / Math.pow(100, i + 1);
+    }
+    baseWeight = categoryBase + alphaVal;
+  }
+
+  // Add micro-fraction for stream quality to sort higher quality first within the same core
+  const qualityVal = (q: string | undefined) => {
+    if (q === "4K") return 0.001;
+    if (q === "FHD") return 0.002;
+    if (q === "HD") return 0.003;
+    if (q === "SD+") return 0.004;
+    if (q === "SD") return 0.005;
+    return 0.006;
+  };
+  
+  return baseWeight + qualityVal(c.qualityLabel);
+}
+
+
 export default function App() {
-  // Auth state
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem("isAuthenticated") === "true";
-  });
-  const [userEmail, setUserEmail] = useState(() => {
-    return localStorage.getItem("userEmail") || "dewulf.denis@gmail.com";
-  });
-  const [isAdmin, setIsAdmin] = useState(() => {
-    const saved = localStorage.getItem("isAdmin");
-    if (saved !== null) return saved === "true";
-    const initialEmail = localStorage.getItem("userEmail") || "dewulf.denis@gmail.com";
-    return initialEmail.toLowerCase() === "dewulf.denis@gmail.com";
-  });
-  const [userName, setUserName] = useState(() => {
-    return localStorage.getItem("userName") || "Denis Dewulf";
-  });
+  const { user, loading: firebaseLoading } = useFirebase();
+  const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('isAuthorized') === 'true');
+  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
+  
+  // Auth state - simplified to use Firebase
+  const isAuthenticated = !!user;
+  const userEmail = user?.email || "";
+  const userName = user?.displayName || user?.email?.split('@')[0] || "Utilisateur";
+  
+  const setIsAuthenticated = (val: boolean) => {};
+  const setUserEmail = (val: string) => {};
+  const setUserName = (val: string) => {};
   
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>(() => {
     const saved = localStorage.getItem("registeredUsers");
@@ -186,8 +370,8 @@ export default function App() {
     // Initial admin account setup if empty
     const defaultAdmin: RegisteredUser = {
       id: "admin-1",
-      name: "Denis Dewulf",
-      email: "dewulf.denis@gmail.com",
+      name: "Utilisateur",
+      email: "utilisateur@exemple.com",
       password: "admin", 
       registeredAt: new Date().toISOString(),
       role: "admin",
@@ -197,6 +381,7 @@ export default function App() {
     return [defaultAdmin];
   });
   const [adminView, setAdminView] = useState<"overview" | "users" | "channels">("overview");
+  const [teamSearch, setTeamSearch] = useState<string>("");
 
   useEffect(() => {
     localStorage.setItem("registeredUsers", JSON.stringify(registeredUsers));
@@ -208,42 +393,178 @@ export default function App() {
   const [authError, setAuthError] = useState("");
 
   const [channels, setChannels] = useState<Channel[]>([]);
+  const [showSplash, setShowSplash] = useState(true);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchCategory, setSearchCategory] = useState("Tous");
   const [homeCategory, setHomeCategory] = useState("Tous");
   const [qualityFilter, setQualityFilter] = useState<"all" | "hd">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("accueil");
-  const [sportsSubTab, setSportsSubTab] = useState<string>("worldcup");
+  const [showFullEpg, setShowFullEpg] = useState(false);
+  const [sportsSubTab, setSportsSubTab] = useState<string>("program");
   const [selectedChannel, setSelectedChannel] = useState<DisplayChannel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedChannels, setFailedChannels] = useState<Set<number>>(new Set());
-  const [favorites, setFavorites] = useState<number[]>(() => {
-    const saved = localStorage.getItem("favorites");
+  const [favorites, setFavorites] = useState<number[]>([]);
+
+  // Load favorites from backend or localStorage
+  useEffect(() => {
+    if (user) {
+        fetch(`/api/favorites/${user.uid}`)
+            .then(r => r.json())
+            .then(setFavorites)
+            .catch(e => console.error("Error loading favorites:", e));
+    } else {
+        const saved = localStorage.getItem("favorites");
+        if (saved) setFavorites(JSON.parse(saved));
+    }
+  }, [user]);
+  const [favoriteTeams, setFavoriteTeams] = useState<string[]>(() => {
+    const saved = localStorage.getItem("favoriteTeams");
+    return saved ? JSON.parse(saved) : ["France", "Belgique"];
+  });
+  const [matchReminders, setMatchReminders] = useState<(string | number)[]>(() => {
+    const saved = localStorage.getItem("matchReminders");
     return saved ? JSON.parse(saved) : [];
   });
+  const [activeReminders, setActiveReminders] = useState<{id: number, title: string}[]>([]);
   const [history, setHistory] = useState<number[]>(() => {
     const saved = localStorage.getItem("watchHistory");
     return saved ? JSON.parse(saved) : [];
   });
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem("channelPlayCounts");
+    return saved ? JSON.parse(saved) : {};
+  });
+  const [homeSorting, setHomeSorting] = useState<'standard' | 'popular'>(() => {
+    const saved = localStorage.getItem("homeSorting");
+    return (saved as 'standard' | 'popular') || 'standard';
+  });
+  const [prefetchedEpg, setPrefetchedEpg] = useState<Record<string, any>>({});
+  const [isPlayerLoading, setIsPlayerLoading] = useState(false);
 
-  // Persist favorites and history
+  // Persist favorites when user is not logged in
   useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-  }, [favorites]);
+    if (!user) {
+        localStorage.setItem("favorites", JSON.stringify(favorites));
+    }
+  }, [favorites, user]);
+
+  useEffect(() => {
+    localStorage.setItem("favoriteTeams", JSON.stringify(favoriteTeams));
+  }, [favoriteTeams]);
+
+  useEffect(() => {
+    localStorage.setItem("matchReminders", JSON.stringify(matchReminders));
+  }, [matchReminders]);
 
   useEffect(() => {
     localStorage.setItem("watchHistory", JSON.stringify(history));
   }, [history]);
 
-  const addToHistory = (id: number) => {
-    setHistory(prev => [id, ...prev.filter(h => h !== id)].slice(0, 10));
+  useEffect(() => {
+    localStorage.setItem("channelPlayCounts", JSON.stringify(playCounts));
+  }, [playCounts]);
+
+  useEffect(() => {
+    localStorage.setItem("homeSorting", homeSorting);
+  }, [homeSorting]);
+
+  // Background check for match reminders
+  useEffect(() => {
+    const checkReminders = () => {
+      const now = new Date();
+      // For the purpose of this demo, we'll simulate match times relative to current local time
+      // In a real app, you'd parse match.date and match.time
+      
+      worldCupMatches.forEach(match => {
+        if (matchReminders.includes(match.id)) {
+           // Simple simulation: if we are within the same minute as match time (conceptual)
+           // We'll just check if it matches a hardcoded "reminder trigger" for the demo
+           // Or better: just show a simple notification when they turn it on if it's "today"
+        }
+      });
+    };
+
+    const interval = setInterval(checkReminders, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [matchReminders]);
+
+  const toggleMatchReminder = (matchId: string | number, matchTitle: string) => {
+    setMatchReminders(prev => {
+      const isSet = prev.includes(matchId);
+      if (!isSet) {
+        // Show immediate visual feedback
+        const reminder = { id: Date.now(), title: `Rappel activé pour: ${matchTitle}` };
+        setActiveReminders(prevTr => [...prevTr, reminder]);
+        setTimeout(() => {
+          setActiveReminders(prevTr => prevTr.filter(r => r.id !== reminder.id));
+        }, 4000);
+        return [...prev, matchId];
+      } else {
+        return prev.filter(id => id !== matchId);
+      }
+    });
   };
 
-  const toggleFavorite = (id: number) => {
+  const addToHistory = (id: number) => {
+    setHistory(prev => [id, ...prev.filter(h => h !== id)].slice(0, 10));
+    const findChan = categorisedList.find(c => c.id === id);
+    if (findChan && findChan.core) {
+      setPlayCounts(prev => ({
+        ...prev,
+        [findChan.core]: (prev[findChan.core] || 0) + 1
+      }));
+    }
+  };
+
+  const prefetchEpg = async (channelName: string) => {
+    if (prefetchedEpg[channelName]) return;
+    try {
+      const response = await fetch(`/api/epg/${encodeURIComponent(channelName)}`);
+      const data = await response.json();
+      if (data.success) {
+        setPrefetchedEpg(prev => ({ ...prev, [channelName]: data.programmes }));
+      }
+    } catch (err) {
+      console.error("Prefetch failed:", err);
+    }
+  };
+
+  const selectChannel = (channel: DisplayChannel) => {
+    setIsPlayerLoading(true);
+    setSelectedChannel(channel);
+    addToHistory(channel.id);
+    // Smooth transition simulation
+    setTimeout(() => setIsPlayerLoading(false), 500);
+  };
+
+  const toggleFavorite = async (id: number) => {
+    const isFav = favorites.includes(id);
+    
+    // Optimistic update
     setFavorites(prev => 
-      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+      isFav ? prev.filter(f => f !== id) : [...prev, id]
+    );
+
+    if (user) {
+        if (isFav) {
+            await fetch(`/api/favorites/${user.uid}/${id}`, { method: 'DELETE' });
+        } else {
+            await fetch('/api/favorites', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.uid, channelId: id })
+            });
+        }
+    }
+  };
+
+  const toggleFavoriteTeam = (teamName: string) => {
+    setFavoriteTeams(prev => 
+      prev.includes(teamName) ? prev.filter(t => t !== teamName) : [...prev, teamName]
     );
   };
 
@@ -290,6 +611,9 @@ export default function App() {
       const data = await response.json();
 
       if (data.success && Array.isArray(data.channels)) {
+        if (data.lcnMap) {
+          LCN_MAP = data.lcnMap;
+        }
         setChannels(data.channels);
         // Do NOT auto-play/auto-select TF1 on open to allow displaying the ready-to-stream grid instead!
       } else {
@@ -555,28 +879,51 @@ export default function App() {
         return n.includes("hd") || n.includes("fhd") || n.includes("uhd") || n.includes("4k") || n.includes("1080p") || n.includes("2160p");
       })
       .sort((a, b) => {
-        // Prioritize channels with EPG and logo
-        const aScore = (a.epg ? 10 : 0) + (a.logo ? 5 : 0) + (a.qualityLabel === "HD" ? 15 : a.qualityLabel === "FHD" ? 10 : a.qualityLabel === "4K" ? 5 : 0);
-        const bScore = (b.epg ? 10 : 0) + (b.logo ? 5 : 0) + (b.qualityLabel === "HD" ? 15 : b.qualityLabel === "FHD" ? 10 : b.qualityLabel === "4K" ? 5 : 0);
-        return bScore - aScore;
+        return getChannelSortWeight(a) - getChannelSortWeight(b);
       });
   }, [channels, qualityFilter]);
 
-  // Helper to dedupe a list of channels by core name
+  // Helper to dedupe a list of channels by core name and select the absolute best active stream
   const dedupeByCore = (list: DisplayChannel[]) => {
-    const seen = new Set<string>();
-    
-    // Sort so non-failed channels come first in their core group
-    const sortedList = [...list].sort((a, b) => {
-      const aFailed = failedChannels.has(a.id) ? 1 : 0;
-      const bFailed = failedChannels.has(b.id) ? 1 : 0;
-      return aFailed - bFailed;
+    const groups: Record<string, DisplayChannel[]> = {};
+    list.forEach(c => {
+      if (!groups[c.core]) groups[c.core] = [];
+      groups[c.core].push(c);
     });
 
-    return sortedList.filter(c => {
-      if (seen.has(c.core)) return false;
-      seen.add(c.core);
-      return true;
+    const representatives = Object.keys(groups).map(coreKey => {
+      const coreStreams = groups[coreKey];
+      const sortedStreams = [...coreStreams].sort((a, b) => {
+        const aFailed = failedChannels.has(a.id) ? 1 : 0;
+        const bFailed = failedChannels.has(b.id) ? 1 : 0;
+        if (aFailed !== bFailed) return aFailed - bFailed;
+
+        const getQualityVal = (q: string | undefined) => {
+          if (q === "4K") return 4;
+          if (q === "FHD") return 3;
+          if (q === "HD") return 2;
+          if (q === "SD+") return 1.5;
+          if (q === "SD") return 1;
+          return 0;
+        };
+
+        const scoreA = (a.epg ? 10 : 0) + (a.logo ? 5 : 0) + getQualityVal(a.qualityLabel) * 2;
+        const scoreB = (b.epg ? 10 : 0) + (b.logo ? 5 : 0) + getQualityVal(b.qualityLabel) * 2;
+        return scoreB - scoreA;
+      });
+      return sortedStreams[0];
+    });
+
+    // Representatives must have their logical thematic and LCN ordering preserved
+    return representatives.sort((a, b) => {
+      if (homeSorting === "popular" && activeTab === "accueil") {
+        const countA = playCounts[a.core] || 0;
+        const countB = playCounts[b.core] || 0;
+        if (countA !== countB) {
+          return countB - countA;
+        }
+      }
+      return getChannelSortWeight(a) - getChannelSortWeight(b);
     });
   };
 
@@ -585,6 +932,12 @@ export default function App() {
     const groups: Record<string, DisplayChannel[]> = {};
     
     dedupeByCore(categorisedList).forEach(c => {
+      // Filter out specifically requested sports channels globally
+      if (c.category === "Sports") {
+        const forbiddenNames = ["BEIN SPORTS FOOTBALL", "DIRECTS L'ÉQUIPE", "DIRECTS L'EQUIPE"];
+        if (forbiddenNames.some(name => c.name.includes(name))) return;
+      }
+      
       const isCustom = String(c.id).startsWith("custom_");
       const cat = isCustom ? "M3U8 Perso" : c.category;
       if (!groups[cat]) groups[cat] = [];
@@ -592,7 +945,7 @@ export default function App() {
     });
 
     return groups;
-  }, [categorisedList, failedChannels]);
+  }, [categorisedList, failedChannels, homeSorting, playCounts]);
 
   const favoritesList = useMemo(() => {
     return categorisedList.filter(c => favorites.includes(c.id));
@@ -697,10 +1050,16 @@ export default function App() {
   }, [activeTab, categorisedList, focusedIndex]);
 
   const handleChannelSelect = (channel: Channel) => {
+    setIsPlayerLoading(true);
     setSelectedChannel(channel);
     addToHistory(channel.id);
     setFocusedIndex(-1); // Reset focus when playing
     window.scrollTo({ top: 0, behavior: "smooth" });
+    
+    // Simulate fast flow sync
+    setTimeout(() => {
+      setIsPlayerLoading(false);
+    }, 600);
   };
 
   const handleSeeAll = (category: string) => {
@@ -769,6 +1128,204 @@ export default function App() {
     { id: 4, home: "Allemagne", homeIso: "DE", away: "Japon", awayIso: "JP", date: "2026-06-18", time: "15:00", stadium: "Mercedes-Benz, Atlanta", broadcaster: "Tipik", category: "Groupe D" },
   ];
 
+  const tvProgramMatches = [
+    { 
+      id: "tp1",
+      date: "Aujourd'hui",
+      time: "18:00",
+      discipline: "Football",
+      title: "Turquie vs Géorgie",
+      stage: "Match de préparation 🇹🇷",
+      channels: ["beIN Sports 1"],
+      status: "Terminé",
+      isLive: false,
+      league: "UEFA",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp2",
+      date: "Aujourd'hui",
+      time: "21:00",
+      discipline: "Football",
+      title: "France vs Allemagne",
+      stage: "Match Amical International 🇫🇷",
+      channels: ["TF1"],
+      status: "En Direct",
+      isLive: true,
+      league: "International",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp_evening1",
+      date: "Aujourd'hui",
+      time: "22:45",
+      discipline: "Football",
+      title: "Le Débrief après-match",
+      stage: "Analyse & Interviews 🎤",
+      channels: ["TF1", "L'Equipe"],
+      status: "À venir",
+      isLive: false,
+      league: "Special",
+      icon: "Activity"
+    },
+    { 
+      id: "tp_late",
+      date: "Cette Nuit",
+      time: "02:00",
+      discipline: "Basket-ball",
+      title: "Celtics vs Mavericks",
+      stage: "NBA Finals - Game 1 🏀",
+      channels: ["beIN Sports 1"],
+      status: "À venir",
+      isLive: false,
+      league: "NBA",
+      icon: "Activity"
+    },
+    { 
+      id: "tp4",
+      date: "Dimanche 7 Juin",
+      time: "15:00",
+      discipline: "Tennis",
+      title: "Finale Roland Garros",
+      stage: "Court Philippe Chatrier 🎾",
+      channels: ["France 2", "Eurosport 1"],
+      status: "À venir",
+      isLive: false,
+      league: "Grand Chelem",
+      icon: "Globe"
+    },
+    { 
+      id: "tp5",
+      date: "Dimanche 7 Juin",
+      time: "20:00",
+      discipline: "Formule 1",
+      title: "GP du Canada - La Course",
+      stage: "Circuit Gilles-Villeneuve 🏎️",
+      channels: ["Canal+"],
+      status: "À venir",
+      isLive: false,
+      league: "F1 World Championship",
+      icon: "Zap"
+    },
+    { 
+      id: "tp6",
+      date: "Dimanche 7 Juin",
+      time: "21:00",
+      discipline: "Football",
+      title: "Argentine vs Équateur",
+      stage: "Amical de préparation 🏆",
+      channels: ["beIN Sports 2"],
+      status: "À venir",
+      isLive: false,
+      league: "International",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp7",
+      date: "Lundi 8 Juin",
+      time: "18:30",
+      discipline: "Football",
+      title: "Pologne vs Turquie",
+      stage: "Match Amical ⚽",
+      channels: ["L'Equipe"],
+      status: "À venir",
+      isLive: false,
+      league: "International",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp_bein1",
+      date: "Lundi 8 Juin",
+      time: "21:00",
+      discipline: "Football",
+      title: "Suisse vs Autriche",
+      stage: "Amical International - beIN Choc ⚽",
+      channels: ["beIN Sports 1"],
+      status: "À venir",
+      isLive: false,
+      league: "Amical",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp_bein2",
+      date: "Lundi 8 Juin",
+      time: "23:00",
+      discipline: "Football",
+      title: "Brésil vs Mexique",
+      stage: "Tournée US - Direct Exclusif 🇧🇷",
+      channels: ["beIN Sports 2"],
+      status: "À venir",
+      isLive: false,
+      league: "Copa Prep",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp8",
+      date: "Mardi 9 Juin",
+      time: "20:45",
+      discipline: "Football",
+      title: "Portugal vs Irlande",
+      stage: "Dernier test avant l'Euro 🇵🇹",
+      channels: ["L'Equipe"],
+      status: "À venir",
+      isLive: false,
+      league: "International",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp9",
+      date: "Mardi 9 Juin",
+      time: "21:00",
+      discipline: "Basket-ball",
+      title: "USA vs France",
+      stage: "Préparation Olympique - Choc 🏀",
+      channels: ["beIN Sports 1"],
+      status: "À venir",
+      isLive: false,
+      league: "International",
+      icon: "Activity"
+    },
+    { 
+      id: "tp10",
+      date: "Mercredi 10 Juin",
+      time: "20:00",
+      discipline: "Football",
+      title: "France vs Italie",
+      stage: "Dernier match de gala 🇫🇷",
+      channels: ["TF1"],
+      status: "À venir",
+      isLive: false,
+      league: "International",
+      icon: "Trophy"
+    },
+    { 
+      id: "tp11",
+      date: "Jeudi 11 Juin",
+      time: "20:00",
+      discipline: "Football",
+      title: "Cérémonie d'Ouverture",
+      stage: "Kickoff World Cup 2026 🏟️",
+      channels: ["TF1", "RTBF La Une"],
+      status: "À venir",
+      isLive: false,
+      league: "World Cup",
+      icon: "Sparkles"
+    },
+    { 
+      id: "tp12",
+      date: "Jeudi 11 Juin",
+      time: "22:00",
+      discipline: "Football",
+      title: "USA vs Mexique",
+      stage: "Match d'Ouverture - Groupe A ⚽",
+      channels: ["TF1", "beIN Sports 1"],
+      status: "À venir",
+      isLive: false,
+      league: "World Cup",
+      icon: "Trophy"
+    }
+  ];
+
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
@@ -797,8 +1354,8 @@ export default function App() {
            setUserName(existingUser.name);
            localStorage.setItem("userName", existingUser.name);
         } else if (isUserAdmin) { // Admin hardcoded fallback
-           setUserName("Denis Dewulf");
-           localStorage.setItem("userName", "Denis Dewulf");
+           setUserName("Utilisateur");
+           localStorage.setItem("userName", "Utilisateur");
         }
       } else {
         if (!authForm.name || !authForm.email || !authForm.password) {
@@ -851,164 +1408,97 @@ export default function App() {
     setActiveTab("accueil");
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex flex-col items-center justify-center relative overflow-hidden select-none">
-        {/* Ambient Dark Premium Background */}
-        <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-brand-500/10 blur-[120px] pointer-events-none rounded-full" />
-        <div className="absolute -bottom-20 -left-20 w-[40vw] h-[40vw] bg-rose-500/5 blur-[100px] pointer-events-none rounded-full" />
-        
-        <div className="relative z-10 w-full max-w-md px-6">
-           <div className="flex flex-col items-center mb-10 text-center">
-              <div className="w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-700 justify-center rounded-2xl flex items-center shadow-[0_0_40px_rgba(30,136,255,0.3)] mb-6">
-                 <Tv className="text-white" size={32} strokeWidth={2} />
-              </div>
-              <h1 className="text-3xl font-black uppercase tracking-tighter text-white">TV PRO <span className="text-brand-500">PREMIUM</span></h1>
-              <p className="text-[10px] font-black text-neutral-500 uppercase tracking-[0.2em] mt-3">Réseau Télévisuel Sécurisé</p>
-           </div>
-           
-           <div className="bg-neutral-900/60 backdrop-blur-2xl border border-white/5 rounded-3xl p-8 shadow-2xl">
-              <div className="flex items-center justify-between mb-8">
-                 <h2 className="text-xl font-black text-white uppercase tracking-tight">{isLoginMode ? "Connexion" : "Inscription"}</h2>
-                 <div className="px-3 py-1 bg-brand-500/10 border border-brand-500/20 rounded-md flex items-center gap-2 text-brand-500 text-[9px] font-black uppercase tracking-widest">
-                    <ShieldCheck size={12} /> Accès Privé
-                 </div>
-              </div>
-              
-              <form onSubmit={handleAuth} className="space-y-5">
-                 {authError && (
-                   <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold p-3 rounded-xl text-center uppercase tracking-widest">
-                     {authError}
-                   </div>
-                 )}
-                 {!isLoginMode && (
-                    <div>
-                      <label className="block text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2 ml-1">Nom complet</label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500">
-                           <User size={16} />
-                        </div>
-                        <input 
-                          type="text" 
-                          required
-                          value={authForm.name}
-                          onChange={e => setAuthForm(prev => ({ ...prev, name: e.target.value }))}
-                          className="w-full bg-neutral-950 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium text-white placeholder-neutral-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
-                          placeholder="Denis Dewulf"
-                        />
-                      </div>
-                    </div>
-                 )}
-                 <div>
-                   <label className="block text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2 ml-1">Adresse Email</label>
-                   <div className="relative">
-                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500">
-                        <Mail size={16} />
-                     </div>
-                     <input 
-                       type="email"
-                       required 
-                       value={authForm.email}
-                       onChange={e => setAuthForm(prev => ({ ...prev, email: e.target.value }))}
-                       className="w-full bg-neutral-950 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium text-white placeholder-neutral-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
-                       placeholder="votre@email.com"
-                     />
-                   </div>
-                 </div>
-                 <div>
-                   <label className="block text-[9px] font-black text-neutral-500 uppercase tracking-widest mb-2 ml-1">Mot de passe</label>
-                   <div className="relative">
-                     <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-neutral-500">
-                        <Key size={16} />
-                     </div>
-                     <input 
-                       type="password"
-                       required 
-                       value={authForm.password}
-                       onChange={e => setAuthForm(prev => ({ ...prev, password: e.target.value }))}
-                       className="w-full bg-neutral-950 border border-white/10 rounded-xl py-3.5 pl-11 pr-4 text-sm font-medium text-white placeholder-neutral-600 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all"
-                       placeholder="••••••••"
-                     />
-                   </div>
-                 </div>
-                 
-                 <button 
-                   type="submit"
-                   disabled={isAuthenticating}
-                   className="w-full mt-2 bg-white text-black font-black uppercase tracking-widest text-[11px] py-4 rounded-xl flex items-center justify-center gap-3 hover:bg-brand-500 hover:text-white transition-all duration-300 disabled:opacity-50"
-                 >
-                   {isAuthenticating ? (
-                     <>
-                       <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
-                       Authentification...
-                     </>
-                   ) : (
-                     <>
-                       <Lock size={16} /> 
-                       {isLoginMode ? "Accéder au Hub" : "Créer mon compte"}
-                     </>
-                   )}
-                 </button>
-              </form>
-              
-              <div className="mt-8 text-center border-t border-white/5 pt-6">
-                 <button 
-                   type="button"
-                   onClick={() => setIsLoginMode(!isLoginMode)}
-                   className="text-[10px] font-black text-neutral-500 hover:text-white uppercase tracking-widest transition-colors"
-                 >
-                   {isLoginMode ? "Je n'ai pas de compte ? Inscription" : "J'ai déjà un compte ? Connexion"}
-                 </button>
-              </div>
-           </div>
-        </div>
-      </div>
-    );
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
+  }
+
+  if (!isAuthorized) {
+    return <AccessCodeGate onAuthorized={() => setIsAuthorized(true)} />;
   }
 
   return (
-    <div id="root-layout" className="min-h-screen bg-neutral-950 text-white flex flex-col lg:flex-row antialiased">
+    <div id="root-layout" className="min-h-screen bg-neutral-950 text-white flex flex-col lg:flex-row antialiased relative">
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
       
+      {/* Visual Reminder Toasts */}
+      <div className="fixed top-24 right-4 z-[200] flex flex-col gap-3 pointer-events-none">
+        <AnimatePresence>
+          {activeReminders.map(rem => (
+            <motion.div
+              key={rem.id}
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.2 } }}
+              className="bg-neutral-900/90 backdrop-blur-2xl border border-emerald-500/30 rounded-2xl p-4 shadow-2xl flex items-center gap-4 pointer-events-auto min-w-[280px]"
+            >
+              <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-500">
+                <Bell size={20} className="animate-bounce" />
+              </div>
+              <div className="flex-grow">
+                <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Rappel de Match</p>
+                <p className="text-xs font-bold text-white mt-0.5">{rem.title}</p>
+              </div>
+              <button 
+                onClick={() => setActiveReminders(p => p.filter(r => r.id !== rem.id))} 
+                className="text-neutral-500 hover:text-white transition-colors"
+                title="Fermer"
+              >
+                <X size={16} />
+              </button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       <div className="flex-grow flex flex-col min-w-0">
         {/* Isomorphic Premium Top Bar (Mobile + Desktop Enhanced) */}
-        <header className="sticky top-0 z-[100] bg-neutral-950/70 backdrop-blur-2xl border-b border-white/5 py-4 select-none">
-          <div className="max-w-[1600px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
+        <header className="sticky top-0 z-[100] bg-[#0A0A0A]/80 backdrop-blur-3xl border-b border-neutral-800 py-3 select-none">
+          <div className="max-w-[1700px] mx-auto px-4 sm:px-8 h-16 flex items-center justify-between">
             {/* Left Header Hub */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-8">
               {/* Logo (Visually hidden on desktop since Sidebar is visible) */}
               <div className="flex items-center gap-3 group cursor-pointer lg:hidden" onClick={() => setActiveTab("accueil")}>
-                <div className="w-10 h-10 bg-gradient-to-br from-[#1E88FF] to-blue-800 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/10 group-hover:scale-105 transition-all duration-300">
-                   <Tv className="text-white" size={20} strokeWidth={2.5} />
+                <div className="w-10 h-10 bg-[#0c0c0d] border border-white/5 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-all duration-300 overflow-hidden">
+                   <img src="/pwa-192x192.svg" alt="Flux Tv Pro" className="w-[102%] h-[102%] object-contain rounded-xl" referrerPolicy="no-referrer" />
                 </div>
                 <div>
-                  <h1 className="text-sm font-black tracking-tighter leading-none text-white uppercase">TV PRO</h1>
-                  <p className="text-[7px] font-black text-[#1E88FF] uppercase tracking-[0.2em] mt-1">Premium Vision</p>
+                  <h1 className="text-sm font-black tracking-tighter leading-none text-white uppercase">Flux Tv Pro</h1>
+                  <p className="text-[7px] font-black text-[#FF7900] uppercase tracking-[0.2em] mt-1">Premium Vision</p>
                 </div>
               </div>
 
-              {/* Desktop Greeting & System Telemetry (Premium Visual Improvement) */}
-              <div className="hidden lg:flex flex-col">
+              {/* Add to Players Button */}
+              <button
+                onClick={() => setActiveTab("integrations")}
+                className="flex items-center gap-2 px-3 py-2 bg-[#FF7900]/10 hover:bg-[#FF7900]/20 text-[#FF7900] rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-[#FF7900]/20 hover:border-[#FF7900]/40"
+                title="Ajouter à Jellyfin, VLC, Kodi..."
+              >
+                <Plug size={16} />
+                <span className="hidden sm:inline">Ajouter à...</span>
+              </button>
+
+              {/* Desktop Greeting & System Telemetry */}
+              <div className="hidden lg:flex flex-col gap-0.5">
+                <h2 className="text-lg font-black uppercase tracking-tighter text-white">
+                  Bonjour, <span className="text-[#FF7900] italic">{userName.split(' ')[0]}</span>
+                </h2>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs font-black uppercase tracking-widest text-[#A0A0A0]">
-                    Tableau de Bord Premium
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#666]">
+                    Tableau de Bord
                   </span>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/15 rounded-full">
-                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_6px_#10b981]" />
-                    <span className="text-[7.5px] font-black text-emerald-500 uppercase tracking-widest">Core Online</span>
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-neutral-900 border border-neutral-800 rounded-full">
+                    <div className="w-1 h-1 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981]" />
+                    <span className="text-[7.5px] font-black text-neutral-400 uppercase tracking-widest">Système Actif</span>
                   </div>
                 </div>
-                <h2 className="text-lg font-black uppercase tracking-tighter text-white mt-1">
-                  Bonjour, <span className="text-[#1E88FF] italic">{userName.split(' ')[0]}</span>
-                </h2>
               </div>
 
-              {/* Quality Preset Buttons - Unified visible everywhere */}
-              <div className="hidden md:flex items-center bg-white/5 border border-white/5 rounded-2xl p-1 gap-1">
+              {/* Quality Preset Buttons */}
+              <div className="hidden md:flex items-center bg-neutral-900 border border-neutral-800 rounded-2xl p-1 gap-1">
                 <button
                   onClick={() => setQualityFilter("all")}
                   className={`px-4 py-1.5 text-[9px] font-black rounded-xl transition-all uppercase tracking-widest ${
-                    qualityFilter === "all" ? "bg-white text-black shadow-xl" : "text-neutral-400 hover:text-white"
+                    qualityFilter === "all" ? "bg-neutral-800 text-white shadow-lg" : "text-neutral-500 hover:text-neutral-300"
                   }`}
                 >
                   Standard
@@ -1016,7 +1506,7 @@ export default function App() {
                 <button
                   onClick={() => setQualityFilter("hd")}
                   className={`px-4 py-1.5 text-[9px] font-black rounded-xl transition-all uppercase tracking-widest ${
-                    qualityFilter === "hd" ? "bg-[#1E88FF] text-white shadow-xl shadow-blue-500/20" : "text-neutral-400 hover:text-white"
+                    qualityFilter === "hd" ? "bg-[#FF7900] text-white shadow-lg shadow-orange-500/20" : "text-neutral-500 hover:text-neutral-300"
                   }`}
                 >
                   HD Premium
@@ -1026,56 +1516,39 @@ export default function App() {
 
             {/* Right Header Hub */}
             <div className="flex items-center gap-4">
-              {/* Dynamic Signal/Abonne Indicator for Desktop */}
-              <div className="hidden lg:flex items-center gap-3 bg-neutral-900 border border-white/5 px-4 py-2 rounded-2xl">
-                <Activity size={14} className="text-[#1E88FF] animate-pulse" />
-                <span className="text-[9px] font-mono font-black uppercase tracking-widest text-neutral-400">
-                  Latence: 12ms • V4.2
-                </span>
-              </div>
-
-              {/* Global M3U Playlist Fast Link shortcut for Desktop */}
+              {/* Global M3U Playlist Fast Link shortcut */}
               <button
                 onClick={handleDownloadM3U}
-                className="hidden md:flex items-center gap-2 px-4 py-2.5 bg-neutral-900 hover:bg-[#151515] text-[#1E88FF] hover:text-white border border-white/5 hover:border-[#1E88FF]/30 rounded-2xl transition-all font-black text-[9px] uppercase tracking-widest"
+                className="hidden md:flex items-center gap-2 px-4 py-2 bg-neutral-900 hover:bg-neutral-800 text-[#FF7900] hover:text-white border border-neutral-800 hover:border-[#FF7900]/30 rounded-2xl transition-all font-black text-[9px] uppercase tracking-widest"
                 title="Exporter Playlist M3U"
               >
                 <FileDown size={14} />
                 <span>M3U Playlist</span>
               </button>
 
-              <div className="flex items-center gap-2 p-1.5 bg-neutral-900/40 border border-white/5 rounded-3xl backdrop-blur-3xl shadow-2xl">
-                {/* Refresh Database Streams Button */}
-                <button 
-                  onClick={() => loadChannels(true)}
-                  className="p-3 text-neutral-400 hover:text-white hover:bg-white/5 active:scale-95 rounded-2xl transition-all cursor-pointer"
-                  title="Rafraîchir les flux"
-                >
-                  <RefreshCw size={18} className={refreshing ? "animate-spin" : ""} strokeWidth={2.5} />
-                </button>
-
-                {/* Profile Avatar Trigger (Fulfills placing profile elsewhere than bottom nav!) */}
+              {/* Profile Avatar Trigger */}
+              {isAdmin && (
                 <button 
                   onClick={() => setActiveTab("profil")}
-                  className={`flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-2xl transition-all ${
+                  className={`flex items-center gap-2.5 pl-3 pr-4 py-2 rounded-2xl transition-all ${
                     activeTab === "profil" 
-                      ? "bg-[#1E88FF] text-white shadow-xl shadow-blue-500/20 font-black" 
-                      : "bg-white/5 text-neutral-300 hover:text-white hover:bg-white/10"
+                      ? "bg-[#FF7900] text-white shadow-xl shadow-orange-500/20 font-black" 
+                      : "bg-neutral-900 text-neutral-300 hover:text-white hover:bg-neutral-800"
                   }`}
                   title="Mon Profil Premium"
                 >
                   <div className={`w-6 h-6 rounded-full text-[9px] font-black uppercase flex items-center justify-center transition-all ${
                     activeTab === "profil" 
-                      ? "bg-white text-black shadow-lg" 
-                      : "bg-[#1E88FF] text-white"
+                      ? "bg-white text-black" 
+                      : "bg-[#FF7900] text-white"
                   }`}>
-                    DD
+                    U
                   </div>
                   <span className="text-[10px] font-black uppercase tracking-widest hidden sm:block">
-                    Denis
+                    Utilisateur
                   </span>
                 </button>
-              </div>
+              )}
             </div>
           </div>
         </header>
@@ -1091,21 +1564,36 @@ export default function App() {
             transition={{ duration: 0.3 }}
             className="w-full max-w-[1600px] mx-auto px-4 sm:px-8 pt-4 md:pt-6 pb-2"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-6 bg-neutral-900 rounded-2xl lg:rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl relative w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-6 bg-neutral-900 rounded-2xl overflow-hidden border border-white/5 shadow-2xl relative w-full">
               {/* Backglow for player */}
-              <div className="absolute -inset-20 bg-[#1E88FF]/10 blur-[100px] pointer-events-none hidden lg:block" />
+              <div className="absolute -inset-20 bg-[#FF7900]/10 blur-[100px] pointer-events-none hidden lg:block" />
               
               {/* Player Column */}
               <div className="lg:col-span-8 aspect-video relative z-10 bg-black">
-                <HlsPlayer 
-                  url={getActiveStreamUrl(selectedChannel)} 
-                  channelName={selectedChannel.name} 
-                  programTitle={selectedChannel.epg?.current?.title}
-                  programDesc={selectedChannel.epg?.current?.desc}
-                  programImage={selectedChannel.epg?.current?.image || selectedChannel.epg?.current?.icon}
-                  onBack={() => setSelectedChannel(null)}
-                  onFatalError={handleStreamError}
-                />
+                {isPlayerLoading ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center space-y-6 bg-neutral-950">
+                    <div className="relative">
+                      <div className="w-24 h-24 border-4 border-[#FF7900]/20 border-t-[#FF7900] rounded-full animate-spin" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Tv size={24} className="text-brand-500 animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="space-y-1 text-center px-6">
+                      <p className="text-[10px] font-black text-brand-500 uppercase tracking-[0.4em] animate-pulse">Synchronisation Flux Rapide</p>
+                      <h4 className="text-xs font-black text-white/50 uppercase tracking-widest truncate max-w-[280px]">{selectedChannel.name}</h4>
+                    </div>
+                  </div>
+                ) : (
+                  <HlsPlayer 
+                    url={getActiveStreamUrl(selectedChannel)} 
+                    channelName={selectedChannel.name} 
+                    programTitle={selectedChannel.epg?.current?.title}
+                    programDesc={selectedChannel.epg?.current?.desc}
+                    programImage={selectedChannel.epg?.current?.image || selectedChannel.epg?.current?.icon}
+                    onBack={() => setSelectedChannel(null)}
+                    onFatalError={handleStreamError}
+                  />
+                )}
               </div>
 
               {/* Info Column */}
@@ -1139,6 +1627,17 @@ export default function App() {
 
                   {/* Program Info - Premium EPG Layout */}
                   <div className="bg-neutral-900/60 border border-white/5 rounded-3xl p-5 sm:p-6 overflow-hidden relative">
+                    {selectedChannel?.name && (
+                      <div className="absolute top-4 right-4 z-20">
+                        <button 
+                          onClick={() => setShowFullEpg(true)}
+                          className="flex items-center gap-2 px-3 py-1.5 bg-brand-500/10 hover:bg-brand-500 hover:text-white border border-brand-500/20 text-brand-500 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 group/epg shadow-lg shadow-brand-500/10"
+                        >
+                          <Calendar size={12} className="group-hover/epg:scale-110 transition-transform" />
+                          <span>Guide 24h</span>
+                        </button>
+                      </div>
+                    )}
                     {selectedChannel.epg?.current ? (
                       <div className="relative z-10 space-y-6">
                         {/* EPG Header */}
@@ -1166,6 +1665,7 @@ export default function App() {
                                 <img 
                                   src={selectedChannel.epg.current.image || selectedChannel.epg.current.icon} 
                                   alt={selectedChannel.epg.current.title}
+                                  loading="lazy"
                                   className="w-full h-full object-cover opacity-80"
                                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
                                 />
@@ -1267,7 +1767,7 @@ export default function App() {
                                   {getSourceLabel(alt.name)}
                                 </span>
                                 {isActive && (
-                                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-brand-500 rounded-full shadow-[0_0_12px_#1E88FF] flex-shrink-0" />
+                                  <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-brand-500 rounded-full shadow-[0_0_12px_#FF7900] flex-shrink-0" />
                                 )}
                               </div>
                               
@@ -1298,16 +1798,16 @@ export default function App() {
             className="w-full max-w-[1600px] mx-auto px-4 sm:px-8 pt-4 md:pt-6 pb-2 select-none"
           >
             <div className="bg-neutral-900/60 rounded-[2.5rem] border border-white/5 p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#1E88FF]/5 blur-[120px] pointer-events-none" />
+              <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#FF7900]/5 blur-[120px] pointer-events-none" />
               
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/5">
                 <div>
-                   <div className="flex items-center gap-2 px-3 py-1 bg-[#1E88FF]/15 border border-[#1E88FF]/30 rounded-full w-fit mb-2">
+                   <div className="flex items-center gap-2 px-3 py-1 bg-[#FF7900]/15 border border-[#FF7900]/30 rounded-full w-fit mb-2">
                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                     <span className="text-[9px] font-black text-[#1E88FF] uppercase tracking-widest">Lanceur Rapide Direct TV</span>
+                     <span className="text-[9px] font-black text-[#FF7900] uppercase tracking-widest">Lanceur Rapide Direct TV</span>
                    </div>
                    <h3 className="text-xl sm:text-2xl font-black uppercase text-white tracking-tight leading-none">
-                     Chaînes TV en Haute Définition <span className="text-[#1E88FF] italic">Prêtes à Lancer</span>
+                     Chaînes TV en Haute Définition <span className="text-[#FF7900] italic">Prêtes à Lancer</span>
                    </h3>
                    <p className="text-[10px] sm:text-xs text-neutral-400 uppercase font-bold tracking-wider mt-1.5">
                      Cliquez sur l'un des carrés ci-dessous pour démarrer instantanément la lecture HD
@@ -1349,7 +1849,7 @@ export default function App() {
                          whileHover={{ scale: 1.08 }}
                          whileTap={{ scale: 0.95 }}
                          onClick={() => handleChannelSelect(channel)}
-                         className={`aspect-square bg-neutral-950 hover:bg-[#121212] border border-white/5 hover:border-[#1E88FF]/45 rounded-2xl md:rounded-3xl p-3 flex flex-col items-center justify-center relative group transition-all duration-300 shadow-lg ${
+                         className={`aspect-square bg-neutral-950 hover:bg-[#121212] border border-white/5 hover:border-[#FF7900]/45 rounded-2xl md:rounded-3xl p-3 flex flex-col items-center justify-center relative group transition-all duration-300 shadow-lg ${
                            isWcBroadcaster ? "ring-2 ring-yellow-500/10 hover:ring-yellow-500/30" : ""
                          }`}
                          title={`Lancer ${channel.name} en direct`}
@@ -1390,28 +1890,19 @@ export default function App() {
 
       {/* Tab Content */}
       <main className="flex-grow w-full max-w-[1600px] mx-auto pt-4 sm:pt-8 pb-40 px-0">
-        <AnimatePresence mode="wait">
-          {loading ? (
-            <motion.div 
-              key="loading"
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              className="flex flex-col items-center justify-center p-20 text-neutral-500"
-            >
-              <RefreshCw className="w-10 h-10 animate-spin mb-4 text-brand-500" />
-              <p className="text-sm font-medium">Synchronisation des chaînes...</p>
-            </motion.div>
-          ) : activeTab === "accueil" ? (
-            <motion.div 
-              key="accueil"
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-12 sm:space-y-16 pb-40"
-            >
+        {loading ? (
+          <div className="flex flex-col items-center justify-center p-20 text-neutral-500">
+            <RefreshCw className="w-10 h-10 animate-spin mb-4 text-brand-500" />
+            <p className="text-sm font-medium">Synchronisation des chaînes...</p>
+          </div>
+        ) : (
+          <>
+            {/* ACCUEIL TAB */}
+            <div className={activeTab === "accueil" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="space-y-4 sm:space-y-6 pb-20">
 
               {/* Minimalist Editorial Header */}
-              <div className="px-10 pt-10 pb-8 flex flex-col md:flex-row md:items-end justify-between gap-8">
+              <div className="px-6 md:px-10 pt-4 md:pt-6 pb-2 flex flex-col md:flex-row md:items-end justify-between gap-4">
                  <div>
                     <h2 className="text-4xl md:text-6xl font-black uppercase text-white tracking-tighter leading-none">
                        Votre Espace <span className="text-brand-500">Télévisuel</span>
@@ -1420,8 +1911,37 @@ export default function App() {
                        Bienvenue, {userName} • {isAdmin ? "Administrateur" : "Accès Premium"}
                     </p>
                  </div>
-                 <div className="flex gap-4">
-                    <div className="px-4 py-3 bg-neutral-900 rounded-2xl border border-white/5 flex items-center justify-between min-w-[140px]">
+                 <div className="flex flex-wrap items-center gap-3">
+                    {/* Tri de chaines option */}
+                    <div className="flex bg-neutral-950 p-1 rounded-xl border border-white/5 shadow-inner">
+                       <button
+                         onClick={() => setHomeSorting('standard')}
+                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                           homeSorting === 'standard'
+                             ? "bg-brand-500 text-white shadow-lg shadow-brand-500/15"
+                             : "text-neutral-500 hover:text-neutral-300"
+                         }`}
+                       >
+                          Tri Standard
+                       </button>
+                       <button
+                         onClick={() => setHomeSorting('popular')}
+                         className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center gap-1.5 ${
+                           homeSorting === 'popular'
+                             ? "bg-brand-500 text-white shadow-lg shadow-brand-500/15"
+                             : "text-neutral-500 hover:text-neutral-300"
+                         }`}
+                       >
+                          <span>Les Plus Regardées</span>
+                          {(Object.values(playCounts) as number[]).some((v: number) => v > 0) && (
+                            <span className="px-1 py-0.5 bg-white/10 text-white rounded-md text-[8px] font-mono leading-none">
+                              {(Object.values(playCounts) as number[]).reduce((a: number, b: number) => a + b, 0)}
+                            </span>
+                          )}
+                       </button>
+                    </div>
+
+                    <div className="px-4 py-3 bg-neutral-900 rounded-2xl border border-white/5 flex items-center justify-between gap-3 min-w-[140px]">
                        <span className="text-[10px] font-black text-neutral-500 uppercase tracking-widest">En Direct</span>
                        <div className="flex items-center gap-2">
                           <div className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse" />
@@ -1438,16 +1958,18 @@ export default function App() {
                     if (!topFeaturedChannel) return null;
                     const current = topFeaturedChannel.epg?.current;
                     return (
-                      <div className="px-4 md:px-6 relative w-full h-[320px] sm:h-[400px] lg:h-[600px] mb-8">
+                      <div className="px-4 md:px-6 relative w-full h-[320px] sm:h-[400px] lg:h-[500px] mb-2 font-sans">
                         <button 
                           onClick={() => handleChannelSelect(topFeaturedChannel)}
-                          className="w-full h-full rounded-[2rem] md:rounded-[3rem] overflow-hidden relative group text-left block border border-white/5 shadow-2xl"
+                          onMouseEnter={() => prefetchEpg(topFeaturedChannel.name)}
+                          className="w-full h-full rounded-2xl overflow-hidden relative group text-left block border border-white/5 shadow-2xl"
                         >
                            {/* Background Image */}
                            {current?.image || current?.icon || topFeaturedChannel.logo ? (
                              <img 
                                src={current?.image || current?.icon || topFeaturedChannel.logo} 
                                alt={current?.title || topFeaturedChannel.name}
+                               loading="lazy"
                                className="absolute inset-0 w-full h-full object-cover transition-transform duration-[3s] group-hover:scale-105"
                                referrerPolicy="no-referrer"
                              />
@@ -1516,8 +2038,8 @@ export default function App() {
                            {/* Channel Logo floating top right */}
                            <div className="absolute top-8 right-8 w-16 h-16 bg-black/40 backdrop-blur-xl rounded-2xl p-3 border border-white/10 shadow-2xl">
                               <ChannelLogo logo={topFeaturedChannel.logo} name={topFeaturedChannel.name} />
-                           </div>
-                        </button>
+                            </div>
+                         </button>
                       </div>
                     );
                   })()
@@ -1525,9 +2047,9 @@ export default function App() {
               </AnimatePresence>
 
               {/* Quick Access Grid - Optimized */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 px-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 px-4 md:px-6">
                  {/* Favorites Row */}
-                 <div className="space-y-8">
+                 <div className="space-y-4">
                     <div className="flex items-center justify-between px-2">
                        <div className="flex items-center gap-4">
                           <div className="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20">
@@ -1540,21 +2062,21 @@ export default function App() {
                        </div>
                     </div>
                     
-                    <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-none">
+                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none">
                        {favoritesList.length > 0 ? favoritesList.map(channel => (
                           <button
                             key={channel.id}
                             onClick={() => handleChannelSelect(channel)}
                             className="flex-shrink-0 w-32 group"
                           >
-                             <div className="aspect-square bg-neutral-900/50 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 flex items-center justify-center mb-3 group-hover:border-red-500/30 transition-all group-hover:scale-105 shadow-2xl relative overflow-hidden">
+                             <div className="aspect-square bg-neutral-900/50 backdrop-blur-xl border border-white/5 rounded-xl p-6 flex items-center justify-center mb-2 group-hover:border-red-500/30 transition-all group-hover:scale-105 shadow-2xl relative overflow-hidden">
                                 <div className="absolute inset-0 bg-linear-to-br from-red-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <ChannelLogo logo={channel.logo} name={channel.name} className="w-full h-full object-contain relative z-10" />
                              </div>
                              <p className="text-[10px] font-black text-white text-center uppercase tracking-tight opacity-40 group-hover:opacity-100 transition-opacity truncate px-2">{channel.name}</p>
                           </button>
                        )) : (
-                          <div className="w-full h-32 flex items-center justify-center bg-neutral-900/30 rounded-[2.5rem] border border-dashed border-white/10">
+                          <div className="w-full h-32 flex items-center justify-center bg-neutral-900/30 rounded-xl border border-dashed border-white/10">
                              <p className="text-[10px] font-black text-neutral-600 uppercase tracking-widest">Aucun favori enregistré</p>
                           </div>
                        )}
@@ -1562,7 +2084,7 @@ export default function App() {
                  </div>
 
                  {/* History Row */}
-                 <div className="space-y-8">
+                 <div className="space-y-4">
                     <div className="flex items-center justify-between px-2">
                        <div className="flex items-center gap-4">
                           <div className="w-12 h-12 bg-brand-500/10 rounded-2xl flex items-center justify-center border border-brand-500/20">
@@ -1575,55 +2097,57 @@ export default function App() {
                        </div>
                     </div>
                     
-                    <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-none">
+                    <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-none">
                        {historyList.length > 0 ? historyList.slice(0, 8).map(channel => (
                           <button
                             key={channel.id}
                             onClick={() => handleChannelSelect(channel)}
                             className="flex-shrink-0 w-32 group"
                           >
-                             <div className="aspect-square bg-neutral-900/50 backdrop-blur-xl border border-white/5 rounded-[2.5rem] p-6 flex items-center justify-center mb-3 group-hover:border-brand-500/30 transition-all group-hover:scale-105 shadow-2xl relative overflow-hidden">
+                             <div className="aspect-square bg-neutral-900/50 backdrop-blur-xl border border-white/5 rounded-xl p-6 flex items-center justify-center mb-2 group-hover:border-brand-500/30 transition-all group-hover:scale-105 shadow-2xl relative overflow-hidden">
                                 <div className="absolute inset-0 bg-linear-to-br from-brand-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                 <ChannelLogo logo={channel.logo} name={channel.name} className="w-full h-full object-contain relative z-10" />
                              </div>
                              <p className="text-[10px] font-black text-white text-center uppercase tracking-tight opacity-40 group-hover:opacity-100 transition-opacity truncate px-2">{channel.name}</p>
                           </button>
                        )) : (
-                         <div className="w-full h-32 flex items-center justify-center bg-neutral-900/30 rounded-[2.5rem] border border-dashed border-white/10">
-                            <p className="text-[10px] font-black text-neutral-600 uppercase tracking-widest">Historique vide</p>
-                         </div>
+                          <div className="w-full h-32 flex items-center justify-center bg-neutral-900/30 rounded-xl border border-dashed border-white/10">
+                             <p className="text-[10px] font-black text-neutral-600 uppercase tracking-widest">Historique vide</p>
+                          </div>
                        )}
                     </div>
                  </div>
               </div>
 
               {/* Discovery Rail - Programs with Image Previews */}
-              <div className="space-y-10">
-                 <div className="flex items-center justify-between px-10">
-                    <div className="flex items-center gap-4">
-                       <div className="w-14 h-14 bg-brand-500/10 rounded-[1.5rem] flex items-center justify-center border border-brand-500/20 shadow-2xl">
-                          <Tv size={24} className="text-brand-500" />
+              <div className="space-y-2.5">
+                 <div className="flex items-center justify-between px-6 md:px-10">
+                    <div className="flex items-center gap-3">
+                       <div className="w-10 h-10 bg-brand-500/10 rounded-xl flex items-center justify-center border border-brand-500/20 shadow-xl">
+                          <Tv size={18} className="text-brand-500" />
                        </div>
                        <div className="flex flex-col">
-                          <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.4em]">Tendance Actuelle</span>
-                          <h3 className="text-4xl font-black tracking-tighter uppercase text-white">Direct & Replay</h3>
+                          <span className="text-[9px] font-black text-brand-500 uppercase tracking-[0.2em]">Tendance Actuelle</span>
+                          <h3 className="text-2xl font-black tracking-tighter uppercase text-white">Direct & Replay <span className="text-neutral-600 italic text-xl">Populaire</span></h3>
                        </div>
                     </div>
                  </div>
                  
-                 <div className="flex gap-8 overflow-x-auto px-10 pb-12 scrollbar-none">
+                 <div className="flex gap-4 sm:gap-6 overflow-x-auto px-6 md:px-10 pb-4 scrollbar-none">
                     {dedupeByCore(categorisedList.filter(c => c.category === "TNT & Généralistes")).slice(0, 12).map(channel => {
                        const current = channel.epg?.current;
                        return (
                          <button
                            key={channel.id}
                            onClick={() => handleChannelSelect(channel)}
-                           className="flex-shrink-0 w-[450px] group relative"
+                           onMouseEnter={() => prefetchEpg(channel.name)}
+                           className="flex-shrink-0 w-80 sm:w-[420px] group relative"
                          >
-                            <div className="aspect-[21/9] w-full rounded-[3.5rem] overflow-hidden bg-neutral-900 border border-white/5 shadow-2xl relative transition-all duration-700 group-hover:border-brand-500/40 group-hover:shadow-[0_0_40px_rgba(30,136,255,0.15)]">
+                            <div className="aspect-[21/9] w-full rounded-xl overflow-hidden bg-neutral-900 border border-white/5 shadow-2xl relative transition-all duration-700 group-hover:border-brand-500/40 group-hover:shadow-[0_0_40px_rgba(30,136,255,0.15)]">
                                {current?.image || current?.icon ? (
                                  <img 
                                    src={current.image || current.icon} 
+                                   loading="lazy"
                                    className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" 
                                    referrerPolicy="no-referrer" 
                                  />
@@ -1635,26 +2159,26 @@ export default function App() {
                                
                                <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/20 to-transparent" />
                                
-                               <div className="absolute top-8 left-8">
-                                  <div className="px-4 py-2 bg-red-600 rounded-full shadow-2xl flex items-center gap-2 border border-white/20">
-                                     <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_10px_white]" />
-                                     <span className="text-[10px] font-black text-white uppercase tracking-widest">En Direct</span>
+                               <div className="absolute top-4 sm:top-5 left-4 sm:left-5">
+                                  <div className="px-3 py-1.5 bg-red-600 rounded-full shadow-2xl flex items-center gap-1.5 border border-white/20">
+                                     <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse shadow-[0_0_10px_white]" />
+                                     <span className="text-[9px] font-black text-white uppercase tracking-widest">En Direct</span>
                                   </div>
                                </div>
 
-                               <div className="absolute top-8 right-8">
-                                 <div className="w-12 h-12 bg-neutral-950 rounded-2xl p-2 shadow-2xl border border-white/10 overflow-hidden">
+                               <div className="absolute top-4 sm:top-5 right-4 sm:right-5">
+                                 <div className="w-10 h-10 bg-neutral-950 rounded-xl p-1.5 shadow-2xl border border-white/10 overflow-hidden">
                                     <ChannelLogo logo={channel.logo} name={channel.name} />
                                  </div>
                                </div>
                                
-                               <div className="absolute inset-x-0 bottom-0 p-10 flex flex-col justify-end">
-                                  <h4 className="text-2xl font-black text-white uppercase line-clamp-1 leading-none tracking-tighter group-hover:text-brand-500 transition-colors">
+                               <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 flex flex-col justify-end">
+                                  <h4 className="text-xl sm:text-2xl font-black text-white uppercase line-clamp-1 leading-none tracking-tighter group-hover:text-brand-500 transition-colors">
                                      {current?.title || channel.name}
                                   </h4>
-                                  <div className="flex items-center gap-4 mt-4">
+                                  <div className="flex items-center gap-3 mt-3">
                                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest leading-none">{channel.name}</p>
-                                     <div className="w-1.5 h-1.5 rounded-full bg-brand-500/30" />
+                                     <div className="w-1 h-1 rounded-full bg-brand-500/30" />
                                      <p className="text-[10px] font-black text-brand-500 uppercase tracking-widest leading-none">Qualité {channel.qualityLabel || "HD"}</p>
                                   </div>
                                   
@@ -1676,57 +2200,64 @@ export default function App() {
               </div>
 
               {/* Spacer between sections */}
-              <div className="w-full flex justify-center py-6">
-                 <div className="w-24 h-0.5 bg-white/5 rounded-full" />
+              <div className="w-full flex justify-center py-1">
+                 <div className="w-16 h-[1px] bg-white/5 rounded-full" />
               </div>
 
               {/* Dynamic Discovery Sections - Curated Premium Order */}
-              {(Object.entries(groupedChannels) as [string, DisplayChannel[]][])
-                .filter(([cat, catChannels]) => catChannels.length > 0 && cat !== "TNT & Généralistes")
-                .sort(([catA], [catB]) => {
-                  const premiumOrder = [
-                    "TNT & Généralistes",
-                    "Sports",
-                    "Actualités",
-                    "Belgique 🇧🇪",
-                    "Cinéma",
-                    "Séries",
-                    "Documentaires",
-                    "Jeunesse",
-                    "Musique",
-                    "À La Carte",
-                    "Divertissement"
-                  ];
-                  const iA = premiumOrder.indexOf(catA);
-                  const iB = premiumOrder.indexOf(catB);
-                  const valA = iA === -1 ? 999 : iA;
-                  const valB = iB === -1 ? 999 : iB;
-                  return valA - valB;
-                })
-                .map(([category, catChannels]) => (
-                <ChannelCarousel 
-                   key={category}
-                   title={category}
-                   channels={catChannels}
-                   selectedChannelId={selectedChannel?.id}
-                   onChannelSelect={handleChannelSelect}
-                   onSeeAll={() => handleSeeAll(category)}
-                />
-              ))}
+              <div className="flex flex-col gap-3 sm:gap-4 pt-0">
+                {(Object.entries(groupedChannels) as [string, DisplayChannel[]][])
+                  .filter(([cat, catChannels]) => catChannels.length > 0 && cat !== "TNT & Généralistes")
+                  .sort(([catA], [catB]) => {
+                    const premiumOrder = [
+                      "TNT & Généralistes",
+                      "Sports",
+                      "Cinéma & Séries",
+                      "Documentaires",
+                      "Actualités",
+                      "Belgique 🇧🇪",
+                      "Jeunesse",
+                      "Musique",
+                      "À La Carte",
+                      "Divertissement"
+                    ];
+                    const iA = premiumOrder.indexOf(catA);
+                    const iB = premiumOrder.indexOf(catB);
+                    const valA = iA === -1 ? 999 : iA;
+                    const valB = iB === -1 ? 999 : iB;
+                    return valA - valB;
+                  })
+                  .map(([category, catChannels]) => (
+                    <motion.div
+                      key={category}
+                      initial={{ opacity: 0, y: 30 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-100px" }}
+                      transition={{ duration: 0.6 }}
+                    >
+                      <ChannelCarousel 
+                        title={category}
+                        channels={catChannels}
+                        selectedChannelId={selectedChannel?.id}
+                        onChannelSelect={handleChannelSelect}
+                        onMouseEnter={(channel) => prefetchEpg(channel.name)}
+                        onSeeAll={() => handleSeeAll(category)}
+                      />
+                    </motion.div>
+                  ))}
+              </div>
 
               {/* End of Home Branding */}
               <div className="py-20 flex flex-col items-center gap-8 opacity-20 hover:opacity-100 transition-opacity">
                  <div className="w-20 h-0.5 bg-brand-500 rounded-full" />
                  <p className="text-xs font-black text-white uppercase tracking-[1.5em] text-center ml-[1.5em]">FIN DU FLUX</p>
               </div>
-            </motion.div>
-          ) : activeTab === "recherche" ? (
-            <motion.div 
-              key="recherche"
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-7xl mx-auto px-6 space-y-20 pb-40"
-            >
+              </div>
+            </div>
+
+            {/* RECHERCHE TAB */}
+            <div className={activeTab === "recherche" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="max-w-7xl mx-auto px-6 space-y-20 pb-40">
               <div className="relative pt-12 flex flex-col items-center text-center space-y-12">
                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[600px] bg-brand-500/5 blur-[120px] rounded-full pointer-events-none" />
                  
@@ -1758,30 +2289,42 @@ export default function App() {
                        )}
                     </div>
 
-                    {/* Trending Search Tags */}
-                    <div className="flex flex-wrap justify-center gap-3 mt-8">
+                    {/* Category selection and Dynamic Search Filters */}
+                    <div className="flex flex-wrap justify-center gap-3 mt-10 relative z-20">
                        {[
-                         { icon: Tv, label: "TF1 4K", term: "tf1" },
-                         { icon: Trophy, label: "Sport Live", term: "Sports" },
-                         { icon: Film, label: "Cinéma Premier", term: "Cinéma" },
-                         { icon: Music, label: "Clips & Musique", term: "Musique" },
-                         { icon: Globe, label: "Découverte", term: "Documentaires" },
-                         { icon: Sparkles, label: "Jeunesse", term: "Jeunesse" },
-                       ].map(tag => (
-                         <button 
-                           key={tag.label}
-                           onClick={() => setSearchTerm(tag.term)}
-                           className="px-5 py-2.5 bg-neutral-900/50 backdrop-blur-xl border border-white/5 rounded-full flex items-center gap-3 hover:bg-white hover:text-black hover:border-white transition-all duration-300 group/tag active:scale-95 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
-                         >
-                            <tag.icon size={14} className="text-brand-500 group-hover/tag:text-black transition-colors" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">{tag.label}</span>
-                         </button>
-                       ))}
+                         { icon: Layers, label: "Tous", category: "Tous" },
+                         { icon: Tv, label: "TNT & Général", category: "TNT & Généralistes" },
+                         { icon: Trophy, label: "Sports Live", category: "Sports" },
+                         { icon: Film, label: "Cinéma & Séries", category: "Cinéma & Séries" },
+                         { icon: Globe, label: "Documentaires", category: "Documentaires" },
+                         { icon: Sparkles, label: "Jeunesse", category: "Jeunesse" },
+                         { icon: Music, label: "Musique & Clips", category: "Musique" },
+                         { icon: Globe, label: "Belgique 🇧🇪", category: "Belgique 🇧🇪" },
+                         { icon: Layers, label: "Divertissements", category: "Divertissement" },
+                       ].map(chip => {
+                         const isActive = searchCategory === chip.category;
+                         return (
+                           <button 
+                             key={chip.category}
+                             onClick={() => {
+                               setSearchCategory(chip.category);
+                             }}
+                             className={`px-5 py-3 rounded-full flex items-center gap-3 border transition-all duration-300 active:scale-95 shadow-[0_4px_25px_rgba(0,0,0,0.5)] ${
+                               isActive 
+                                 ? "bg-brand-500 text-white border-brand-500 font-extrabold scale-105 shadow-lg shadow-brand-500/30" 
+                                 : "bg-neutral-900/50 backdrop-blur-xl border-white/5 hover:bg-neutral-800 text-neutral-400 hover:text-white"
+                             }`}
+                           >
+                              <chip.icon size={13} className={isActive ? "text-white animate-pulse" : "text-brand-500"} />
+                              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider">{chip.label}</span>
+                           </button>
+                         );
+                       })}
                     </div>
                  </div>
               </div>
 
-              {searchTerm ? (
+              {(searchTerm || searchCategory) ? (
                 <div className="space-y-12">
                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -1789,9 +2332,29 @@ export default function App() {
                             <Layers size={24} className="text-brand-500" />
                          </div>
                          <div>
-                            <h3 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-white">Résultats : <span className="text-brand-500 break-words">{searchTerm}</span></h3>
+                            <h3 className="text-4xl md:text-5xl font-black uppercase tracking-tighter text-white">{searchTerm ? "Résultats :" : "Catalogue :"} <span className="text-brand-500 break-words">{searchTerm || searchCategory}</span></h3>
                             <p className="text-[11px] font-bold text-neutral-500 uppercase tracking-widest mt-2">
-                               Trouvé {dedupeByCore(categorisedList.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.core.toLowerCase().includes(searchTerm.toLowerCase()) || c.category.toLowerCase().includes(searchTerm.toLowerCase()) || c.epg?.current?.title.toLowerCase().includes(searchTerm.toLowerCase()))).length} correspondances uniques
+                               Trouvé {dedupeByCore(
+                                 categorisedList.filter(c => {
+                                   if (searchCategory !== "Tous") {
+                                     if (searchCategory === "Belgique 🇧🇪") {
+                                       if (c.category !== "Belgique 🇧🇪") return false;
+                                     } else {
+                                       if (c.category !== searchCategory) return false;
+                                     }
+                                   }
+                                   if (searchTerm) {
+                                     const s = searchTerm.toLowerCase();
+                                     return (
+                                       c.name.toLowerCase().includes(s) || 
+                                       c.core.toLowerCase().includes(s) ||
+                                       c.category.toLowerCase().includes(s) ||
+                                       c.epg?.current?.title.toLowerCase().includes(s)
+                                     );
+                                   }
+                                   return true;
+                                 })
+                               ).length} correspondances uniques
                             </p>
                          </div>
                       </div>
@@ -1799,14 +2362,27 @@ export default function App() {
 
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                     {dedupeByCore(
-                      categorisedList.filter(c => 
-                        c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        c.core.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        c.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        c.epg?.current?.title.toLowerCase().includes(searchTerm.toLowerCase())
-                      )
+                      categorisedList.filter(c => {
+                        if (searchCategory !== "Tous") {
+                          if (searchCategory === "Belgique 🇧🇪") {
+                            if (c.category !== "Belgique 🇧🇪") return false;
+                          } else {
+                            if (c.category !== searchCategory) return false;
+                          }
+                        }
+                        if (searchTerm) {
+                          const s = searchTerm.toLowerCase();
+                          return (
+                            c.name.toLowerCase().includes(s) || 
+                            c.core.toLowerCase().includes(s) ||
+                            c.category.toLowerCase().includes(s) ||
+                            c.epg?.current?.title.toLowerCase().includes(s)
+                          );
+                        }
+                        return true;
+                      })
                     )
-                      .slice(0, 48)
+                      .slice(0, 150)
                       .map(channel => {
                         const isSelected = selectedChannel?.id === channel.id;
                         const current = channel.epg?.current;
@@ -1955,526 +2531,21 @@ export default function App() {
                    </div>
                 </div>
               )}
-            </motion.div>
-         ) : activeTab === "sports" ? (
-            <motion.div 
-              key="sports"
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }}
-              className="max-w-7xl mx-auto px-4 md:px-6 space-y-12 pb-40"
-            >
-              {/* Refined Header */}
-              <div className="relative pt-10 flex flex-col items-center text-center space-y-4">
-                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-80 bg-[#1E88FF]/10 blur-[130px] rounded-full pointer-events-none" />
-                 
-                 <div className="relative z-10 space-y-3">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-[#1E88FF]/10 rounded-full border border-[#1E88FF]/20 shadow-xl">
-                       <Trophy size={14} className="text-[#1E88FF] animate-pulse" />
-                       <span className="text-[10px] font-black text-[#1E88FF] uppercase tracking-widest leading-none">Espace Grands Événements & Directs</span>
-                    </div>
-                    
-                    <h2 className="text-4xl md:text-6xl font-black tracking-tighter uppercase leading-[0.9] text-white">Zone <br/><span className="text-[#1E88FF] italic drop-shadow-[0_0_35px_rgba(30,136,255,0.4)]">Live Sports.</span></h2>
-                    <p className="text-neutral-400 text-xs md:text-sm font-black uppercase tracking-[0.3em] max-w-2xl mx-auto leading-relaxed">
-                       Coupe du Monde 2026 & Calendrier en direct de L'Équipe
-                    </p>
-                 </div>
               </div>
+            </div>
 
-              {/* Advanced Sub-Tab Selector Navigation */}
-              <div className="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto bg-neutral-900/60 p-1.5 border border-white/5 rounded-3xl backdrop-blur-xl">
-                <button
-                  onClick={() => setSportsSubTab("worldcup")}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all duration-300 ${
-                    sportsSubTab === "worldcup"
-                      ? "bg-[#1E88FF] text-white shadow-lg shadow-blue-950/50"
-                      : "text-neutral-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <Trophy size={14} />
-                  <span>Coupe du Monde 2026</span>
-                </button>
-                <button
-                  onClick={() => setSportsSubTab("lequipe")}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all duration-300 ${
-                    sportsSubTab === "lequipe"
-                      ? "bg-[#E61B23] text-white shadow-lg shadow-red-950/50"
-                      : "text-neutral-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <Activity size={14} />
-                  <span>Directs L'Équipe</span>
-                </button>
-                <button
-                  onClick={() => setSportsSubTab("channels")}
-                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest transition-all duration-300 ${
-                    sportsSubTab === "channels"
-                      ? "bg-neutral-800 text-white shadow-md"
-                      : "text-neutral-400 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  <Radio size={14} />
-                  <span>Chaînes TV Sports</span>
-                </button>
-              </div>
+            {/* SPORTS TAB */}
+            <div className={activeTab === "sports" ? "animate-tab-fade-in block" : "hidden"}>
+              <SportsCenter channels={categorisedList} onPlayChannel={(ch) => handleChannelSelect(ch as any)} />
+            </div>
 
-              {/* Direct Playback Match Lookup Engine */}
-              {(() => {
-                const playSportsBroadcaster = (channelName: string) => {
-                  const norm = channelName.toLowerCase().replace(/\s+/g, "");
-                  let found = null;
-                  
-                  if (norm.includes("tf1")) {
-                     found = categorisedList.find(c => {
-                        const cn = c.name.toLowerCase().replace(/\s+|-/g, "");
-                        return cn === "tf1" || cn === "tf1hd" || (cn.includes("tf1") && !cn.includes("series"));
-                     });
-                  } else if (norm.includes("m6")) {
-                     found = categorisedList.find(c => {
-                        const cn = c.name.toLowerCase().replace(/\s+|-/g, "");
-                        return cn === "m6" || cn === "m6hd" || cn.includes("m6");
-                     });
-                  } else if (norm.includes("bein1") || norm.includes("beinsports1")) {
-                     found = categorisedList.find(c => {
-                        const cn = c.name.toLowerCase();
-                        return (cn.includes("bein") && cn.includes("1")) && !cn.includes("max");
-                     });
-                  } else if (norm.includes("bein2") || norm.includes("beinsports2")) {
-                     found = categorisedList.find(c => {
-                        const cn = c.name.toLowerCase();
-                        return (cn.includes("bein") && cn.includes("2")) && !cn.includes("max");
-                     });
-                  } else if (norm.includes("bein3") || norm.includes("beinsports3")) {
-                     found = categorisedList.find(c => {
-                        const cn = c.name.toLowerCase();
-                        return (cn.includes("bein") && cn.includes("3")) && !cn.includes("max");
-                     });
-                  } else if (norm.includes("equipe") || norm.includes("lequipe") || norm.includes("l'equipe")) {
-                     found = categorisedList.find(c => {
-                        const cn = c.name.toLowerCase();
-                        return cn.includes("equipe") || cn.includes("l'equipe");
-                     });
-                  } else if (norm.includes("france2")) {
-                     found = categorisedList.find(c => c.name.toLowerCase().includes("france 2"));
-                  } else if (norm.includes("france3")) {
-                     found = categorisedList.find(c => c.name.toLowerCase().includes("france 3"));
-                  } else if (norm.includes("eurosport1")) {
-                     found = categorisedList.find(c => c.name.toLowerCase().includes("eurosport 1") || c.name.toLowerCase().includes("eurosport1"));
-                  } else if (norm.includes("eurosport2")) {
-                     found = categorisedList.find(c => c.name.toLowerCase().includes("eurosport 2") || c.name.toLowerCase().includes("eurosport2"));
-                  } else if (norm.includes("canal")) {
-                     found = categorisedList.find(c => c.name.toLowerCase().includes("canal+"));
-                  }
-
-                  if (found) {
-                     handleChannelSelect(found);
-                     setActiveTab("player");
-                  } else {
-                     // Substring fallback Search
-                     const fallback = categorisedList.find(c => c.name.toLowerCase().includes(channelName.toLowerCase()));
-                     if (fallback) {
-                        handleChannelSelect(fallback);
-                        setActiveTab("player");
-                     } else {
-                        // Custom Alert Banner or prompt
-                        alert(`Information : La chaîne "${channelName}" n'a pas été trouvée automatiquement dans votre source actuelle. Veuillez faire une recherche manuelle.`);
-                     }
-                  }
-                };
-
-                // World Cup 2026 data array
-                const worldCupMatches = [
-                  { id: "wc1", date: "Jeudi 11 Juin 2026", time: "22:00", teamA: "Mexique", flagA: "🇲🇽", teamB: "Canada", flagB: "🇨🇦", group: "Groupe A", stadium: "Estadio Azteca, Mexico City", channels: ["M6", "beIN Sports 1"], stage: "Match d'Ouverture A", isChoc: true, isBleus: false },
-                  { id: "wc2", date: "Vendredi 12 Juin 2026", time: "01:00", teamA: "États-Unis", flagA: "🇺🇸", teamB: "Pays de Galles", flagB: "🏴󠁧󠁢󠁷󠁬󠁳󠁿", group: "Groupe B", stadium: "SoFi Stadium, Los Angeles", channels: ["TF1", "beIN Sports 1"], stage: "Match d'Ouverture B", isChoc: true, isBleus: false },
-                  { id: "wc3", date: "Vendredi 12 Juin 2026", time: "18:00", teamA: "Équateur", flagA: "🇪🇨", teamB: "Cameroun", flagB: "🇨🇲", group: "Groupe C", stadium: "BC Place, Vancouver", channels: ["beIN Sports 1"], stage: "Phase de Groupes", isChoc: false, isBleus: false },
-                  { id: "wc4", date: "Vendredi 12 Juin 2026", time: "21:00", teamA: "France", flagA: "🇫🇷", teamB: "Côte d'Ivoire", flagB: "🇨🇮", group: "Groupe D", stadium: "MetLife Stadium, New York", channels: ["TF1", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: true },
-                  { id: "wc5", date: "Samedi 13 Juin 2026", time: "15:00", teamA: "Espagne", flagA: "🇪🇸", teamB: "Suède", flagB: "🇸🇪", group: "Groupe E", stadium: "Mercedes-Benz Stadium, Atlanta", channels: ["beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: false },
-                  { id: "wc6", date: "Samedi 13 Juin 2026", time: "18:00", teamA: "Argentine", flagA: "🇦🇷", teamB: "Japon", flagB: "🇯🇵", group: "Groupe F", stadium: "Hard Rock Stadium, Miami", channels: ["TF1", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: false },
-                  { id: "wc7", date: "Samedi 13 Juin 2026", time: "21:00", teamA: "Angleterre", flagA: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", teamB: "Maroc", flagB: "🇲🇦", group: "Groupe G", stadium: "Gillette Stadium, Boston", channels: ["M6", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: false },
-                  { id: "wc8", date: "Dimanche 14 Juin 2026", time: "15:00", teamA: "Belgique", flagA: "🇧🇪", teamB: "Chili", flagB: "🇨🇱", group: "Groupe H", stadium: "AT&T Stadium, Dallas", channels: ["TF1", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: false, isBleus: false },
-                  { id: "wc9", date: "Dimanche 14 Juin 2026", time: "18:00", teamA: "Allemagne", flagA: "🇩🇪", teamB: "Arabie Saoudite", flagB: "🇸🇦", group: "Groupe I", stadium: "Arrowhead Stadium, Kansas City", channels: ["M6", "beIN Sports 2"], stage: "Phase de Groupes", isChoc: false, isBleus: false },
-                  { id: "wc10", date: "Dimanche 14 Juin 2026", time: "21:00", teamA: "Brésil", flagA: "🇧🇷", teamB: "Pologne", flagB: "🇵🇱", group: "Groupe J", stadium: "NRG Stadium, Houston", channels: ["TF1", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: false },
-                  { id: "wc11", date: "Lundi 15 Juin 2026", time: "18:00", teamA: "Pays-Bas", flagA: "🇳🇱", teamB: "Algérie", flagB: "🇩🇿", group: "Groupe K", stadium: "Levi's Stadium, San Francisco", channels: ["beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: false },
-                  { id: "wc12", date: "Lundi 15 Juin 2026", time: "21:00", teamA: "Italie", flagA: "🇮🇹", teamB: "Australie", flagB: "🇦🇺", group: "Groupe L", stadium: "Lincoln Financial Field, Philadelphie", channels: ["M6", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: false, isBleus: false },
-                  { id: "wc13", date: "Mardi 16 Juin 2026", time: "18:00", teamA: "Portugal", flagA: "🇵🇹", teamB: "Canada", flagB: "🇨🇦", group: "Groupe C", stadium: "BMO Field, Toronto", channels: ["beIN Sports 2"], stage: "Phase de Groupes", isChoc: false, isBleus: false },
-                  { id: "wc14", date: "Mardi 16 Juin 2026", time: "21:00", teamA: "France", flagA: "🇫🇷", teamB: "Arabie Saoudite", flagB: "🇸🇦", group: "Groupe D", stadium: "Lumen Field, Seattle", channels: ["M6", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: false, isBleus: true },
-                  { id: "wc15", date: "Mercredi 17 Juin 2026", time: "18:00", teamA: "Ukraine", flagA: "🇺🇦", teamB: "Équateur", flagB: "🇪🇨", group: "Groupe A", stadium: "Mercedes-Benz Stadium, Atlanta", channels: ["beIN Sports 2"], stage: "Phase de Groupes", isChoc: false, isBleus: false },
-                  { id: "wc16", date: "Mercredi 17 Juin 2026", time: "21:00", teamA: "Espagne", flagA: "🇪🇸", teamB: "Cameroun", flagB: "🇨🇲", group: "Groupe E", stadium: "Gillette Stadium, Boston", channels: ["TF1", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: false, isBleus: false },
-                  { id: "wc17", date: "Jeudi 18 Juin 2026", time: "18:00", teamA: "Argentine", flagA: "🇦🇷", teamB: "Maroc", flagB: "🇲🇦", group: "Groupe F", stadium: "Hard Rock Stadium, Miami", channels: ["beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: false },
-                  { id: "wc18", date: "Jeudi 18 Juin 2026", time: "21:00", teamA: "France", flagA: "🇫🇷", teamB: "Colombie", flagB: "🇨🇴", group: "Groupe D", stadium: "BC Place, Vancouver", channels: ["TF1", "beIN Sports 1"], stage: "Phase de Groupes", isChoc: true, isBleus: true }
-                ];
-
-                // Alternative multi-sport calendar direct from L'Équipe Directs (5-7 June 2026)
-                const lequipeDirectEvents = [
-                  { id: "eq1", discipline: "Tennis", title: "C. Alcaraz vs J. Sinner", stage: "Roland Garros - Demi-finale Messieurs 🎾", date: "Vendredi 5 Juin (Aujourd'hui)", time: "14:45", channels: ["France 2", "Eurosport 1"], isLive: true },
-                  { id: "eq2", discipline: "Cyclisme", title: "Critérium du Dauphiné - Étape 6", stage: "Haut de Bréda > Le Collet d'Allevard 🚴‍♂️", date: "Vendredi 5 Juin (Aujourd'hui)", time: "15:15", channels: ["France 3", "Eurosport 1"], isLive: true },
-                  { id: "eq3", discipline: "Football", title: "France vs Italie (Préparation)", stage: "Match Amical International ⚽", date: "Vendredi 5 Juin (Ce soir)", time: "21:00", channels: ["TF1"], isLive: false },
-                  { id: "eq4", discipline: "Tennis", title: "Finale Dames de Roland Garros", stage: "Court Philippe Chatrier 🎾", date: "Samedi 6 Juin", time: "15:00", channels: ["France 2", "Eurosport 1"], isLive: false },
-                  { id: "eq5", discipline: "Formule 1", title: "GP de Monaco - Qualifications", stage: "Circuit Urbain de Monte-Carlo 🏎️", date: "Samedi 6 Juin", time: "16:00", channels: ["Canal+"], isLive: false },
-                  { id: "eq6", discipline: "Handball", title: "Ligue des Champions - Finale", stage: "Lanxess Arena, Cologne 🤾‍♂️", date: "Samedi 6 Juin", time: "18:00", channels: ["beIN Sports 2"], isLive: false },
-                  { id: "eq7", discipline: "Tennis", title: "Finale Messieurs de Roland Garros", stage: "Court Philippe Chatrier 🎾", date: "Dimanche 7 Juin", time: "15:00", channels: ["France 2", "Eurosport 1"], isLive: false },
-                  { id: "eq8", discipline: "Formule 1", title: "GP de Monaco - La Course", stage: "Prestige de Monte-Carlo 🏎️", date: "Dimanche 7 Juin", time: "15:00", channels: ["Canal+", "M6"], isLive: false },
-                  { id: "eq9", discipline: "Athlétisme", title: "Meeting de Paris - Diamond League", stage: "Stade Charléty 🏃‍♂️", date: "Dimanche 7 Juin", time: "20:00", channels: ["L'Équipe"], isLive: false }
-                ];
-
-                // Simple states inside IIFE using useState (rendered in local scopes where needed or from custom tabs)
-                // We show Coupe du Monde, L'Equipe, or channels
-                if (sportsSubTab === "worldcup") {
-                  return (
-                    <div className="space-y-8 text-left animate-fade-in">
-                      {/* Premium Countdown Banner with Golden Glow */}
-                      <div className="relative overflow-hidden bg-linear-to-r from-yellow-950/40 via-neutral-900/90 to-[#1E88FF]/10 p-6 md:p-8 rounded-[2.5rem] border border-yellow-500/20 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6">
-                        <div className="absolute -top-12 -right-12 w-48 h-48 bg-yellow-500/5 blur-[50px] rounded-full" />
-                        
-                        <div className="space-y-2 relative z-10">
-                          <span className="text-[10px] font-black text-yellow-500 uppercase tracking-widest bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">COMPTE À REBOURS OFFICIEL</span>
-                          <h3 className="text-2xl md:text-3xl font-black uppercase text-white tracking-tight">COUPE DU MONDE DE LA FIFA 2026™</h3>
-                          <p className="text-xs text-neutral-400 font-semibold uppercase tracking-wider">
-                            Le plus grand tournoi mondial débute le <span className="text-white">Jeudi 11 Juin 2026</span> - États-Unis, Canada & Mexique !
-                          </p>
-                        </div>
-                        
-                        <div className="flex gap-4 text-center bg-black/60 p-5 rounded-3xl border border-white/5 relative z-10 shadow-2xl">
-                          <div>
-                            <span className="block text-2xl md:text-3.5xl font-black text-yellow-500 font-mono tracking-tight">
-                              {String(timeLeft.days).padStart(2, "0")}
-                            </span>
-                            <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mt-0.5 block">JOURS</span>
-                          </div>
-                          <div className="text-neutral-700 text-xl font-black mt-1 animate-pulse">:</div>
-                          <div>
-                            <span className="block text-2xl md:text-3.5xl font-black text-white font-mono tracking-tight">
-                              {String(timeLeft.hours).padStart(2, "0")}
-                            </span>
-                            <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mt-0.5 block">HEURES</span>
-                          </div>
-                          <div className="text-neutral-700 text-xl font-black mt-1 animate-pulse">:</div>
-                          <div>
-                            <span className="block text-2xl md:text-3.5xl font-black text-[#1E88FF] font-mono tracking-tight">
-                              {String(timeLeft.minutes).padStart(2, "0")}
-                            </span>
-                            <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mt-0.5 block">MINUTES</span>
-                          </div>
-                          <div className="text-neutral-700 text-xl font-black mt-1 animate-pulse">:</div>
-                          <div>
-                            <span className="block text-2xl md:text-3.5xl font-black text-emerald-400 font-mono tracking-tight">
-                              {String(timeLeft.seconds).padStart(2, "0")}
-                            </span>
-                            <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest mt-0.5 block">SECONDES</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Display Controls & Quick Group Filter */}
-                      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-neutral-950 p-4 rounded-3xl border border-white/5">
-                        <div>
-                          <h4 className="text-lg font-black uppercase text-white">Calendrier des Diffusions TV</h4>
-                          <p className="text-[10px] text-[#A0A0A0] uppercase font-bold tracking-wider mt-0.5">Cliquez sur un diffuseur pour lancer instantanément la chaîne</p>
-                        </div>
-                        <div className="flex gap-2 text-[9px] font-black tracking-widest uppercase">
-                          <span className="px-3.5 py-1.5 bg-[#1E88FF]/10 border border-[#1E88FF]/20 rounded-full text-[#1E88FF]">Total: 18 Matchs Clés</span>
-                          <span className="px-3.5 py-1.5 bg-yellow-500/10 border border-yellow-500/20 rounded-full text-yellow-500">TF1 / M6 / beIN Sports</span>
-                        </div>
-                      </div>
-
-                      {/* Main Match Grid Card Program */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {worldCupMatches.map(match => {
-                          const isBleus = match.isBleus;
-                          return (
-                            <div 
-                              key={match.id}
-                              className={`group relative flex flex-col justify-between bg-neutral-900 border overflow-hidden rounded-[2.2rem] p-6 transition-all duration-300 hover:y-[-4px] ${
-                                isBleus 
-                                  ? "border-blue-500/30 bg-linear-to-b from-blue-950/20 via-neutral-900 to-neutral-900 shadow-2xl shadow-blue-950/30" 
-                                  : "border-white/5 hover:border-white/10"
-                              }`}
-                            >
-                              {/* Card Top Information */}
-                              <div className="flex justify-between items-center text-[9px] font-mono font-bold uppercase tracking-wider text-neutral-500 pb-3 border-b border-white/5 mb-3.5">
-                                <span className={isBleus ? "text-blue-400 font-extrabold" : "text-neutral-400"}>
-                                  {match.group} • {match.stage}
-                                </span>
-                                <span className="text-[10px] font-black text-[#1E88FF] uppercase tracking-widest font-mono">FIFA 2026</span>
-                              </div>
-
-                              {/* Jour, Date & Heure du Match */}
-                              <div className="bg-neutral-950/60 border border-white/5 rounded-2xl p-3 flex items-center justify-between shadow-inner select-none mb-4">
-                                <span className="flex items-center gap-2 text-[10px] font-black uppercase text-white tracking-widest leading-none">
-                                  <Calendar size={13} className="text-[#1E88FF]" />
-                                  <span>{match.date}</span>
-                                </span>
-                                <span className="text-yellow-500 font-mono font-black text-[10px] uppercase bg-yellow-500/10 px-2.5 py-1 rounded-xl border border-yellow-500/20 tracking-wider">
-                                  {match.time}
-                                </span>
-                              </div>
-
-                              {/* Match Visual Confrontation */}
-                              <div className="py-6 flex flex-col items-center justify-center space-y-4">
-                                <div className="flex items-center justify-between w-full px-4">
-                                  {/* Team A */}
-                                  <div className="flex flex-col items-center text-center space-y-1.5 w-5/12">
-                                    <span className="text-3xl drop-shadow-md select-none">{match.flagA}</span>
-                                    <span className="text-xs font-black uppercase tracking-wider text-white line-clamp-1">{match.teamA}</span>
-                                  </div>
-
-                                  {/* VS Indicator */}
-                                  <div className="w-2/12 flex flex-col items-center justify-center">
-                                    <span className="px-2.5 py-1 bg-neutral-950 border border-white/5 text-[9px] font-mono font-bold text-neutral-400 rounded-full">VS</span>
-                                  </div>
-
-                                  {/* Team B */}
-                                  <div className="flex flex-col items-center text-center space-y-1.5 w-5/12">
-                                    <span className="text-3xl drop-shadow-md select-none">{match.flagB}</span>
-                                    <span className="text-xs font-black uppercase tracking-wider text-white line-clamp-1">{match.teamB}</span>
-                                  </div>
-                                </div>
-
-                                {/* Stadium Location */}
-                                <div className="text-center font-sans text-[9px] text-neutral-500 leading-normal max-w-[200px] truncate">
-                                  ⚽ {match.stadium}
-                                </div>
-                              </div>
-
-                              {/* Action Bar: Exact French Broadcaster channels linked to Live Player */}
-                              <div className="mt-2 bg-neutral-950/60 p-3 rounded-2xl border border-white/5 space-y-2">
-                                <div className="text-[8px] font-black uppercase tracking-widest text-neutral-500 text-center">
-                                  DIFFUSION TV LIVE EN FRANCE :
-                                </div>
-                                <div className="flex flex-wrap gap-1.5 justify-center">
-                                  {match.channels.map(chan => {
-                                    const isM6 = chan.includes("M6");
-                                    const isTF1 = chan.includes("TF1");
-                                    
-                                    return (
-                                      <button
-                                        key={chan}
-                                        onClick={() => playSportsBroadcaster(chan)}
-                                        className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all w-full justify-center active:scale-95 ${
-                                          isTF1 
-                                            ? "bg-blue-600 hover:bg-blue-500 text-white" 
-                                            : isM6 
-                                              ? "bg-purple-600 hover:bg-purple-500 text-white" 
-                                              : "bg-[#1E88FF]/10 text-[#1E88FF] hover:bg-[#1E88FF]/20 border border-[#1E88FF]/20"
-                                        }`}
-                                      >
-                                        <Play size={10} fill="currentColor" />
-                                        <span>REGARDER SUR {chan}</span>
-                                      </button>
-                                    );
-                                  })}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                }
-
-                if (sportsSubTab === "lequipe") {
-                  return (
-                    <div className="space-y-8 text-left animate-fade-in">
-                      {/* Premium L'Equipe live feed widgets (Simulating 5-7 June 2026 EPG) */}
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-neutral-950 p-4 rounded-3xl border border-white/5">
-                          <div>
-                            <h3 className="text-lg font-black uppercase text-white flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" />
-                              Simulateur Grand Direct L'Équipe
-                            </h3>
-                            <p className="text-[10px] text-neutral-500 uppercase font-black tracking-widest mt-0.5">Données de la semaine (5-7 Juin 2026)</p>
-                          </div>
-                          <span className="text-[8px] font-black px-2.5 py-1 bg-red-600/10 border border-red-600/20 text-red-500 uppercase tracking-widest rounded-full">TEMPS RÉEL ACCORDÉ</span>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {lequipeDirectEvents.map(event => {
-                            const isLive = event.isLive;
-                            return (
-                              <div
-                                key={event.id}
-                                className={`flex flex-col justify-between p-5 rounded-[2rem] bg-neutral-900 border transition-all ${
-                                  isLive 
-                                    ? "border-red-500/30 bg-linear-to-b from-red-950/10 via-neutral-900 to-neutral-900" 
-                                    : "border-white/5"
-                                }`}
-                              >
-                                <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-widest text-neutral-500">
-                                  <span className="text-[#A0A0A0]">{event.discipline}</span>
-                                  {isLive ? (
-                                    <span className="flex items-center gap-1 px-2 py-0.5 bg-red-600 text-white font-mono text-[8px] font-black rounded-md animate-pulse">LIVE</span>
-                                  ) : (
-                                    <span className="font-mono text-neutral-600">{event.date}</span>
-                                  )}
-                                </div>
-
-                                <div className="py-4">
-                                  <h4 className="text-sm font-black text-white uppercase tracking-tight">{event.title}</h4>
-                                  <p className="text-[9px] text-[#A0A0A0] uppercase tracking-wider mt-0.5 font-semibold">{event.stage}</p>
-                                </div>
-
-                                <div className="mt-1 flex items-center gap-1 bg-black/40 p-2.5 rounded-xl border border-white/5">
-                                  <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest">Canal :</span>
-                                  {event.channels.map(chan => (
-                                    <button
-                                      key={chan}
-                                      onClick={() => playSportsBroadcaster(chan)}
-                                      className="px-2 py-1 bg-neutral-800 hover:bg-[#1E88FF] text-white rounded text-[8px] font-black transition-colors"
-                                      title="Lancer le flux TV"
-                                    >
-                                      {chan} 📺
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Interactive Web View Frame */}
-                      <div className="bg-neutral-950 rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl relative flex flex-col group">
-                        {/* Browser top-bar decoration */}
-                        <div className="flex items-center justify-between px-6 py-4 bg-neutral-900 border-b border-white/5">
-                          <div className="flex items-center gap-2">
-                            <span className="w-3 h-3 rounded-full bg-red-400" />
-                            <span className="w-3 h-3 rounded-full bg-yellow-400" />
-                            <span className="w-3 h-3 rounded-full bg-green-400" />
-                          </div>
-                          <div className="flex-grow max-w-md mx-4 bg-neutral-950 border border-white/5 rounded-lg py-1.5 px-3 flex items-center justify-between">
-                            <span className="text-[10px] text-neutral-500 font-mono select-all truncate leading-none">
-                              https://www.lequipe.fr/Directs/
-                            </span>
-                            <Share2 size={10} className="text-neutral-600 flex-shrink-0" />
-                          </div>
-                          <div className="w-6 h-6 rounded-full bg-white/5 flex items-center justify-center cursor-not-allowed">
-                            <span className="text-[8px] font-black text-neutral-500">SSL</span>
-                          </div>
-                        </div>
-
-                        {/* Main Interactive Iframe */}
-                        <div className="relative w-full h-[600px] bg-[#0E0E0E]">
-                          <iframe 
-                            src="https://www.lequipe.fr/Directs" 
-                            className="w-full h-full border-0"
-                            title="L'Équipe Directs Calendar"
-                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                            loading="lazy"
-                          />
-                        </div>
-
-                        {/* Sandbox Bypass & Fast Action Links Card */}
-                        <div className="p-8 bg-[#0D0D0D] border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
-                          <div className="flex items-start gap-3 text-left">
-                            <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <Info size={16} className="text-orange-400" />
-                            </div>
-                            <div>
-                              <h4 className="text-[11px] font-bold uppercase tracking-wider text-orange-400">Problème d'imbrication des scores ?</h4>
-                              <p className="text-[10px] text-neutral-500 font-medium leading-normal mt-0.5 max-w-xl">
-                                L'Équipe sécurise l'intégration sur certains réseaux (politique X-Frame-Options/CORS). 
-                                Vous pouvez consulter les fiches actualités détaillées en un simple clic :
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex flex-wrap gap-3 flex-shrink-0">
-                            <a 
-                              href="https://www.lequipe.fr/Directs" 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="px-5 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all shadow-md"
-                            >
-                              <span>Ouvrir L'Équipe Directs</span>
-                              <Share2 size={12} />
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }
-
-                // Default Fallback: Traditional list of all in-app sports channels
-                return (
-                  <div className="space-y-8 animate-fade-in text-left">
-                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-linear-to-br from-[#1E88FF] to-blue-800 rounded-2xl flex items-center justify-center shadow-lg">
-                            <Radio size={22} className="text-white animate-pulse" />
-                          </div>
-                          <div>
-                            <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tighter text-white">Nos Chaînes Sportives Directes</h3>
-                            <p className="text-[10px] font-black text-neutral-500 uppercase tracking-widest mt-1">
-                              Accédez aux dizaines de chaînes de sport disponibles dans vos flux
-                            </p>
-                          </div>
-                        </div>
-                     </div>
-
-                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-                        {dedupeByCore(categorisedList.filter(c => c.category === "Sports")).slice(0, 42).map(channel => {
-                          const isSelected = selectedChannel?.id === channel.id;
-                          const current = channel.epg?.current;
-                          
-                          return (
-                            <button
-                              key={channel.id}
-                              onClick={() => handleChannelSelect(channel)}
-                              className={`group relative flex flex-col p-4 rounded-2xl border text-left transition-all ${
-                                isSelected
-                                  ? "bg-neutral-950 border-[#1E88FF] ring-2 ring-[#1E88FF]/20"
-                                  : "bg-neutral-900 border-white/5 hover:border-white/10 hover:bg-neutral-950"
-                              }`}
-                            >
-                              {/* Channel logo and mini live badge */}
-                              <div className="flex items-center justify-between mb-3">
-                                 <div className="w-10 h-10 bg-neutral-950 rounded-xl p-1.5 border border-white/5 overflow-hidden flex-shrink-0">
-                                   <ChannelLogo logo={channel.logo} name={channel.name} />
-                                 </div>
-                                 {isSelected && (
-                                   <div className="w-2.5 h-2.5 rounded-full bg-[#1E88FF] animate-pulse border border-black shadow-[0_0_10px_#1E88FF]" />
-                                 )}
-                              </div>
-
-                              {/* Title and metadata */}
-                              <div className="min-w-0 flex-grow">
-                                <p className="text-[8px] font-black text-[#1E88FF] uppercase tracking-widest truncate">{channel.name}</p>
-                                <h4 className={`text-xs font-bold uppercase tracking-tight mt-0.5 line-clamp-2 ${isSelected ? "text-white" : "text-neutral-300 group-hover:text-white"}`}>
-                                  {cleanName(channel.name)}
-                                </h4>
-                                {current && (
-                                  <p className="text-[8px] text-neutral-500 line-clamp-1 mt-1 italic group-hover:text-neutral-400 truncate">
-                                    {current.title}
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Stretched Link indicator */}
-                              <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Play size={10} className="text-white" />
-                              </div>
-                            </button>
-                          );
-                        })}
-                     </div>
-                  </div>
-                );
-              })()}
-            </motion.div>
-
-          ) : activeTab === "favoris" ? (
-            <motion.div 
-              key="favoris"
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }}
-              className="space-y-16 sm:space-y-24 pb-40 min-h-[60vh] max-w-7xl mx-auto px-6 pt-12"
-            >
+            {/* FAVORIS TAB */}
+            <div className={activeTab === "favoris" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="space-y-16 sm:space-y-24 pb-40 min-h-[60vh] max-w-7xl mx-auto px-6 pt-12">
                <div className="flex flex-col space-y-6">
                   <div className="flex items-center gap-4">
-                     <div className="w-12 h-12 bg-[#1E88FF]/10 rounded-2xl flex items-center justify-center border border-[#1E88FF]/20">
-                        <Heart size={24} className="text-[#1E88FF]" />
+                     <div className="w-12 h-12 bg-[#FF7900]/10 rounded-2xl flex items-center justify-center border border-[#FF7900]/20">
+                        <Heart size={24} className="text-[#FF7900]" />
                      </div>
                      <div>
                         <h2 className="text-3xl font-black uppercase tracking-tighter text-white">Vos Favoris</h2>
@@ -2499,14 +2570,19 @@ export default function App() {
                     </div>
                   )}
                </div>
-            </motion.div>
-          ) : activeTab === "admin" ? (
-            <motion.div
-              key="admin"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-6xl mx-auto px-6 pb-40 pt-12"
-            >
+              </div>
+            </div>
+
+            {/* INTEGRATIONS TAB */}
+            <div className={activeTab === "integrations" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="max-w-6xl mx-auto px-6 pb-40 pt-12">
+                <Integrations />
+              </div>
+            </div>
+
+            {/* ADMIN TAB */}
+            <div className={activeTab === "admin" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="max-w-6xl mx-auto px-6 pb-40 pt-12">
               <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 bg-red-500/10 rounded-2xl flex items-center justify-center border border-red-500/20">
                   <Settings size={24} className="text-red-500" />
@@ -2517,17 +2593,15 @@ export default function App() {
                 </div>
               </div>
               <ChannelAdmin channels={categorisedList} reload={() => loadChannels(true)} />
-            </motion.div>
-          ) : activeTab === "profil" ? (
-            <motion.div 
-              key="profil"
-              initial={{ opacity: 0, y: 10 }} 
-              animate={{ opacity: 1, y: 0 }}
-              className="max-w-3xl mx-auto px-4 space-y-12 pb-40"
-            >
+              </div>
+            </div>
+
+            {/* PROFIL TAB */}
+            <div className={activeTab === "profil" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="max-w-3xl mx-auto px-4 space-y-12 pb-40">
               <div className="flex flex-col items-center text-center space-y-6 pt-12">
                  <div className="relative group">
-                   <div className="w-24 h-24 bg-gradient-to-br from-[#1E88FF] to-blue-800 rounded-[2.2rem] flex items-center justify-center shadow-2xl ring-4 ring-[#1E88FF]/25 group-hover:scale-105 transition-transform duration-300">
+                   <div className="w-24 h-24 bg-gradient-to-br from-[#FF7900] to-orange-850 rounded-[2.2rem] flex items-center justify-center shadow-2xl ring-4 ring-[#FF7900]/25 group-hover:scale-105 transition-transform duration-300">
                       <span className="text-3xl font-black text-white">DD</span>
                    </div>
                    <div className="absolute -bottom-1 -right-1 bg-emerald-500 border-4 border-neutral-950 w-7 h-7 rounded-full flex items-center justify-center" title="En Ligne">
@@ -2541,7 +2615,7 @@ export default function App() {
                     <h2 className="text-3xl font-black tracking-tighter uppercase text-white">{userName}</h2>
                     <p className="text-[#A0A0A0] text-[10px] font-bold tracking-widest uppercase">{userEmail}</p>
                     <div className="pt-2">
-                       <span className={`px-3.5 py-1 text-[9px] font-black text-white rounded-full shadow-lg uppercase tracking-widest border ${isAdmin ? "bg-gradient-to-r from-red-600 to-red-500 shadow-red-500/20 border-red-400/20" : "bg-gradient-to-r from-blue-600 to-[#1E88FF] shadow-blue-500/20 border-blue-400/20"}`}>
+                       <span className={`px-3.5 py-1 text-[9px] font-black text-white rounded-full shadow-lg uppercase tracking-widest border ${isAdmin ? "bg-gradient-to-r from-red-600 to-red-500 shadow-red-500/20 border-red-400/20" : "bg-gradient-to-r from-orange-600 to-[#FF7900] shadow-orange-500/20 border-orange-400/20"}`}>
                          {isAdmin ? "COMPTE ADMINISTRATEUR" : "MEMBRE PREMIUM SPECIALISTE"}
                        </span>
                     </div>
@@ -2762,16 +2836,41 @@ export default function App() {
                  </button>
               </div>
 
-            </motion.div>
-          ) : (
-            <div className="flex flex-col items-center justify-center p-20 space-y-4">
-               <HelpCircle size={48} className="text-neutral-800" />
-               <p className="text-neutral-500 font-black uppercase tracking-widest text-xs tracking-tight">Section en développement</p>
             </div>
-          )}
-        </AnimatePresence>
+            </div>
+
+            {/* UNKNOWN TAB FALLBACK */}
+            <div className={!["accueil", "recherche", "sports", "favoris", "admin", "profil"].includes(activeTab) ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="flex flex-col items-center justify-center p-20 space-y-4">
+                 <HelpCircle size={48} className="text-neutral-800" />
+                 <p className="text-neutral-500 font-black uppercase tracking-widest text-xs tracking-tight">Section en développement</p>
+              </div>
+            </div>
+          </>
+        )}
       </main>
       </div>
+
+      {/* EPG Timeline Overlay */}
+      <AnimatePresence>
+        {showFullEpg && selectedChannel && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 md:p-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowFullEpg(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <div className="relative w-full max-w-4xl h-full max-h-[90vh] z-10 transition-all">
+              <EpgTimeline 
+                channelName={selectedChannel.name} 
+                onClose={() => setShowFullEpg(false)} 
+              />
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Floating Bottom Nav */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />

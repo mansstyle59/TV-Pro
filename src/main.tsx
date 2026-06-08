@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './App.tsx';
 import './index.css';
+import { FirebaseProvider } from './context/FirebaseProvider.tsx';
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
@@ -11,6 +12,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <FirebaseProvider>
+      <App />
+    </FirebaseProvider>
   </StrictMode>,
 );

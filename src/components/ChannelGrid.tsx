@@ -35,6 +35,7 @@ const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) =>
     <img 
       src={logo} 
       alt={name}
+      loading="lazy"
       className="w-full h-full object-contain filter group-hover:brightness-125 transition-all duration-300 drop-shadow-lg"
       referrerPolicy="no-referrer"
       onError={() => setError(true)}
@@ -67,31 +68,33 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.01 }}
               onClick={() => onChannelSelect(channel)}
-              className={`aspect-square relative group bg-neutral-900 border overflow-hidden rounded-xl md:rounded-2xl transition-all flex flex-col items-center justify-center p-2.5 sm:p-4 hover:scale-110 active:scale-95 duration-500 ${
-                isSelected ? "border-brand-500 shadow-2xl shadow-brand-500/20" : "border-white/5 hover:border-white/20"
+              className={`aspect-square relative group bg-neutral-900 border overflow-hidden rounded-xl transition-all flex flex-col items-center justify-center p-3 sm:p-5 hover:scale-110 active:scale-95 duration-500 shadow-xl ${
+                isSelected 
+                  ? "border-brand-500 ring-4 ring-brand-500/10 shadow-2xl shadow-brand-500/20" 
+                  : "border-white/5 hover:border-white/20"
               }`}
             >
               {/* Background Glow on Hover */}
-              <div className="absolute inset-0 bg-linear-to-br from-brand-500/0 to-brand-500/0 group-hover:from-brand-500/5 group-hover:to-brand-500/10 transition-all" />
+              <div className="absolute inset-0 bg-linear-to-br from-brand-500/0 to-brand-500/0 group-hover:from-brand-500/5 group-hover:to-brand-500/10 transition-all duration-700" />
               
-              <div className="w-full h-full relative z-10 flex items-center justify-center">
+              <div className="w-full h-full relative z-10 flex items-center justify-center transition-transform duration-500 group-hover:scale-110">
                  <LogoImage logo={channel.logo} name={channel.name} />
               </div>
               
-              {/* Hover Badge */}
-              <div className="absolute inset-x-0 bottom-2 px-2 opacity-0 group-hover:opacity-100 transition-opacity translate-y-1 group-hover:translate-y-0 duration-300">
-                 <div className="bg-black/60 backdrop-blur-md py-1 rounded-full text-center border border-white/5">
-                    <span className="text-[8px] font-black text-white uppercase tracking-tighter truncate block px-2">
+              {/* Hover Badge - Glassmorphic */}
+              <div className="absolute inset-x-0 bottom-2 px-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 duration-500 z-20">
+                 <div className="bg-black/80 backdrop-blur-xl py-1 rounded-full text-center border border-white/10 shadow-2xl">
+                    <span className="text-[7px] md:text-[9px] font-black text-white uppercase tracking-tighter truncate block px-2">
                        {channel.name}
                     </span>
                  </div>
               </div>
 
-              {/* Quality Label */}
+              {/* Quality Label - Refined */}
               {channel.qualityLabel && (
                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-20">
-                    <span className={`text-[6px] sm:text-[8px] font-black px-1 sm:px-1.5 py-0.5 rounded-sm sm:rounded-md shadow-2xl ${
-                      channel.qualityLabel.includes('SD') ? 'bg-orange-500 text-white' : 'bg-emerald-500 text-white'
+                    <span className={`text-[6px] sm:text-[8px] font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-2xl border border-white/10 ${
+                      channel.qualityLabel.includes('SD') ? 'bg-orange-500/90 text-white' : 'bg-emerald-500/90 text-white'
                     }`}>
                        {channel.qualityLabel}
                     </span>
@@ -99,7 +102,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               )}
 
               {isSelected && (
-                <div className="absolute top-3 right-3 w-2 h-2 bg-brand-500 rounded-full shadow-[0_0_8px_#0ea5e9] animate-pulse" />
+                <div className="absolute top-3 right-3 w-2 h-2 bg-brand-500 rounded-full shadow-[0_0_12px_#0ea5e9] animate-pulse z-30" />
               )}
             </motion.button>
           );

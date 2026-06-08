@@ -1,5 +1,5 @@
 {
-  "name": "TV Pro By.Denden",
+  "name": "Flux Tv Pro",
   "description": "Plateforme IPTV Premium 100% Française avec EPG complet, événements sportifs en direct et interface ultra-fluide.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

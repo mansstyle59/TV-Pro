@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Home, Trophy, Search, Star, User, Settings } from "lucide-react";
+import { Home, Trophy, Search, Star, User, Settings, Calendar } from "lucide-react";
 
 interface BottomNavProps {
   activeTab: string;
@@ -30,9 +30,9 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 <Icon 
                   size={isActive ? 22 : 20} 
                   strokeWidth={isActive ? 2.5 : 2} 
-                  className={isActive ? "text-[#1E88FF]" : "text-[#A0A0A0] group-hover:text-white transition-colors"} 
+                  className={isActive ? "text-[#FF7900]" : "text-[#A0A0A0] group-hover:text-white transition-colors"} 
                 />
-                <span className={`text-[7px] font-bold uppercase tracking-widest transition-colors ${isActive ? "text-[#1E88FF]" : "text-[#A0A0A0]"}`}>
+                <span className={`text-[7px] font-bold uppercase tracking-widest transition-colors ${isActive ? "text-[#FF7900]" : "text-[#A0A0A0]"}`}>
                   {tab.label}
                 </span>
               </div>

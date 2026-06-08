@@ -3,6 +3,12 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { Readable } from "stream";
+import { initializeApp, getApps } from "firebase/app";
+import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection } from "firebase/firestore";
+import firebaseConfig from "./firebase-applet-config.json";
+
+const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
 interface Channel {
   country: string;
@@ -10,11 +16,55 @@ interface Channel {
   name: string;
   p?: number;
   logo?: string;
+  category?: string;
+  categoryOverride?: string;
 }
 
 const app = express();
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(204);
+    return;
+  }
+  next();
+});
 app.use(express.json()); // Enable JSON body parsing for admin endpoints
 const PORT = 3000;
+
+// Favorites routes
+app.get("/api/favorites/:userId", async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const favsRef = collection(db, "users", userId, "favorites");
+        const snapshot = await getDocs(favsRef);
+        res.json(snapshot.docs.map(d => d.data().channelId));
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+app.post("/api/favorites", async (req, res) => {
+    try {
+        const { userId, channelId } = req.body;
+        const favRef = doc(db, "users", userId, "favorites", String(channelId));
+        await setDoc(favRef, { userId, channelId, createdAt: new Date().toISOString() });
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
+app.delete("/api/favorites/:userId/:channelId", async (req, res) => {
+    try {
+        const { userId, channelId } = req.params;
+        const favRef = doc(db, "users", userId, "favorites", String(channelId));
+        await deleteDoc(favRef);
+        res.json({ success: true });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // Admin Channel overrides
 const CHANNELS_CONFIG_PATH = path.join(process.cwd(), "channels-config.json");
@@ -36,10 +86,95 @@ function saveChannelsConfig(config: any) {
   }
 }
 
+const DEFAULT_LCN_MAP: Record<string, number> = {
+  // TNT & Généralistes (French channels standard LCN 1 to 27)
+  "tf1": 1,
+  "france2": 2,
+  "france3": 3,
+  "canalplus": 4,
+  "france5": 5,
+  "m6": 6,
+  "arte": 7,
+  "c8": 8,
+  "w9": 9,
+  "tmc": 10,
+  "tfx": 11,
+  "nrj12": 12,
+  "lcp": 13,
+  "france4": 14,
+  "culturebox": 14,
+  "bfmtv": 15,
+  "bfm": 15,
+  "cnews": 16,
+  "cstar": 17,
+  "gulli": 18,
+  "franceo": 19,
+  "tf1seriesfilms": 20,
+  "tf1series": 20,
+  "lequipe": 21,
+  "6ter": 22,
+  "rmcstory": 23,
+  "rmcdecouverte": 24,
+  "cherie25": 25,
+  "lci": 26,
+  "franceinfo": 27,
+
+  // Sports
+  "canalplusfoot": 101,
+  "canalplussport": 102,
+  "beinsports1": 103,
+  "beinsports2": 104,
+  "beinsports3": 105,
+  "beinsportsmax4": 106,
+  "beinsportsmax5": 107,
+  "beinsportsmax6": 108,
+  "beinsportsmax7": 109,
+  "beinsportsmax8": 110,
+  "beinsportsmax9": 111,
+  "beinsportsmax10": 112,
+  "eurosport1": 113,
+  "eurosport2": 114,
+  "rmcsport1": 115,
+  "rmcsport2": 116,
+  "rmcsportuhd": 117,
+
+  // Cinéma & Séries
+  "canalpluscinema": 201,
+  "canalplusboxoffice": 202,
+  "canalplusseries": 203,
+  "ocsmax": 204,
+  "ocspulp": 205,
+  "ocsgeants": 206,
+  "cinepluspremier": 207,
+  "cineplusfrisson": 208,
+  "cineplusemotion": 209,
+  "cineplusfamiz": 210,
+  "cineplusclub": 211,
+  "cineplusclassic": 212,
+  "syfy": 213,
+  "13emerue": 214,
+  "paramountchannel": 215,
+  "alticestudio": 216,
+  "warnertv": 217,
+  "polarplus": 218,
+
+  // Belgique
+  "laune": 301,
+  "tipik": 302,
+  "latrois": 303,
+  "rtltvi": 304,
+  "clubrtl": 305,
+  "plugrtl": 306,
+  "ab3": 307,
+  "abxplore": 308,
+  "ln24": 309,
+};
+
 // Simple in-memory cache for French TV channels
 let cachedChannels: Channel[] | null = null;
+let allCachedChannels: Channel[] | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL = 10 * 60 * 1000; // 10 minutes cache TTL
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes cache for the full catalog
 
 // Fetch channels from vavoo.to
 async function fetchAppChannels(force = false): Promise<Channel[]> {
@@ -53,6 +188,8 @@ async function fetchAppChannels(force = false): Promise<Channel[]> {
   const response = await fetch("https://vavoo.to/channels", {
     headers: {
       "User-Agent": "VAVOO/2.6",
+      "X-VAVOO-CLIENT": "2.6",
+      "X-VAVOO-DEVICE": "berry",
       "Accept": "application/json"
     }
   });
@@ -62,17 +199,84 @@ async function fetchAppChannels(force = false): Promise<Channel[]> {
   }
 
   const channels: Channel[] = await response.json();
-  // Filter for French and Belgian channels
-  const filteredChannels = channels.filter(c => c && c.country && /^(france|belgium|belgique)$/i.test(c.country));
+  allCachedChannels = channels; // Store raw unfiltered list for admin discovery
+
+  // Filter for French and Belgian channels default, and specifically include Trace/OCS
+  const filteredChannels = channels.filter(c => 
+    c && (
+      (c.country && /^(france|belgium|belgique)$/i.test(c.country)) || 
+      /trace|ocs/i.test(c.name)
+    )
+  );
   
   // Sort alphabetically by name
   filteredChannels.sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
 
   cachedChannels = filteredChannels;
   lastFetchTime = now;
-  console.log(`Cache updated. Found ${filteredChannels.length} channels.`);
+  console.log(`Cache updated. Found ${filteredChannels.length} channels (Total Vavoo: ${channels.length}).`);
   return filteredChannels;
 }
+
+// ... existing EPG/Logo interfaces ...
+
+// Add this before EPG sections to keep grouping clean
+app.get("/api/admin/vavoo-catalog", async (req, res) => {
+  try {
+    if (!allCachedChannels) {
+      await fetchAppChannels(true);
+    }
+    
+    const { search, country } = req.query;
+    let result = allCachedChannels || [];
+
+    if (country) {
+      result = result.filter(c => c.country?.toLowerCase() === (country as string).toLowerCase());
+    }
+
+    if (search) {
+      const s = (search as string).toLowerCase();
+      result = result.filter(c => c.name.toLowerCase().includes(s));
+    }
+
+    // Get countries list for filter
+    const countries = Array.from(new Set(allCachedChannels?.map(c => c.country).filter(Boolean))).sort();
+
+    res.json({
+      success: true,
+      countries,
+      count: result.length,
+      channels: result.slice(0, 500) // Limit to 500 for UI performance
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post("/api/admin/channels/bulk-toggle", (req, res) => {
+  const { ids, action } = req.body; // action: 'activate' | 'deactivate'
+  if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: "Missing ids array" });
+  
+  const config = loadChannelsConfig();
+  if (!config.hiddenChannelIds) config.hiddenChannelIds = [];
+  
+  const idStrList = ids.map(id => String(id));
+
+  if (action === "activate") {
+    // Remove from hidden list
+    config.hiddenChannelIds = config.hiddenChannelIds.filter((id: string) => !idStrList.includes(id));
+  } else {
+    // Add to hidden list
+    idStrList.forEach(id => {
+      if (!config.hiddenChannelIds.includes(id)) {
+        config.hiddenChannelIds.push(id);
+      }
+    });
+  }
+
+  saveChannelsConfig(config);
+  res.json({ success: true, count: idStrList.length });
+});
 
 interface EpgProgramme {
   start: string;
@@ -179,6 +383,8 @@ const fallbackLogoMap: Record<string, string> = {
   "ocsmax": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-max-fr.png",
   "ocspulp": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-pulp-fr.png",
   "ocsgeants": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-geants-fr.png",
+  "ocschoc": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-choc-fr.png",
+  "ocscity": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-city-fr.png",
   "histoiretv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/histoire-tv-fr.png",
   "sciencevie": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/science-et-vie-tv-fr.png",
   "planeteplus": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/planete-plus-fr.png",
@@ -188,11 +394,62 @@ const fallbackLogoMap: Record<string, string> = {
   "paramount": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/paramount-channel-fr.png",
   "ab1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ab1-fr.png",
 
+  // Ciné+ channels
+  "cinepluspremier": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-premier-fr.png",
+  "cineplusfrisson": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-frisson-fr.png",
+  "cineplusemotion": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-emotion-fr.png",
+  "cineplusfamiz": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-famiz-fr.png",
+  "cineplusclub": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-club-fr.png",
+  "cineplusclassic": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-classic-fr.png",
+  "cineplusdecale": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-decale-fr.png",
+
+  // DAZN channels
+  "dazn": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn2": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn3": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn4": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
+  "daznligue1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
+
+  // additional sports channels
+  "beinsportsmax4": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-4-fr.png",
+  "beinsportsmax5": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-5-fr.png",
+  "beinsportsmax6": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-6-fr.png",
+  "beinsportsmax7": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-7-fr.png",
+  "beinsportsmax8": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-8-fr.png",
+  "beinsportsmax9": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-9-fr.png",
+  "beinsportsmax10": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-10-fr.png",
+
+  // more kid/movie/documentary channels
+  "planetepluscrime": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/planete-plus-crime-investigation-fr.png",
+  "planeteplusaventure": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/planete-plus-aventure-experience-fr.png",
+  "nationalgeographicwild": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/national-geographic-wild-fr.png",
+  "discoveryscience": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/discovery-science-fr.png",
+  "discoveryinvestigation": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/discovery-investigation-fr.png",
+  "mtvhits": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mtv-hits-fr.png",
+  "nickelodeonjunior": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/nickelodeon-junior-fr.png",
+  "chasseetpeche": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/chasse-et-peche-fr.png",
+  "jone": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/j-one-fr.png",
+  "polarplus": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/polar-plus-fr.png",
+  "novelastv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/novelas-tv-fr.png",
+  "tcmcinema": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tcm-cinema-fr.png",
+  "museumtv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/museum-tv-fr.png",
+  "boutiquelive": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-boutique-fr.png",
+
   // Music Channels
   "m6music": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-music-fr.png",
   "mtv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mtv-fr.png",
   "mtvlive": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mtv-live-hd-fr.png",
   "traceurban": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-urban-fr.png",
+  "tracelatina": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-latina-fr.png",
+  "tracehits": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-hits-fr.png",
+  "tracetropico": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-tropico-fr.png",
+  "traceafrica": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-africa-fr.png",
+  "traceayiti": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-ayiti-fr.png",
+  "tracevanillia": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-vanilla-fr.png",
+  "tracegospel": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-gospel-fr.png",
+  "tracetoca": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-toca-fr.png",
+  "tracemziki": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-mziki-fr.png",
   "rfmtv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rfm-tv-fr.png",
   "melody": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/melody-fr.png",
   "mcm": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mcm-fr.png",
@@ -670,12 +927,14 @@ app.get("/api/channels", async (req, res) => {
     }).filter(chan => !hiddenSet.has(String(chan.id)));
 
     const combined = [...addedChannels, ...channelsWithEpg];
+    const lcnMap = { ...DEFAULT_LCN_MAP, ...(config.lcnMap || {}) };
 
     res.json({
       success: true,
       lastFetch: lastFetchTime,
       count: combined.length,
-      channels: combined
+      channels: combined,
+      lcnMap: lcnMap
     });
   } catch (err: any) {
     console.error("API error fetching channels:", err);
@@ -777,6 +1036,214 @@ app.post("/api/admin/channels/reset", (req, res) => {
   res.json({ success: true });
 });
 
+// Admin endpoint to export custom configurations
+app.get("/api/admin/backup", (req, res) => {
+  const config = loadChannelsConfig();
+  res.setHeader("Content-Type", "application/json");
+  res.setHeader("Content-Disposition", "attachment; filename=config-backup.json");
+  res.json(config);
+});
+
+// Admin endpoint to restore custom configurations
+app.post("/api/admin/restore", (req, res) => {
+  const { backup } = req.body;
+  if (!backup || typeof backup !== 'object') {
+    return res.status(400).json({ error: "Format de sauvegarde invalide." });
+  }
+  saveChannelsConfig(backup);
+  res.json({ success: true, message: "Configuration restaurée avec succès." });
+});
+
+// Admin endpoint to check stream health
+app.post("/api/admin/channels/test-stream", async (req, res) => {
+  const { id, url } = req.body;
+  try {
+    let targetUrl = url;
+    if (!targetUrl && id) {
+      const config = loadChannelsConfig();
+      const customChan = (config.addedChannels || []).find((c: any) => String(c.id) === String(id));
+      if (customChan) {
+        targetUrl = customChan.streamUrl;
+      } else {
+        targetUrl = `https://vavoo.to/play/${id}/index.m3u8`;
+      }
+    }
+    
+    if (!targetUrl) {
+      return res.status(400).json({ error: "Identifiant ou URL de flux manquant" });
+    }
+
+    const startTime = Date.now();
+    const response = await fetch(targetUrl, {
+      method: "GET",
+      headers: {
+         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      },
+      signal: AbortSignal.timeout(4000)
+    });
+
+    const latency = Date.now() - startTime;
+    const contentType = response.headers.get("content-type") || "";
+
+    res.json({
+      success: true,
+      status: response.ok ? "online" : "offline",
+      latency,
+      statusCode: response.status,
+      contentType
+    });
+  } catch (err: any) {
+    res.json({
+      success: true,
+      status: "offline",
+      error: err.message || "Timeout de connexion ou hôte inaccessible"
+    });
+  }
+});
+
+// Admin endpoints for LCN (Logical Channel Numbering) table management
+app.get("/api/admin/lcn", (req, res) => {
+  const config = loadChannelsConfig();
+  const currentMap = { ...DEFAULT_LCN_MAP, ...(config.lcnMap || {}) };
+  res.json({ success: true, lcnMap: currentMap, defaultMap: DEFAULT_LCN_MAP });
+});
+
+app.post("/api/admin/lcn/save", (req, res) => {
+  const { lcnMap } = req.body;
+  if (!lcnMap || typeof lcnMap !== 'object') {
+    return res.status(400).json({ error: "lcnMap invalide." });
+  }
+  const config = loadChannelsConfig();
+  config.lcnMap = lcnMap;
+  saveChannelsConfig(config);
+  res.json({ success: true, lcnMap });
+});
+
+app.post("/api/admin/lcn/reset", (req, res) => {
+  const config = loadChannelsConfig();
+  config.lcnMap = {};
+  saveChannelsConfig(config);
+  const currentMap = { ...DEFAULT_LCN_MAP };
+  res.json({ success: true, lcnMap: currentMap });
+});
+
+// Force automated LCN matching on active bouquets
+app.post("/api/admin/lcn/auto-update", async (req, res) => {
+  try {
+    // 1. Force refresh channels list from source to pick up latest names & packages
+    const channels = await fetchAppChannels(true);
+    const config = loadChannelsConfig();
+    const lcnMap = { ...DEFAULT_LCN_MAP, ...(config.lcnMap || {}) };
+    
+    // 2. Scan standard French bouquet names to register standard mappings automatically
+    // This allows dynamically aligning names that might contain tags, spaces, or case changes
+    let changed = false;
+    for (const key of Object.keys(DEFAULT_LCN_MAP)) {
+      if (lcnMap[key] === undefined) {
+        lcnMap[key] = DEFAULT_LCN_MAP[key];
+        changed = true;
+      }
+    }
+    
+    // 3. Scan channels physically in memory and re-assign sequence alignments
+    // We confirm we can map variants of french TNT sequentially 1-27
+    config.lcnMap = lcnMap;
+    saveChannelsConfig(config);
+    
+    res.json({ 
+      success: true, 
+      message: "Table LCN mise à jour et synchronisée avec succès !", 
+      lcnMap 
+    });
+  } catch (err: any) {
+    console.error("LCN Auto-update failed:", err);
+    res.status(500).json({ error: "Échec de l'auto-synchronisation de la table LCN." });
+  }
+});
+
+// REST API endpoint to get multi-channel grid data
+app.get("/api/epg/grid", async (req, res) => {
+  try {
+    const channels = await fetchAppChannels();
+    const config = loadChannelsConfig();
+    const hiddenSet = new Set((config.hiddenChannelIds || []).map((id: any) => String(id)));
+    
+    // Process custom added channels
+    const addedChannels = (config.addedChannels || []).map((chan: any) => {
+      const epgInfo = getEpgForChannel(chan.name);
+      return {
+        ...chan,
+        epgInfo
+      };
+    }).filter((chan: any) => !hiddenSet.has(String(chan.id)));
+
+    // Process standard channels
+    const channelsWithEpg = channels.map(chan => {
+      const overrides = config.editedChannels?.[chan.id] || {};
+      const channelName = overrides.name || chan.name;
+      const epgInfo = getEpgForChannel(channelName);
+      const logo = getLogoForChannel(channelName, epgInfo?.logo, chan.logo);
+      
+      return {
+        ...chan,
+        name: channelName,
+        logo: overrides.logo || logo,
+        categoryOverride: overrides.category,
+        epgInfo
+      };
+    }).filter((chan: any) => !hiddenSet.has(String(chan.id)));
+
+    const allChannels = [...addedChannels, ...channelsWithEpg];
+
+    // LCN sorting to match French TNT sequence
+    const lcnMap = config.lcnMap || {};
+    allChannels.sort((a, b) => {
+      const normA = normalizeName(a.name);
+      const normB = normalizeName(b.name);
+      const lcnA = lcnMap[normA] !== undefined ? Number(lcnMap[normA]) : 9999;
+      const lcnB = lcnMap[normB] !== undefined ? Number(lcnMap[normB]) : 9999;
+      if (lcnA !== lcnB) return lcnA - lcnB;
+      return a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
+    });
+
+    const now = Date.now();
+    // Keep programmes ending after 3 hours ago and starting before 15 hours later
+    const threeHoursAgo = now - 3 * 60 * 60 * 1000;
+    const fifteenHoursLater = now + 15 * 60 * 60 * 1000;
+
+    const gridData = allChannels.map(chan => {
+      let filteredPrograms: any[] = [];
+      if (chan.epgInfo && chan.epgInfo.all) {
+        filteredPrograms = chan.epgInfo.all.filter((p: any) => {
+          const stopTime = new Date(p.stop).getTime();
+          const startTime = new Date(p.start).getTime();
+          return stopTime > threeHoursAgo && startTime < fifteenHoursLater;
+        });
+      }
+
+      return {
+        id: chan.id,
+        name: chan.name,
+        logo: chan.logo,
+        group: chan.group,
+        country: chan.country,
+        category: chan.categoryOverride || chan.category || "Généraliste",
+        current: chan.epgInfo ? chan.epgInfo.current : null,
+        next: chan.epgInfo ? chan.epgInfo.next : null,
+        programmes: filteredPrograms
+      };
+    });
+
+    res.json({
+      success: true,
+      grid: gridData
+    });
+  } catch (err: any) {
+    console.error("Error generating grid data:", err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // REST API endpoint to get full guide of a specific channel
 app.get("/api/epg/:channelName", (req, res) => {
   const { channelName } = req.params;
@@ -851,14 +1318,16 @@ async function forceFetchVavooSignature(): Promise<string> {
   
   const now = Date.now();
   const guestUrls = [
+    "https://vavoo.tv/api/box/guest",
     "https://www.vavoo.tv/api/box/guest",
-    "https://vavoo.tv/api/box/guest"
+    "https://www.vavoo.to/api/box/guest"
   ];
 
   const payload = {
-    platform: "Windows NT x86 32-bit",
-    version: "2.2",
-    service_version: "1.2.24",
+    platform: "Android",
+    version: "2.6",
+    service: "1.2.26",
+    service_version: "1.2.26",
     branch: "master"
   };
 
@@ -870,10 +1339,12 @@ async function forceFetchVavooSignature(): Promise<string> {
           "User-Agent": "VAVOO/2.6",
           "Content-Type": "application/json",
           "Accept": "application/json",
-          "X-VAVOO-CLIENT": "2.6"
+          "X-VAVOO-CLIENT": "2.6",
+          "X-VAVOO-DEVICE": "berry",
+          "Referer": "https://www.vavoo.to/"
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(10000)
       });
 
       if (response.ok) {
@@ -924,19 +1395,24 @@ async function getVavooSignature(): Promise<string> {
 
 // Signs a target Vavoo URL if it does not already contain a signature key
 async function signVavooUrl(url: string): Promise<string> {
-  // Removing the 'p' parameter is required because Vavoo returns 500 on direct '/play/' containing 'p=1'
-  if (url.includes("/play/")) {
-    try {
-      const urlObj = new URL(url);
-      if (urlObj.searchParams.has("p")) {
-        urlObj.searchParams.delete("p");
-        return urlObj.toString();
-      }
-    } catch (e) {
-      // Return original on URL parser failures
+  try {
+    const urlObj = new URL(url);
+    
+    // Only apply special logic to Vavoo/play URLs
+    if (url.includes("vavoo.to")) {
+      // Clean query parameters entirely to avoid status 500 on Vavoo streams.
+      // The authentication is passed exclusively via headers (X-VAVOO-AUTH / X-VAVOO-SIGNATURE).
+      urlObj.searchParams.delete("p");
+      urlObj.searchParams.delete("token");
+      urlObj.searchParams.delete("sig");
+      urlObj.searchParams.delete("n");
+      urlObj.searchParams.delete("b");
     }
+    
+    return urlObj.toString();
+  } catch (e) {
+    return url;
   }
-  return url;
 }
 
 // Helper to manually follow redirects while retaining necessary custom headers
@@ -945,18 +1421,31 @@ interface FetchResult {
   finalUrl: string;
 }
 
-async function fetchWithRedirects(initialUrl: string, maxRedirects = 5, timeoutMs = 6000): Promise<FetchResult> {
+async function fetchWithRedirects(initialUrl: string, maxRedirects = 5, timeoutMs = 20000): Promise<FetchResult> {
   let currentUrl = initialUrl;
   let redirects = 0;
   
+  // We'll also fetch the signature here just in case we need to pass it in headers
+  const sig = await getVavooSignature();
+  
   while (redirects < maxRedirects) {
+    const headers: Record<string, string> = {
+      "User-Agent": "VAVOO/2.6",
+      "X-VAVOO-CLIENT": "2.6",
+      "X-VAVOO-DEVICE": "berry",
+      "Accept": "*/*",
+      "Connection": "keep-alive"
+    };
+
+    // Always pass the signature for any Vavoo or redirected media server urls
+    if (sig) {
+      headers["X-VAVOO-AUTH"] = sig;
+      headers["X-VAVOO-SIGNATURE"] = sig;
+    }
+
     const response = await fetch(currentUrl, {
       redirect: "manual",
-      headers: {
-        "User-Agent": "VAVOO/2.6",
-        "X-VAVOO-CLIENT": "2.6",
-        "Accept": "*/*"
-      },
+      headers,
       signal: AbortSignal.timeout(timeoutMs)
     });
     
@@ -989,52 +1478,83 @@ function resolveSegmentUrl(segmentLine: string, finalPlaylistUrl: string): strin
 
 // Common function to fetch a playlist, parse and rewrite all relative paths to point back to our proxy
 async function handlePlaylistProxy(targetUrl: string, res: express.Response) {
-  try {
-    let signedUrl = targetUrl;
-    if (targetUrl.includes("vavoo.to")) {
-      signedUrl = await signVavooUrl(targetUrl);
-    }
-    const { response, finalUrl } = await fetchWithRedirects(signedUrl);
+  let attempt = 1;
+  const maxAttempts = 2;
 
-    if (!response.ok) {
-      console.error(`Proxy stream playlist failed for ${signedUrl}. Status: ${response.status}`);
+  while (attempt <= maxAttempts) {
+    try {
+      let signedUrl = targetUrl;
+      if (targetUrl.includes("vavoo.to")) {
+        signedUrl = await signVavooUrl(targetUrl);
+      }
+      const { response, finalUrl } = await fetchWithRedirects(signedUrl);
+
+      if (response.ok) {
+        const playlistText = await response.text();
+        const lines = playlistText.split(/\r?\n/);
+        const rewrittenLines = lines.map(line => {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith("#")) {
+            return line;
+          }
+          
+          const absoluteUrl = resolveSegmentUrl(trimmed, finalUrl);
+          if (trimmed.toLowerCase().includes(".m3u8") || absoluteUrl.toLowerCase().includes(".m3u8")) {
+            return `/api/stream-playlist?url=${encodeURIComponent(absoluteUrl)}`;
+          } else {
+            return `/api/stream-ts?url=${encodeURIComponent(absoluteUrl)}`;
+          }
+        });
+
+        res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
+        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Headers", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+        res.send(rewrittenLines.join("\n"));
+        return;
+      }
+
+      console.error(`Proxy stream playlist failed for ${signedUrl}. Status: ${response.status} (attempt ${attempt}/${maxAttempts})`);
+
+      // Clear signature cache on playback failures that might be related to expired sigs or temporary 5xx errors
+      cachedSignature = null;
+      sigFetchTime = 0;
+      isSigFetching = false;
+
+      if (attempt < maxAttempts) {
+        console.log("Forcing refreshing of guest signature and retrying stream playlist query...");
+        await forceFetchVavooSignature().catch(() => {});
+        attempt++;
+        continue;
+      }
+
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Headers", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
       res.status(response.status).send(`Failed to proxy stream playlist. Status: ${response.status}`);
       return;
-    }
 
-    const playlistText = await response.text();
-
-    const lines = playlistText.split(/\r?\n/);
-    const rewrittenLines = lines.map(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) {
-        return line;
-      }
+    } catch (err: any) {
+      console.error(`Error proxying playlist for ${targetUrl} (attempt ${attempt}/${maxAttempts}):`, err);
       
-      const absoluteUrl = resolveSegmentUrl(trimmed, finalUrl);
-      if (trimmed.toLowerCase().includes(".m3u8") || absoluteUrl.toLowerCase().includes(".m3u8")) {
-        return `/api/stream-playlist?url=${encodeURIComponent(absoluteUrl)}`;
-      } else {
-        return `/api/stream-ts?url=${encodeURIComponent(absoluteUrl)}`;
+      cachedSignature = null;
+      sigFetchTime = 0;
+
+      if (attempt < maxAttempts) {
+        console.log("Network error, forcing signature refresh and retrying stream playlist query...");
+        await forceFetchVavooSignature().catch(() => {});
+        attempt++;
+        continue;
       }
-    });
 
-    res.setHeader("Content-Type", "application/vnd.apple.mpegurl");
-    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-
-    res.send(rewrittenLines.join("\n"));
-  } catch (err: any) {
-    console.error(`Server error proxying playlist for ${targetUrl}:`, err);
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    res.status(500).send("Internal server error proxying stream playlist");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.status(500).send("Internal server error proxying stream playlist");
+      return;
+    }
   }
 }
 
@@ -1065,78 +1585,119 @@ app.get("/api/stream-ts", async (req, res) => {
     return;
   }
 
-  try {
-    let signedUrl = targetUrl;
-    if (targetUrl.includes("vavoo.to")) {
-      signedUrl = await signVavooUrl(targetUrl);
-    }
-    
-    // High-performance optimization: Since HLS TS chunks are final CDN leaf files, they do not redirect.
-    // We fetch them directly with native redirect handling and Keep-Alive connection pooling.
-    let response = await fetch(signedUrl, {
-      headers: {
+  let attempt = 1;
+  const maxAttempts = 2;
+
+  while (attempt <= maxAttempts) {
+    try {
+      let signedUrl = targetUrl;
+      if (targetUrl.includes("vavoo.to")) {
+        signedUrl = await signVavooUrl(targetUrl);
+      }
+      
+      const sig = await getVavooSignature();
+      const headers: Record<string, string> = {
         "User-Agent": "VAVOO/2.6",
         "X-VAVOO-CLIENT": "2.6",
-        "Accept": "*/*"
-      },
-      signal: AbortSignal.timeout(8000) // 8 seconds timeout
-    });
+        "X-VAVOO-DEVICE": "berry",
+        "Referer": "https://www.vavoo.to/",
+        "Accept": "*/*",
+        "Connection": "keep-alive"
+      };
 
-    // In the rare event of a 3xx, fall back to manual redirect handling
-    if (response.status === 301 || response.status === 302 || response.status === 303 || response.status === 307 || response.status === 308) {
-      const redirectResult = await fetchWithRedirects(signedUrl, 5, 8000);
-      response = redirectResult.response;
-    }
+      if (sig) {
+        headers["X-VAVOO-AUTH"] = sig;
+        headers["X-VAVOO-SIGNATURE"] = sig;
+      }
 
-    if (!response.ok) {
-      console.error(`Proxy stream segment failed for ${signedUrl}. Status: ${response.status}`);
+      // High-performance optimization: Since HLS TS chunks are final CDN leaf files, they do not redirect.
+      // We fetch them directly with native redirect handling and Keep-Alive connection pooling.
+      let response = await fetch(signedUrl, {
+        headers,
+        signal: AbortSignal.timeout(30000) // 30 seconds timeout
+      });
+
+      // In the rare event of a 3xx, fall back to manual redirect handling
+      if (response.status === 301 || response.status === 302 || response.status === 303 || response.status === 307 || response.status === 308) {
+        const redirectResult = await fetchWithRedirects(signedUrl, 5, 25000);
+        response = redirectResult.response;
+      }
+
+      if (response.ok) {
+        // Proxy the response headers
+        const contentType = response.headers.get("content-type");
+        if (contentType) {
+          res.setHeader("Content-Type", contentType);
+        } else {
+          res.setHeader("Content-Type", "video/mp2t");
+        }
+
+        const contentEncoding = response.headers.get("content-encoding");
+        if (contentEncoding) {
+          res.setHeader("Content-Encoding", contentEncoding);
+        }
+
+        const contentLength = response.headers.get("content-length");
+        if (contentLength) {
+          res.setHeader("Content-Length", contentLength);
+        }
+
+        // Cache TS chunks for 30s locally as they are static content to prevent redundant double loading
+        res.setHeader("Cache-Control", "public, max-age=30");
+
+        res.setHeader("Access-Control-Allow-Origin", "*");
+        res.setHeader("Access-Control-Allow-Headers", "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+        if (response.body) {
+          Readable.fromWeb(response.body as any).pipe(res);
+        } else {
+          res.end();
+        }
+        return;
+      }
+
+      console.error(`Proxy stream segment failed for ${signedUrl}. Status: ${response.status} (attempt ${attempt}/${maxAttempts})`);
+      
+      cachedSignature = null;
+      sigFetchTime = 0;
+
+      if (attempt < maxAttempts) {
+        console.log("Forcing refreshing of guest signature and retrying stream segment query...");
+        await forceFetchVavooSignature().catch(() => {});
+        attempt++;
+        continue;
+      }
+
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Headers", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
       res.status(response.status).send(`Failed to proxy stream segment. Status: ${response.status}`);
       return;
-    }
 
-    // Proxy the response headers
-    const contentType = response.headers.get("content-type");
-    if (contentType) {
-      res.setHeader("Content-Type", contentType);
-    } else {
-      res.setHeader("Content-Type", "video/mp2t");
-    }
+    } catch (err: any) {
+      console.error(`Error proxying stream segment for ${targetUrl} (attempt ${attempt}/${maxAttempts}):`, err);
 
-    const contentEncoding = response.headers.get("content-encoding");
-    if (contentEncoding) {
-      res.setHeader("Content-Encoding", contentEncoding);
-    }
+      cachedSignature = null;
+      sigFetchTime = 0;
 
-    const contentLength = response.headers.get("content-length");
-    if (contentLength) {
-      res.setHeader("Content-Length", contentLength);
-    }
+      if (attempt < maxAttempts) {
+        console.log("Network error, forcing signature refresh and retrying stream segment query...");
+        await forceFetchVavooSignature().catch(() => {});
+        attempt++;
+        continue;
+      }
 
-    // Cache TS chunks for 30s locally as they are static content to prevent redundant double loading
-    res.setHeader("Cache-Control", "public, max-age=30");
-
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-
-    if (response.body) {
-      Readable.fromWeb(response.body as any).pipe(res);
-    } else {
-      res.end();
-    }
-  } catch (err: any) {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Headers", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-    if (err.name === "TimeoutError" || err.message?.includes("Timeout")) {
-      console.warn(`Proxy stream segment timed out for ${targetUrl}`);
-      res.status(504).send("Gateway Timeout proxying stream segment");
-    } else {
-      console.error(`Server error proxying stream segment for ${targetUrl}:`, err);
-      res.status(500).send("Internal server error proxying stream segment");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Headers", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+      if (err.name === "TimeoutError" || err.message?.includes("Timeout")) {
+        console.warn(`Proxy stream segment timed out for ${targetUrl}`);
+        res.status(504).send("Gateway Timeout proxying stream segment");
+      } else {
+        res.status(500).send("Internal server error proxying stream segment");
+      }
+      return;
     }
   }
 });
@@ -1178,6 +1739,578 @@ app.get("/api/stream/:id/:file", async (req, res) => {
     // If the client fetches key files or direct .ts segments from original format
     const targetUrl = `https://vavoo.to/play/${id}/${file}` + (queryStr ? `?${queryStr}` : "");
     res.redirect(`/api/stream-ts?url=${encodeURIComponent(targetUrl)}`);
+  }
+});
+
+// Stremio Addon Protocol endpoints
+app.get("/manifest.json", (req, res) => {
+  // Need to structure it properly for Stremio addon protocol standard
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.json({
+    id: "org.ai-studio.vavoo",
+    version: "1.0.0",
+    name: "Vavoo IP-TV",
+    description: "Vavoo live channels via Proxy.",
+    resources: ["catalog", "stream"],
+    types: ["tv"],
+    catalogs: [{ type: "tv", id: "tv_channels", name: "Live TV" }],
+    idPrefixes: ["vavoo_"]
+  });
+});
+
+app.get("/catalog/tv/tv_channels.json", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  try {
+    const channels = await fetchAppChannels(false);
+    // filter to limit for Stremio speed
+    const metas = channels.slice(0, 100).map(c => ({
+      id: "vavoo_" + c.id,
+      type: "tv",
+      name: c.name,
+      posterShape: "landscape",
+      poster: c.logo || "https://upload.wikimedia.org/wikipedia/commons/4/44/Tv_icon.svg",
+      background: c.logo
+    }));
+    res.json({ metas });
+  } catch (err) {
+    res.status(500).json({ error: "Catalog failed" });
+  }
+});
+
+app.get("/stream/tv/:id", async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  const paramId = req.params.id;
+  const channelId = paramId.replace(".json", "").replace("vavoo_", "");
+  try {
+    const streamUrlPath = `${req.protocol}://${req.get('host')}/api/stream/${channelId}/index.m3u8`;
+    res.json({ streams: [{ title: "Live", url: streamUrlPath }] });
+  } catch (err) {
+    res.json({ streams: [] });
+  }
+});
+
+import { createEngine, createAddon } from "@mediahubmx/sdk";
+import { createSingleAddonRouter } from "@mediahubmx/sdk/dist/express-server.js";
+
+const mhubAddon = createAddon({
+  id: "org.ai-studio.vavoo",
+  name: "Vavoo IP-TV",
+  version: "1.0.0",
+  itemTypes: ["iptv"],
+  catalogs: [{
+    id: "tv_channels",
+    name: "Live TV",
+    kind: "iptv",
+    features: { search: { enabled: true } },
+    options: {
+      shape: "landscape",
+      displayName: true
+    }
+  }]
+});
+
+mhubAddon.registerActionHandler("catalog", async (input, ctx) => {
+  const host = ctx.request.headers.host || "localhost:3000";
+  const protocol = ctx.request.headers["x-forwarded-proto"] || "http";
+
+  const channels = await fetchAppChannels(false);
+  let filtered = channels;
+  if (input.search) {
+     filtered = channels.filter(c => c.name.toLowerCase().includes(input.search!.toLowerCase()));
+  }
+
+  const items = filtered.slice(0, 500).map(c => ({
+    type: "iptv" as const,
+    ids: { vavoo: String(c.id) },
+    name: c.name,
+    logo: c.logo || "https://upload.wikimedia.org/wikipedia/commons/4/44/Tv_icon.svg",
+    url: `${protocol}://${host}/api/stream/${c.id}/index.m3u8`
+  }));
+
+  return { items, nextCursor: null };
+});
+
+mhubAddon.registerActionHandler("item", async (input, ctx) => {
+  const host = ctx.request.headers.host || "localhost:3000";
+  const protocol = ctx.request.headers["x-forwarded-proto"] || "http";
+
+  const channels = await fetchAppChannels(false);
+  const channel = channels.find(c => String(c.id) === input.ids.vavoo);
+  if (!channel) return null;
+
+  return {
+    type: "iptv",
+    ids: { vavoo: String(channel.id) },
+    name: channel.name,
+    logo: channel.logo || "https://upload.wikimedia.org/wikipedia/commons/4/44/Tv_icon.svg",
+    url: `${protocol}://${host}/api/stream/${channel.id}/index.m3u8`
+  };
+});
+
+mhubAddon.registerActionHandler("source", async (input, ctx) => {
+  const host = ctx.request.headers.host || "localhost:3000";
+  const protocol = ctx.request.headers["x-forwarded-proto"] || "http";
+  
+  return [{
+    type: "url",
+    name: "Live Stream",
+    url: `${protocol}://${host}/api/stream/${input.ids.vavoo}/index.m3u8`,
+  }];
+});
+
+const mhubEngine = createEngine([mhubAddon]);
+app.use(express.json());
+app.use((req, res, next) => {
+  console.log("INCOMING: ", req.method, req.url, req.path);
+  if (req.path.match(/^\/mediahubmx(?:-([\w-]+))?\.json$/)) {
+    req.url = '/mhub' + req.url;
+    console.log("REWRITTEN: ", req.url);
+  } else if (req.path.toLowerCase().startsWith('/mhub') && !req.path.startsWith('/mhub')) {
+    console.log("REDIRECTING: ", req.url);
+    res.redirect(301, req.url.replace(/^\/[mM][hH][uU][bB]/, '/mhub'));
+    return;
+  }
+  
+  if (req.method === 'GET' && req.path.includes('mediahubmx.json') && !req.query.data) {
+    req.query.data = JSON.stringify({ language: 'en', region: 'US' });
+  } else if (req.method === 'POST' && req.path.includes('mediahubmx.json') && (!req.body || !req.body.language)) {
+    req.body = { language: 'en', region: 'US', ...req.body };
+  }
+  next();
+});
+app.use("/mhub", createSingleAddonRouter(mhubEngine, { singleMode: true } as any));
+
+// Helper function to generate a stable, unique 7-digit integer from string IDs for strict IPTV clients
+function getNumericHash(idStr: string): number {
+  if (!idStr) return 0;
+  if (/^\d+$/.test(idStr)) {
+    const val = parseInt(idStr, 10);
+    if (val < 2000000000) return val;
+  }
+  let hash = 0;
+  for (let i = 0; i < idStr.length; i++) {
+    hash = (hash << 5) - hash + idStr.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return Math.abs(hash) % 1999999 + 1000000; // Safe 7-digit integer between 1M and 3M
+}
+
+// Helper function to generate stable ordered categories based on priority
+function getSortedCategories(channels: any[]): string[] {
+  const categoriesSet = new Set<string>();
+  channels.forEach(c => {
+    const cat = c.category || "Généraliste";
+    categoriesSet.add(cat);
+  });
+  
+  const priorityMap: Record<string, number> = {
+    "tnt": 1,
+    "national": 2,
+    "général": 3,
+    "france": 4,
+    "cinéma": 10,
+    "cinema": 11,
+    "séries": 12,
+    "series": 13,
+    "sport": 20,
+    "sports": 21,
+    "documentaire": 30,
+    "documentaires": 31,
+    "découverte": 32,
+    "jeunesse": 40,
+    "enfants": 41,
+    "musique": 50,
+    "information": 60,
+    "infos": 61,
+    "actualités": 62
+  };
+  
+  return Array.from(categoriesSet).sort((a, b) => {
+    const normA = a.toLowerCase();
+    const normB = b.toLowerCase();
+    
+    let pA = 999;
+    let pB = 999;
+    
+    for (const [key, priority] of Object.entries(priorityMap)) {
+      if (normA.includes(key)) {
+        pA = Math.min(pA, priority);
+      }
+    }
+    for (const [key, priority] of Object.entries(priorityMap)) {
+      if (normB.includes(key)) {
+        pB = Math.min(pB, priority);
+      }
+    }
+    
+    if (pA !== pB) return pA - pB;
+    return a.localeCompare(b, "fr", { sensitivity: "base" });
+  });
+}
+
+// Helper for Xtream Codes to retrieve active, enriched and formatted channels
+async function getActiveChannelsWithMetadata(): Promise<any[]> {
+  const channels = await fetchAppChannels();
+  const config = loadChannelsConfig();
+  const hiddenSet = new Set((config.hiddenChannelIds || []).map((id: any) => String(id)));
+  
+  // Process custom added channels
+  const addedChannels = (config.addedChannels || []).map((chan: any) => {
+    return {
+      ...chan,
+      category: chan.categoryOverride || chan.category || "Généraliste"
+    };
+  }).filter((chan: any) => !hiddenSet.has(String(chan.id)));
+
+  // Process standard channels
+  const channelsWithEpg = channels.map(chan => {
+    const overrides = config.editedChannels?.[chan.id] || {};
+    const channelName = overrides.name || chan.name;
+    const epgInfo = getEpgForChannel(channelName);
+    const logo = getLogoForChannel(channelName, epgInfo?.logo, chan.logo);
+    
+    return {
+      ...chan,
+      name: channelName,
+      logo: overrides.logo || logo,
+      category: overrides.category || chan.category || "Généraliste"
+    };
+  }).filter((chan: any) => !hiddenSet.has(String(chan.id)));
+
+  const allChannels = [...addedChannels, ...channelsWithEpg];
+
+  // LCN sorting
+  const lcnMap = config.lcnMap || {};
+  allChannels.sort((a, b) => {
+    const normA = normalizeName(a.name);
+    const normB = normalizeName(b.name);
+    const lcnA = lcnMap[normA] !== undefined ? Number(lcnMap[normA]) : 9999;
+    const lcnB = lcnMap[normB] !== undefined ? Number(lcnMap[normB]) : 9999;
+    if (lcnA !== lcnB) return lcnA - lcnB;
+    return a.name.localeCompare(b.name, "fr", { sensitivity: "base" });
+  });
+
+  return allChannels;
+}
+
+// Xtream Codes API Handler (compatible with GET & POST)
+app.all(["/player_api.php", "/panel_api.php"], async (req, res) => {
+  const username = req.query.username || req.body.username || "user";
+  const password = req.query.password || req.body.password || "pass";
+  const action = req.query.action || req.body.action;
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+
+  if (!action) {
+    const host = req.get('host') || "localhost:3000";
+    const protocol = req.protocol;
+    return res.json({
+      user_info: {
+        username: String(username),
+        password: String(password),
+        message: "Bienvenue sur Vavoo IPTV Relay Xtream API",
+        auth: 1,
+        status: "Active",
+        exp_date: "1800000000",
+        is_trial: "0",
+        active_cons: "0",
+        max_connections: "5",
+        created_at: "1600000000",
+        allowed_output_formats: ["m3u8", "ts"]
+      },
+      server_info: {
+        url: host.split(':')[0],
+        port: host.split(':')[1] || (protocol === 'https' ? '443' : '80'),
+        https_port: "443",
+        server_protocol: protocol,
+        rtmp_port: "554",
+        timezone: "Europe/Paris",
+        timestamp_now: Math.floor(Date.now() / 1000),
+        time_now: new Date().toISOString().replace('T', ' ').substring(0, 19)
+      }
+    });
+  }
+
+  // Get live categories
+  if (action === "get_live_categories") {
+    try {
+      const channels = await getActiveChannelsWithMetadata();
+      const categoriesList = getSortedCategories(channels).map((catName, index) => {
+        return {
+          category_id: String(index + 1),
+          category_name: catName,
+          parent_id: 0
+        };
+      });
+
+      return res.json(categoriesList);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // Get live streams
+  if (action === "get_live_streams") {
+    try {
+      const channels = await getActiveChannelsWithMetadata();
+      const sortedCategories = getSortedCategories(channels);
+
+      const targetCategoryId = req.query.category_id || req.body.category_id;
+
+      let filteredChannels = channels;
+      // Handle '0' as ALL channels standard in Xtream Codes
+      if (targetCategoryId && String(targetCategoryId) !== "0") {
+        const catIndex = parseInt(String(targetCategoryId), 10) - 1;
+        if (catIndex >= 0 && catIndex < sortedCategories.length) {
+          const targetCatName = sortedCategories[catIndex];
+          filteredChannels = channels.filter(c => (c.category || "Généraliste") === targetCatName);
+        } else {
+          filteredChannels = [];
+        }
+      } else {
+        // If retrieving all channels, GROUP/SORT them nicely by category priority order
+        const categoryOrderMap = new Map<string, number>();
+        sortedCategories.forEach((cat, idx) => {
+          categoryOrderMap.set(cat, idx);
+        });
+
+        // Stable sort so it keeps overall LCN/name order within the same category
+        filteredChannels = [...channels].sort((a, b) => {
+          const catA = a.category || "Généraliste";
+          const catB = b.category || "Généraliste";
+          const scoreA = categoryOrderMap.get(catA) ?? 999;
+          const scoreB = categoryOrderMap.get(catB) ?? 999;
+          
+          if (scoreA !== scoreB) {
+            return scoreA - scoreB;
+          }
+          return 0; // Maintain existing LCN/Name sorting
+        });
+      }
+
+      const streams = filteredChannels.map((c, index) => {
+        const catName = c.category || "Généraliste";
+        const catId = String(sortedCategories.indexOf(catName) + 1);
+
+        return {
+          num: index + 1,
+          name: c.name,
+          stream_type: "live",
+          stream_id: getNumericHash(String(c.id)), 
+          stream_icon: c.logo || "https://upload.wikimedia.org/wikipedia/commons/4/44/Tv_icon.svg",
+          epg_channel_id: String(c.id),
+          added: "1600000000",
+          category_id: catId,
+          custom_sid: "",
+          tv_archive: 0,
+          direct_source: "",
+          tv_archive_duration: 0
+        };
+      });
+
+      return res.json(streams);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message });
+    }
+  }
+
+  // EPG short listings
+  if (action === "get_short_epg") {
+    const streamIdParam = req.query.stream_id || req.body.stream_id;
+    if (!streamIdParam) {
+      return res.json({ epg_listings: [] });
+    }
+
+    try {
+      const channels = await getActiveChannelsWithMetadata();
+      const channel = channels.find(c => 
+        String(c.id) === String(streamIdParam) || 
+        String(getNumericHash(String(c.id))) === String(streamIdParam)
+      );
+      if (!channel) {
+        return res.json({ epg_listings: [] });
+      }
+
+      const epgInfo = getEpgForChannel(channel.name);
+      if (!epgInfo || !epgInfo.all || epgInfo.all.length === 0) {
+        return res.json({ epg_listings: [] });
+      }
+
+      const listings = epgInfo.all.slice(0, 10).map((p: any, idx: number) => {
+        const startD = new Date(p.start);
+        const stopD = new Date(p.stop);
+        return {
+          id: String(idx + 1),
+          epg_id: String(getNumericHash(String(channel.id))),
+          title: Buffer.from(p.title).toString('base64'),
+          lang: "fr",
+          start: p.start.replace('T', ' ').substring(0, 19),
+          end: p.stop.replace('T', ' ').substring(0, 19),
+          description: Buffer.from(p.desc || "").toString('base64'),
+          start_timestamp: String(Math.floor(startD.getTime() / 1000)),
+          stop_timestamp: String(Math.floor(stopD.getTime() / 1000))
+        };
+      });
+
+      return res.json({ epg_listings: listings });
+    } catch (err) {
+      return res.json({ epg_listings: [] });
+    }
+  }
+
+  // Mock static values for VOD / Series compatibility
+  if (action === "get_vod_categories" || action === "get_series_categories") {
+    return res.json([]);
+  }
+  if (action === "get_vod_streams" || action === "get_series") {
+    return res.json([]);
+  }
+
+  return res.json({ error: "Action inconnue." });
+});
+
+// Xtream Codes Streaming Handler: /live/:username/:password/:streamId
+app.get("/live/:username/:password/:streamId", async (req, res) => {
+  let streamId = req.params.streamId;
+  const isM3u8 = streamId.endsWith(".m3u8");
+  const isTs = streamId.endsWith(".ts");
+  streamId = streamId.replace(".m3u8", "").replace(".ts", "");
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+  // Attempt to compile string format ID or reverse-resolve numeric integer hash back to string Vavoo ID
+  let resolvedId = streamId;
+  if (/^\d+$/.test(streamId)) {
+    try {
+      const channels = await getActiveChannelsWithMetadata();
+      const match = channels.find(c => String(getNumericHash(String(c.id))) === streamId);
+      if (match) {
+        resolvedId = match.id;
+      }
+    } catch (err) {
+      console.error("Failed to reverse-resolve numeric streamId:", err);
+    }
+  }
+
+  // Load custom channels to verify if it is custom or Vavoo
+  const config = loadChannelsConfig();
+  const added = config.addedChannels || [];
+  const customChan = added.find((c: any) => String(c.id) === String(resolvedId));
+
+  if (customChan) {
+    const isCustomUrlM3u8 = customChan.streamUrl.toLowerCase().includes(".m3u8") || 
+                            customChan.streamUrl.toLowerCase().includes("m3u");
+    if (isCustomUrlM3u8) {
+      return res.redirect(`/api/stream/${resolvedId}/index.m3u8`);
+    } else {
+      return res.redirect(`/api/stream-ts?url=${encodeURIComponent(customChan.streamUrl)}`);
+    }
+  }
+
+  // For standard Vavoo live streams, always redirect to the proxied index.m3u8 flow
+  // so that segments are parsed, rewritten with signature injection, and played smoothly.
+  res.redirect(`/api/stream/${resolvedId}/index.m3u8`);
+});
+
+// Xtream Codes XMLTV endpoint redirect
+app.get("/xmltv.php", (req, res) => {
+  res.redirect("/api/xmltv.xml");
+});
+
+// helper functions for XMLTV
+function escapeXml(unsafe: string): string {
+  return (unsafe || '').replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+}
+
+function toXmltvDate(isoString: string): string {
+  const d = new Date(isoString);
+  const Y = d.getUTCFullYear();
+  const M = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const D = String(d.getUTCDate()).padStart(2, "0");
+  const h = String(d.getUTCHours()).padStart(2, "0");
+  const m = String(d.getUTCMinutes()).padStart(2, "0");
+  const s = String(d.getUTCSeconds()).padStart(2, "0");
+  return `${Y}${M}${D}${h}${m}${s} +0000`;
+}
+
+// XMLTV (EPG) export Endpoint
+app.get("/api/xmltv.xml", async (req, res) => {
+  try {
+    const channels = await fetchAppChannels(false);
+    let xml = '<?xml version="1.0" encoding="utf-8" ?>\n';
+    xml += '<tv generator-info-name="Vavoo IPTV Relay">\n';
+
+    // 1. Channel entries
+    for (const c of channels) {
+      xml += `  <channel id="${c.id}">\n`;
+      xml += `    <display-name>${escapeXml(c.name)}</display-name>\n`;
+      if (c.logo) {
+        xml += `    <icon src="${escapeXml(c.logo)}" />\n`;
+      }
+      xml += `  </channel>\n`;
+    }
+
+    // 2. Programme entries
+    for (const c of channels) {
+      const epgInfo = getEpgForChannel(c.name);
+      if (epgInfo && epgInfo.all && epgInfo.all.length > 0) {
+        for (const p of epgInfo.all) {
+          xml += `  <programme start="${toXmltvDate(p.start)}" stop="${toXmltvDate(p.stop)}" channel="${c.id}">\n`;
+          xml += `    <title lang="fr">${escapeXml(p.title)}</title>\n`;
+          if (p.desc) {
+            xml += `    <desc lang="fr">${escapeXml(p.desc)}</desc>\n`;
+          }
+          if (p.category) {
+            xml += `    <category lang="fr">${escapeXml(p.category)}</category>\n`;
+          }
+          xml += `  </programme>\n`;
+        }
+      }
+    }
+
+    xml += '</tv>\n';
+
+    res.setHeader('Content-Type', 'application/xml');
+    res.setHeader('Content-Disposition', 'attachment; filename="xmltv.xml"');
+    res.send(xml);
+  } catch (err: any) {
+    res.status(500).send("Error generating XMLTV: " + err.message);
+  }
+});
+
+// M3U Playlist export Endpoint (often called MHub format / M3U)
+app.get("/api/playlist.m3u", async (req, res) => {
+  try {
+    const channels = await fetchAppChannels(false);
+    const host = req.get('host');
+    let m3u = `#EXTM3U x-tvg-url="${req.protocol}://${host}/api/xmltv.xml"\n`;
+    channels.forEach(c => {
+      m3u += `#EXTINF:-1 tvg-id="${c.id}" tvg-name="${c.name}" tvg-logo="${c.logo || ''}" tvg-chno="${c.p || ''}",${c.name}\n`;
+      // Direct stream link via local proxy
+      m3u += `${req.protocol}://${host}/api/stream/${c.id}/index.m3u8\n`;
+    });
+    res.setHeader('Content-Type', 'audio/x-mpegurl');
+    res.setHeader('Content-Disposition', 'attachment; filename="playlist.m3u"');
+    res.send(m3u);
+  } catch (err) {
+    res.status(500).send("Error generating M3U");
   }
 });
 

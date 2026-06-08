@@ -1,6 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import Hls from "hls.js";
+
+declare global {
+  interface Window {
+    cast: any;
+    __onGCastApiAvailable: (isAvailable: boolean) => void;
+  }
+}
+
 import { 
   Play, 
   Pause, 
@@ -13,7 +21,8 @@ import {
   Minimize, 
   Circle, 
   Settings, 
-  ExternalLink, 
+  ExternalLink,
+  PictureInPicture, 
   RotateCcw, 
   RotateCw, 
   ChevronLeft, 
@@ -276,8 +285,43 @@ export function HlsPlayer({
   }, []);
 
   useEffect(() => {
-    setIsPiPSupported(document.pictureInPictureEnabled);
-  }, []);
+    const video = videoRef.current;
+    if (!video) {
+      setIsPiPSupported(!!document.pictureInPictureEnabled);
+      return;
+    }
+
+    const standardPiP = !!(document.pictureInPictureEnabled || typeof video.requestPictureInPicture === "function");
+    const webkitPiP = !!((video as any).webkitSupportsPresentationMode && (video as any).webkitSupportsPresentationMode("picture-in-picture"));
+    setIsPiPSupported(standardPiP || webkitPiP);
+
+    const onEnterPiP = () => {
+      flashHUD("In-Picture Activé");
+    };
+
+    const onLeavePiP = () => {
+      flashHUD("In-Picture Désactivé");
+    };
+
+    video.addEventListener("enterpictureinpicture", onEnterPiP);
+    video.addEventListener("leavepictureinpicture", onLeavePiP);
+
+    const onWebkitPresentationModeChanged = () => {
+      if ((video as any).webkitPresentationMode === "picture-in-picture") {
+        flashHUD("In-Picture Activé");
+      } else {
+        flashHUD("In-Picture Désactivé");
+      }
+    };
+
+    video.addEventListener("webkitpresentationmodechanged", onWebkitPresentationModeChanged);
+
+    return () => {
+      video.removeEventListener("enterpictureinpicture", onEnterPiP);
+      video.removeEventListener("leavepictureinpicture", onLeavePiP);
+      video.removeEventListener("webkitpresentationmodechanged", onWebkitPresentationModeChanged);
+    };
+  }, [url]);
 
   // HLS stream binding & error handling
   useEffect(() => {
@@ -297,13 +341,13 @@ export function HlsPlayer({
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        maxMaxBufferLength: 10,              // Fresh buffer, avoids accumulating old packets
+        maxMaxBufferLength: 5,               // Reduced max buffer
         enableWorker: true,
         lowLatencyMode: true,
-        backBufferLength: 20,                // Light backbuffer
-        liveSyncDurationCount: 2,            // Aggressive 2-segment gap from live point to reduce delay
-        liveMaxLatencyDurationCount: 3.5,    // Sync if latency shifts past 3.5 segments
-        maxBufferLength: 8,                  // Tiny 8-second forward buffer for fast decoding and recovery
+        backBufferLength: 5,                // Further reduced backbuffer
+        liveSyncDurationCount: 1,            // Further reduced sync duration
+        liveMaxLatencyDurationCount: 1.5,    // Sync more aggressively
+        maxBufferLength: 3,                  // Tiny 3-second buffer
         maxBufferSize: 20 * 1024 * 1024,     // Caps memory use to prevent memory-induced pixelation or freeze
         highBufferWatchdogPeriod: 2,         // Heartbeat check for stuck playback buffer
         manifestLoadingMaxRetry: 4,          // Retry manifest loading up to 4 times
@@ -408,6 +452,27 @@ export function HlsPlayer({
     };
   }, [url]);
 
+  // Cast framework initialization
+  useEffect(() => {
+    const initializeCast = () => {
+      if (window.cast && window.cast.framework && (window as any).chrome) {
+        window.cast.framework.CastContext.getInstance().setOptions({
+          receiverApplicationId: (window as any).chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+          autoJoinPolicy: (window as any).chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED,
+        });
+      }
+    };
+
+    if (window.__onGCastApiAvailable) {
+      window.__onGCastApiAvailable(true);
+    } else {
+      window.__onGCastApiAvailable = (isAvailable) => {
+        if (isAvailable) initializeCast();
+      };
+    }
+    initializeCast();
+  }, []);
+
   // Dynamic stream stats poller with Live-Sync Auto-Correction (Anti-Décalage Active Engine)
   useEffect(() => {
     let intervalId: any;
@@ -415,7 +480,6 @@ export function HlsPlayer({
       intervalId = setInterval(() => {
         const video = videoRef.current;
         if (!video) return;
-
         let buf = 0;
         const current = video.currentTime;
         const buffered = video.buffered;
@@ -582,16 +646,23 @@ export function HlsPlayer({
 
   const togglePiP = async () => {
     const video = videoRef.current;
-    if (video && isPiPSupported) {
+    if (video) {
       try {
         if (document.pictureInPictureElement) {
           await document.exitPictureInPicture();
-          flashHUD("In-Picture Désactivé");
-        } else {
+        } else if (typeof video.requestPictureInPicture === "function") {
           await video.requestPictureInPicture();
-          flashHUD("In-Picture Activé");
+        } else if ((video as any).webkitSupportsPresentationMode && typeof (video as any).webkitSetPresentationMode === "function") {
+          const currentMode = (video as any).webkitPresentationMode;
+          const nextMode = currentMode === "picture-in-picture" ? "inline" : "picture-in-picture";
+          (video as any).webkitSetPresentationMode(nextMode);
+        } else {
+          flashHUD("PiP non supporté");
         }
-      } catch (err) {}
+      } catch (err) {
+        console.error("PiP error:", err);
+        flashHUD("In-Picture indisponible");
+      }
     }
   };
 
@@ -705,13 +776,13 @@ export function HlsPlayer({
     <div 
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className={`relative w-full aspect-video bg-neutral-950 overflow-hidden shadow-[0_24px_50px_rgba(0,0,0,0.8)] group border border-white/5 touch-none select-none transition-all ${isFullscreen ? "" : "rounded-[2rem] sm:rounded-[2.5rem]"}`}
+      className={`relative w-full aspect-video bg-[#050505] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,1)] group border border-white/5 touch-none select-none transition-all duration-500 ${isFullscreen ? "" : "rounded-xl sm:rounded-2xl"}`}
     >
       <video
         ref={videoRef}
         onClick={handleVideoTouch}
-        className="w-full h-full cursor-pointer"
-        style={{ objectFit: objectFit }}
+        className="w-full h-full cursor-pointer transition-opacity duration-700"
+        style={{ objectFit: objectFit, opacity: loading ? 0.3 : 1 }}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onWaiting={() => setLoading(true)}
@@ -721,6 +792,12 @@ export function HlsPlayer({
         playsInline
         x-webkit-airplay="allow"
       />
+
+      {/* Cinematic Top Vignette */}
+      <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/60 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      
+      {/* Cinematic Bottom Vignette */}
+      <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
       {/* Immersive Casting Screensaver Screen */}
       {isCasting && (
@@ -823,28 +900,28 @@ export function HlsPlayer({
                    <ChevronLeft size={20} />
                  </button>
                )}
-               <div className="flex flex-col">
-                  <div className="flex items-center gap-2.5">
-                     <h3 className="text-base md:text-xl font-bold text-white tracking-tight">{channelName}</h3>
-                     <span className="flex h-2 w-2 relative flex-shrink-0">
-                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                       <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                     </span>
-                  </div>
-                  {programTitle && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setInfoDrawerTab("program");
-                        setShowInfoPanel(!showInfoPanel);
-                      }}
-                      className="text-xs text-neutral-300/80 hover:text-white flex items-center gap-1 transition-colors mt-0.5 text-left font-medium"
-                    >
-                      <span>{programTitle}</span>
-                      <Info size={12} className="text-white/40" />
-                    </button>
-                  )}
-               </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm md:text-lg font-bold text-white tracking-tight leading-none">{channelName}</h3>
+                <div className="flex items-center gap-1 bg-red-500 px-1.5 py-0.5 rounded-[4px] shadow-lg shadow-red-500/20">
+                  <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
+                  <span className="text-[7px] font-black uppercase tracking-widest text-white">Live</span>
+                </div>
+              </div>
+              {programTitle && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setInfoDrawerTab("program");
+                    setShowInfoPanel(!showInfoPanel);
+                  }}
+                  className="text-[10px] text-white/50 hover:text-white flex items-center gap-1 transition-colors mt-1 text-left font-medium uppercase tracking-tight"
+                >
+                  <span>{programTitle}</span>
+                  <Info size={10} className="text-white/30" />
+                </button>
+              )}
+            </div>
             </div>
             
             <div className="flex items-center gap-2">
@@ -879,12 +956,7 @@ export function HlsPlayer({
               )}
               
               <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowCastMenu(!showCastMenu);
-                  setShowSettings(false);
-                }} 
-                className={`p-2.5 bg-white/5 border border-white/5 hover:bg-white/10 rounded-full transition-all duration-200 backdrop-blur-md relative ${isCasting ? "bg-[#1E88FF]/10 border-[#1E88FF]/30 text-white shadow-lg" : ""}`}
+                className={`p-2.5 bg-white/5 border border-white/5 hover:bg-white/10 rounded-full transition-all duration-200 backdrop-blur-md relative google-cast-launcher ${isCasting ? "bg-[#1E88FF]/10 border-[#1E88FF]/30 text-white shadow-lg" : ""}`}
                 title="Caster sur votre TV"
               >
                 <Cast 
@@ -947,7 +1019,7 @@ export function HlsPlayer({
                   
                   {programImage && (
                     <div className="w-full h-32 rounded-2xl overflow-hidden border border-white/5 bg-neutral-900 relative">
-                      <img src={programImage} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      <img src={programImage} loading="lazy" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 to-transparent" />
                     </div>
                   )}
@@ -1070,7 +1142,7 @@ export function HlsPlayer({
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute bottom-20 right-4 md:right-8 w-64 bg-neutral-950/95 backdrop-blur-3xl border border-white/10 rounded-3xl p-5 z-50 shadow-2xl space-y-4"
+            className="absolute bottom-20 right-4 md:right-8 w-64 bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl p-5 z-50 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
@@ -1133,7 +1205,7 @@ export function HlsPlayer({
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute bottom-20 right-4 md:right-16 w-80 bg-neutral-950/95 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] p-5 z-50 shadow-2xl flex flex-col space-y-4 max-h-[460px] overflow-y-auto"
+            className="absolute bottom-20 right-4 md:right-16 w-80 bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl p-5 z-50 shadow-2xl flex flex-col space-y-4 max-h-[460px] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Tab segments */}
@@ -1353,7 +1425,7 @@ export function HlsPlayer({
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3.5 bg-[#1E88FF] hover:bg-sky-500 text-white rounded-xl transition-all font-semibold"
+                  className="flex-1 py-3.5 bg-[#FF7900] hover:bg-orange-600 text-white rounded-xl transition-all font-semibold"
                 >
                   Ajouter
                 </button>
@@ -1403,76 +1475,82 @@ export function HlsPlayer({
             </div>
 
             <div className="flex items-center justify-between font-sans px-4 sm:px-6 pb-2">
-              {/* Play & Mute controls */}
-              <div className="flex items-center gap-4 sm:gap-6">
-                <button onClick={togglePlay} className="text-white hover:text-red-500 active:scale-95 transition-all duration-200">
-                  {isPlaying ? <Pause fill="currentColor" size={24} /> : <Play fill="currentColor" size={24} />}
+            {/* Play & Mute controls */}
+            <div className="flex items-center gap-4 sm:gap-6">
+              <button 
+                onClick={togglePlay} 
+                className="text-white hover:text-white active:scale-90 transition-all duration-200 p-1"
+              >
+                {isPlaying ? <Pause fill="currentColor" size={22} /> : <Play fill="currentColor" size={22} />}
+              </button>
+              
+              <div className="flex items-center gap-2 group/vol">
+                <button onClick={toggleMute} className="text-white/80 hover:text-white transition-colors duration-200">
+                   {isMuted || volume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
                 </button>
-                
-                <div className="flex items-center gap-2 group/vol hover:w-32 w-6 overflow-hidden transition-all duration-300">
-                  <button onClick={toggleMute} className="text-white hover:text-red-500 transition-colors duration-200">
-                     {isMuted || volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                  </button>
+                <div className="w-0 group-hover/vol:w-20 transition-all duration-300 overflow-hidden flex items-center h-full">
                   <input 
                     type="range" 
                     min="0" max="1" step="0.01" 
                     value={volume}
                     onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                    className="w-16 opacity-0 group-hover/vol:opacity-100 cursor-pointer accent-white h-[3px] bg-white/30 rounded-full transition-opacity duration-300 delay-100"
+                    className="w-20 cursor-pointer accent-white h-[2px] bg-white/20 rounded-full appearance-none ml-2"
                   />
                 </div>
-                
-                <div className="hidden sm:flex items-center gap-2 text-[11px] font-medium text-white/90 select-none ml-2">
-                   <span>{liveTiming.startStr}</span>
-                   <span className="text-white/40">/</span>
-                   <span>{liveTiming.endStr}</span>
-                   <span className="flex items-center gap-1.5 ml-3 font-bold text-white tracking-widest uppercase">
-                      <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />
-                      Direct
-                   </span>
-                </div>
               </div>
-
-              {/* Utility Tools */}
-              <div className="flex items-center gap-4 sm:gap-6">
-                <button 
-                  onClick={() => {
-                    setShowCastMenu(!showCastMenu);
-                    setShowSettings(false);
-                  }}
-                  className={`transition-colors duration-200 hover:scale-105 relative ${showCastMenu || isCasting ? "text-red-500" : "text-white hover:text-red-500"}`}
-                  title="Caster sur TV"
-                >
-                  <Cast size={20} />
-                  {isCasting && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-black animate-pulse" />
-                  )}
-                </button>
-
-                <button 
-                  onClick={() => {
-                    setShowSettings(!showSettings);
-                    setShowCastMenu(false);
-                  }} 
-                  className={`text-white hover:text-red-500 hover:rotate-12 transition-all duration-200 ${showSettings ? "text-red-500" : ""}`}
-                >
-                  <Settings size={20} />
-                </button>
-                
-                {isPiPSupported && (
-                  <button onClick={togglePiP} className="text-white hover:text-red-500 transition-all duration-200">
-                    <ExternalLink size={18} />
-                  </button>
-                )}
-                
-                <button onClick={toggleFullscreen} className="text-white hover:text-red-500 hover:scale-110 active:scale-95 transition-all duration-200 ml-1">
-                   {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-                </button>
+              
+              <div className="hidden sm:flex items-center gap-2 text-[10px] font-bold text-white/60 select-none tracking-tight">
+                 <span>{liveTiming.startStr}</span>
+                 <span className="text-white/20">/</span>
+                 <span className="text-white/30">{liveTiming.endStr}</span>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            {/* Utility Tools */}
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => {
+                  setShowCastMenu(!showCastMenu);
+                  setShowSettings(false);
+                }}
+                className={`transition-all duration-200 p-1.5 rounded-lg border flex items-center justify-center ${showCastMenu || isCasting ? "bg-white/10 border-white/20 text-white" : "border-transparent text-white/50 hover:text-white hover:bg-white/5"}`}
+                title="Caster sur TV"
+              >
+                <Cast size={18} />
+              </button>
+
+              <button 
+                onClick={() => {
+                  setShowSettings(!showSettings);
+                  setShowCastMenu(false);
+                }} 
+                className={`transition-all duration-200 p-1.5 rounded-lg border flex items-center justify-center ${showSettings ? "bg-white/10 border-white/20 text-white" : "border-transparent text-white/50 hover:text-white hover:bg-white/5"}`}
+              >
+                <Settings size={18} />
+              </button>
+              
+              {isPiPSupported && (
+                <button 
+                  onClick={togglePiP} 
+                  className="text-white/50 hover:text-white hover:scale-110 active:scale-95 transition-all duration-200 p-1.5"
+                  title="Picture-in-Picture (PiP)"
+                >
+                  <PictureInPicture size={18} />
+                </button>
+              )}
+              
+              <button 
+                onClick={toggleFullscreen} 
+                title="Plein écran"
+                className="text-white/50 hover:text-white hover:scale-110 active:scale-95 transition-all duration-200 p-1.5"
+              >
+                 {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
 
       {/* Beautiful High-contrast error state with automated retry trigger */}
       {error && (
@@ -1485,7 +1563,7 @@ export function HlsPlayer({
           <div className="flex gap-4">
             <button 
               onClick={handleRetry} 
-              className="px-6 py-2.5 bg-[#1E88FF] hover:bg-sky-500 text-white rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-2xl shadow-[#1E88FF]/30 active:scale-95"
+              className="px-6 py-2.5 bg-[#FF7900] hover:bg-orange-600 text-white rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-2xl shadow-[#FF7900]/30 active:scale-95"
             >
               Forcer la reconnexion
             </button>

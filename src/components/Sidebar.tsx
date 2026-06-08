@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Home, Tv, Search, Star, User, Trophy, Settings } from "lucide-react";
+import { Home, Tv, Search, Star, User, Trophy, Settings, Calendar, Plug } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;
@@ -12,17 +12,21 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     { id: "sports", label: "Sports", icon: Trophy },
     { id: "recherche", label: "Recherche", icon: Search },
     { id: "favoris", label: "Favoris", icon: Star },
+    { id: "integrations", label: "Intégrations", icon: Plug },
   ];
 
   return (
     <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 bg-[#0B0B0B] border-r border-[#151515] p-4 z-50">
-      <div className="flex items-center gap-3 px-2 mb-8">
-        <div className="w-10 h-10 bg-linear-to-br from-[#1E88FF] to-blue-800 rounded-xl flex items-center justify-center">
-          <Tv className="text-white" size={20} strokeWidth={2.5} />
-        </div>
-        <div>
-          <h1 className="text-lg font-black tracking-tighter uppercase leading-none text-white">TV PRO</h1>
-          <p className="text-[8px] font-black text-[#1E88FF]/80 uppercase tracking-[0.2em] mt-1">Premium Vision</p>
+      <div className="flex items-center gap-3 px-2 mb-8" onClick={() => onTabChange("accueil")}>
+        <img 
+          src="/pwa-192x192.svg" 
+          alt="Flux Tv Pro Logo" 
+          className="w-10 h-10 object-contain rounded-xl hover:scale-105 transition-transform duration-300 cursor-pointer" 
+          referrerPolicy="no-referrer"
+        />
+        <div className="cursor-pointer">
+          <h1 className="text-lg font-black tracking-tighter uppercase leading-none text-white">Flux Tv Pro</h1>
+          <p className="text-[8px] font-black text-[#FF7900]/80 uppercase tracking-[0.2em] mt-1">Premium Vision</p>
         </div>
       </div>
 
@@ -39,13 +43,13 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               onClick={() => onTabChange(tab.id)}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
                 isActive 
-                  ? "bg-[#151515] text-[#1E88FF]" 
+                  ? "bg-[#151515] text-[#FF7900]" 
                   : "text-[#A0A0A0] hover:text-white"
               }`}
             >
               <Icon 
                 size={18} 
-                className={`${isActive ? "text-[#1E88FF]" : "group-hover:translate-x-0.5"} transition-all duration-300`} 
+                className={`${isActive ? "text-[#FF7900]" : "group-hover:translate-x-0.5"} transition-all duration-300`} 
                 strokeWidth={isActive ? 3 : 2}
               />
               <span className={`text-xs font-bold tracking-tight uppercase ${isActive ? "text-white" : "group-hover:translate-x-0.5"} transition-all duration-300`}>
@@ -58,7 +62,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
 
       <div className="mt-auto space-y-3">
         <div className="bg-[#151515] p-4 rounded-xl border border-white/5 relative overflow-hidden group">
-          <p className="text-[9px] font-bold text-[#1E88FF] uppercase tracking-widest mb-1.5">Abonnement</p>
+          <p className="text-[9px] font-bold text-[#FF7900] uppercase tracking-widest mb-1.5">Abonnement</p>
           <h4 className="text-xs font-black text-white uppercase tracking-tight mb-0.5">PREMIUM 4K HDR</h4>
           <p className="text-[8px] text-[#A0A0A0] font-bold uppercase tracking-widest">Accès illimité</p>
           <button className="mt-3 w-full py-2 bg-white text-black rounded-lg text-[8px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all">
@@ -71,10 +75,10 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
           className="w-full text-left flex items-center gap-3 px-2 py-2.5 border-t border-[#151515] hover:bg-[#151515] rounded-xl transition-all group/sidebarprofile"
         >
            <div className="w-8 h-8 bg-brand-500 text-white rounded-full border border-brand-500/20 group-hover/sidebarprofile:border-brand-500/50 flex items-center justify-center text-[10px] font-black shadow-lg shadow-brand-500/10">
-             DD
+             U
            </div>
            <div className="flex-grow">
-             <p className="text-[10px] font-bold text-white leading-none group-hover/sidebarprofile:text-brand-500 transition-colors">Denis Dewulf</p>
+             <p className="text-[10px] font-bold text-white leading-none group-hover/sidebarprofile:text-brand-500 transition-colors">Utilisateur</p>
              <p className="text-[7px] text-[#A0A0A0] font-bold uppercase tracking-widest mt-0.5">Abonné Premium</p>
            </div>
         </button>

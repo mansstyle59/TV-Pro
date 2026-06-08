@@ -1,0 +1,21 @@
+{
+  "entities": {
+    "Favorite": {
+      "title": "Favorite Channel",
+      "description": "A channel favorited by a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "channelId": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "channelId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/favorites/{channelId}": {
+      "schema": { "$ref": "#/entities/Favorite" },
+      "description": "User specific favorite channels"
+    }
+  }
+}
