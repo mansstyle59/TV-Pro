@@ -3,12 +3,6 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { Readable } from "stream";
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, setDoc, deleteDoc, getDocs, collection } from "firebase/firestore";
-import firebaseConfig from "./firebase-applet-config.json";
-
-const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(firebaseApp, firebaseConfig.firestoreDatabaseId);
 
 interface Channel {
   country: string;
@@ -34,36 +28,15 @@ app.use((req, res, next) => {
 app.use(express.json()); // Enable JSON body parsing for admin endpoints
 const PORT = 3000;
 
-// Favorites routes
-app.get("/api/favorites/:userId", async (req, res) => {
-    try {
-        const userId = req.params.userId;
-        const favsRef = collection(db, "users", userId, "favorites");
-        const snapshot = await getDocs(favsRef);
-        res.json(snapshot.docs.map(d => d.data().channelId));
-    } catch (err: any) {
-        res.status(500).json({ error: err.message });
-    }
+// Favorites routes (handled locally on client)
+app.get("/api/favorites/:userId", (req, res) => {
+  res.json([]);
 });
-app.post("/api/favorites", async (req, res) => {
-    try {
-        const { userId, channelId } = req.body;
-        const favRef = doc(db, "users", userId, "favorites", String(channelId));
-        await setDoc(favRef, { userId, channelId, createdAt: new Date().toISOString() });
-        res.json({ success: true });
-    } catch (err: any) {
-        res.status(500).json({ error: err.message });
-    }
+app.post("/api/favorites", (req, res) => {
+  res.json({ success: true });
 });
-app.delete("/api/favorites/:userId/:channelId", async (req, res) => {
-    try {
-        const { userId, channelId } = req.params;
-        const favRef = doc(db, "users", userId, "favorites", String(channelId));
-        await deleteDoc(favRef);
-        res.json({ success: true });
-    } catch (err: any) {
-        res.status(500).json({ error: err.message });
-    }
+app.delete("/api/favorites/:userId/:channelId", (req, res) => {
+  res.json({ success: true });
 });
 
 // Admin Channel overrides

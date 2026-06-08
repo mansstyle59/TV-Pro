@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { Lock } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase'; // Ensure this exists
 
 interface AccessCodeGateProps {
   onAuthorized: () => void;
@@ -17,41 +15,23 @@ export function AccessCodeGate({ onAuthorized }: AccessCodeGateProps) {
     setLoading(true);
     setError('');
 
-    try {
-      const docRef = doc(db, 'config', 'access');
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if ((data.adminCode && data.adminCode === code) || code === '1606') {
-          localStorage.setItem('isAuthorized', 'true');
-          localStorage.setItem('isAdmin', 'true');
-          onAuthorized();
-        } else if (data.userCode && data.userCode === code) {
-          localStorage.setItem('isAuthorized', 'true');
-          localStorage.setItem('isAdmin', 'false');
-          onAuthorized();
-        } else if (data.code === code) { // Fallback
-          localStorage.setItem('isAuthorized', 'true');
-          localStorage.setItem('isAdmin', 'false');
-          onAuthorized();
-        } else {
-          setError('Code incorrect');
-        }
+    // Simulate an instant/fluid verification delay for native look and feel
+    setTimeout(() => {
+      const trimmedCode = code.trim();
+      
+      if (trimmedCode === '1606') {
+        localStorage.setItem('isAuthorized', 'true');
+        localStorage.setItem('isAdmin', 'true');
+        onAuthorized();
+      } else if (trimmedCode === '1234' || trimmedCode === '2026') {
+        localStorage.setItem('isAuthorized', 'true');
+        localStorage.setItem('isAdmin', 'false');
+        onAuthorized();
       } else {
-        // Fallback for first time admin setup or error if not set
-        setError('Accès non configuré');
+        setError('Code incorrect');
       }
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === 'permission-denied') {
-         setError('Erreur de configuration (Permissions refusées). Contactez l\'admin.');
-      } else {
-         setError('Erreur lors de la vérification');
-      }
-    } finally {
       setLoading(false);
-    }
+    }, 450);
   };
 
   return (

@@ -49,10 +49,8 @@ import { ChannelAdmin } from "./components/ChannelAdmin";
 import { EpgTimeline } from "./components/EpgTimeline";
 import { SplashScreen } from "./components/SplashScreen";
 import { SportsCenter } from "./components/SportsCenter";
-import { AuthComponent } from "./components/AuthComponent";
 import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
-import { useFirebase } from "./context/FirebaseProvider";
 
 import { Integrations } from "./components/Integrations";
 
@@ -351,18 +349,13 @@ function getChannelSortWeight(c: { name: string; category: string; core: string;
 
 
 export default function App() {
-  const { user, loading: firebaseLoading } = useFirebase();
   const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('isAuthorized') === 'true');
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
   
-  // Auth state - simplified to use Firebase
-  const isAuthenticated = !!user;
-  const userEmail = user?.email || "";
-  const userName = user?.displayName || user?.email?.split('@')[0] || "Utilisateur";
-  
-  const setIsAuthenticated = (val: boolean) => {};
-  const setUserEmail = (val: string) => {};
-  const setUserName = (val: string) => {};
+  // Auth state - completely local state
+  const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
+  const [userEmail, setUserEmail] = useState(() => localStorage.getItem('userEmail') || "");
+  const [userName, setUserName] = useState(() => localStorage.getItem('userName') || "Utilisateur");
   
   const [registeredUsers, setRegisteredUsers] = useState<RegisteredUser[]>(() => {
     const saved = localStorage.getItem("registeredUsers");
@@ -409,18 +402,11 @@ export default function App() {
   const [failedChannels, setFailedChannels] = useState<Set<number>>(new Set());
   const [favorites, setFavorites] = useState<number[]>([]);
 
-  // Load favorites from backend or localStorage
+  // Load favorites from localStorage
   useEffect(() => {
-    if (user) {
-        fetch(`/api/favorites/${user.uid}`)
-            .then(r => r.json())
-            .then(setFavorites)
-            .catch(e => console.error("Error loading favorites:", e));
-    } else {
-        const saved = localStorage.getItem("favorites");
-        if (saved) setFavorites(JSON.parse(saved));
-    }
-  }, [user]);
+    const saved = localStorage.getItem("favorites");
+    if (saved) setFavorites(JSON.parse(saved));
+  }, []);
   const [favoriteTeams, setFavoriteTeams] = useState<string[]>(() => {
     const saved = localStorage.getItem("favoriteTeams");
     return saved ? JSON.parse(saved) : ["France", "Belgique"];
@@ -445,12 +431,10 @@ export default function App() {
   const [prefetchedEpg, setPrefetchedEpg] = useState<Record<string, any>>({});
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
 
-  // Persist favorites when user is not logged in
+  // Persist favorites to localStorage
   useEffect(() => {
-    if (!user) {
-        localStorage.setItem("favorites", JSON.stringify(favorites));
-    }
-  }, [favorites, user]);
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+  }, [favorites]);
 
   useEffect(() => {
     localStorage.setItem("favoriteTeams", JSON.stringify(favoriteTeams));
@@ -548,18 +532,6 @@ export default function App() {
     setFavorites(prev => 
       isFav ? prev.filter(f => f !== id) : [...prev, id]
     );
-
-    if (user) {
-        if (isFav) {
-            await fetch(`/api/favorites/${user.uid}/${id}`, { method: 'DELETE' });
-        } else {
-            await fetch('/api/favorites', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId: user.uid, channelId: id })
-            });
-        }
-    }
   };
 
   const toggleFavoriteTeam = (teamName: string) => {
