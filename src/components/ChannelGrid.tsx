@@ -1,12 +1,14 @@
 import React from "react";
 import { Channel } from "../types";
 import { motion } from "motion/react";
+import { Info } from "lucide-react";
 
 interface ChannelGridProps {
   title: string;
   channels: Channel[];
   onChannelSelect: (channel: Channel) => void;
   selectedChannelId?: number;
+  onShowInfo?: (channel: Channel) => void;
 }
 
 const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) => {
@@ -43,7 +45,7 @@ const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) =>
   );
 };
 
-export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onChannelSelect, selectedChannelId }) => {
+export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onChannelSelect, selectedChannelId, onShowInfo }) => {
   if (channels.length === 0) return null;
 
   return (
@@ -62,13 +64,21 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
         {channels.map((channel, index) => {
           const isSelected = selectedChannelId === channel.id;
           return (
-            <motion.button
+            <motion.div
               key={channel.id}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.01 }}
               onClick={() => onChannelSelect(channel)}
-              className={`aspect-square relative group bg-neutral-900 border overflow-hidden rounded-xl transition-all flex flex-col items-center justify-center p-3 sm:p-5 hover:scale-110 active:scale-95 duration-500 shadow-xl ${
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onChannelSelect(channel);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              className={`cursor-pointer aspect-square relative group bg-neutral-900 border overflow-hidden rounded-xl transition-all flex flex-col items-center justify-center p-3 sm:p-5 hover:scale-110 active:scale-95 duration-500 shadow-xl outline-hidden ${
                 isSelected 
                   ? "border-brand-500 ring-4 ring-brand-500/10 shadow-2xl shadow-brand-500/20" 
                   : "border-white/5 hover:border-white/20"
@@ -81,6 +91,21 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
                  <LogoImage logo={channel.logo} name={channel.name} />
               </div>
               
+              {/* Technical Info Button 'i' */}
+              {onShowInfo && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onShowInfo(channel);
+                  }}
+                  className="absolute top-1 left-1 sm:top-2 sm:left-2 z-30 p-1 bg-neutral-950/80 hover:bg-[#FF7900] text-white rounded-lg border border-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100 shadow-xl"
+                  title="Détails techniques du flux"
+                >
+                  <Info size={10} className="sm:w-3 sm:h-3 text-white" />
+                </button>
+              )}
+
               {/* Hover Badge - Glassmorphic */}
               <div className="absolute inset-x-0 bottom-2 px-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 duration-500 z-20">
                  <div className="bg-black/80 backdrop-blur-xl py-1 rounded-full text-center border border-white/10 shadow-2xl">
@@ -104,7 +129,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               {isSelected && (
                 <div className="absolute top-3 right-3 w-2 h-2 bg-brand-500 rounded-full shadow-[0_0_12px_#0ea5e9] animate-pulse z-30" />
               )}
-            </motion.button>
+            </motion.div>
           );
         })}
       </div>

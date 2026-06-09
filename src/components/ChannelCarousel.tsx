@@ -10,9 +10,10 @@ interface ChannelCarouselProps {
   onChannelSelect: (channel: Channel) => void;
   onMouseEnter?: (channel: Channel) => void;
   onSeeAll?: () => void;
+  onShowInfo?: (channel: Channel) => void;
 }
 
-export const ChannelCarousel: React.FC<ChannelCarouselProps> = ({ title, channels, selectedChannelId, onChannelSelect, onMouseEnter, onSeeAll }) => {
+export const ChannelCarousel: React.FC<ChannelCarouselProps> = ({ title, channels, selectedChannelId, onChannelSelect, onMouseEnter, onSeeAll, onShowInfo }) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = useState(false);
   const [showRightArrow, setShowRightArrow] = useState(true);
@@ -109,6 +110,7 @@ export const ChannelCarousel: React.FC<ChannelCarouselProps> = ({ title, channel
                  onMouseEnter={onMouseEnter}
                  isPlaying={selectedChannelId === channel.id}
                  className="w-44 sm:w-60"
+                 onShowInfo={onShowInfo}
                />
             </div>
           ))}

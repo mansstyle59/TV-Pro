@@ -48,11 +48,11 @@ import { ChannelGrid } from "./components/ChannelGrid";
 import { ChannelAdmin } from "./components/ChannelAdmin";
 import { EpgTimeline } from "./components/EpgTimeline";
 import { SplashScreen } from "./components/SplashScreen";
+import { StreamInfoModal } from "./components/StreamInfoModal";
 import { SportsCenter } from "./components/SportsCenter";
 import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
 import { Integrations } from "./components/Integrations";
-import { Multiplex } from "./components/Multiplex";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -394,10 +394,13 @@ export default function App() {
   const [homeCategory, setHomeCategory] = useState("Tous");
   const [qualityFilter, setQualityFilter] = useState<"all" | "hd">("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [gridSearchTerm, setGridSearchTerm] = useState("");
+  const [selectedGridCategory, setSelectedGridCategory] = useState("Tous");
   const [activeTab, setActiveTab] = useState("accueil");
   const [showFullEpg, setShowFullEpg] = useState(false);
   const [sportsSubTab, setSportsSubTab] = useState<string>("program");
   const [selectedChannel, setSelectedChannel] = useState<DisplayChannel | null>(null);
+  const [technicalInfoChannel, setTechnicalInfoChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedChannels, setFailedChannels] = useState<Set<number>>(new Set());
   const [favorites, setFavorites] = useState<number[]>([]);
@@ -922,6 +925,45 @@ export default function App() {
   const favoritesList = useMemo(() => {
     return categorisedList.filter(c => favorites.includes(c.id));
   }, [categorisedList, favorites]);
+
+  const gridCategories = useMemo(() => {
+    const cats = Array.from(new Set(categorisedList.map(c => c.category).filter(Boolean)));
+    const premiumOrder = [
+      "TNT & Généralistes",
+      "Sports",
+      "Cinéma & Séries",
+      "Documentaires",
+      "Actualités",
+      "Belgique 🇧🇪",
+      "Jeunesse",
+      "Musique",
+      "À La Carte",
+      "Divertissement"
+    ];
+    return ["Tous", ...cats.sort((a, b) => {
+      const iA = premiumOrder.indexOf(a);
+      const iB = premiumOrder.indexOf(b);
+      const valA = iA === -1 ? 999 : iA;
+      const valB = iB === -1 ? 999 : iB;
+      return valA - valB;
+    })];
+  }, [categorisedList]);
+
+  const filteredGridChannels = useMemo(() => {
+    let list = dedupeByCore(categorisedList);
+    if (selectedGridCategory !== "Tous") {
+      list = list.filter(ch => ch.category === selectedGridCategory);
+    }
+    if (gridSearchTerm) {
+      const term = gridSearchTerm.toLowerCase();
+      list = list.filter(ch => 
+        ch.name.toLowerCase().includes(term) || 
+        ch.core.toLowerCase().includes(term) || 
+        (ch.epg?.current?.title && ch.epg.current.title.toLowerCase().includes(term))
+      );
+    }
+    return list;
+  }, [categorisedList, selectedGridCategory, gridSearchTerm]);
 
   // Sync selectedChannel with the latest data from list (important after refreshes)
   useEffect(() => {
@@ -2214,6 +2256,7 @@ export default function App() {
                         onChannelSelect={handleChannelSelect}
                         onMouseEnter={(channel) => prefetchEpg(channel.name)}
                         onSeeAll={() => handleSeeAll(category)}
+                        onShowInfo={setTechnicalInfoChannel}
                       />
                     </motion.div>
                   ))}
@@ -2371,6 +2414,7 @@ export default function App() {
                                 onClick={handleChannelSelect} 
                                 isPlaying={selectedChannel?.id === channel.id}
                                 className="w-full"
+                                onShowInfo={setTechnicalInfoChannel}
                              />
                           </motion.div>
                         );
@@ -2531,6 +2575,7 @@ export default function App() {
                        channels={favoritesList} 
                        onChannelSelect={handleChannelSelect}
                        selectedChannelId={selectedChannel?.id}
+                       onShowInfo={setTechnicalInfoChannel}
                     />
                   ) : (
                     <div className="py-20 flex flex-col items-center justify-center text-center space-y-4 rounded-[2rem] border border-[#151515] bg-[#0B0B0B]">
@@ -2545,10 +2590,99 @@ export default function App() {
               </div>
             </div>
 
-            {/* INTEGRATIONS TAB */}
-            <div className={activeTab === "multiscreen" ? "animate-tab-fade-in block" : "hidden"}>
-              <div className="max-w-7xl mx-auto px-6 pb-40 pt-12">
-                <Multiplex channels={categorisedList} />
+            {/* CHAINE GRILLE TAB */}
+            <div className={activeTab === "chaines" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 pb-40 pt-8 sm:pt-12 space-y-8 sm:space-y-12">
+                
+                {/* Header */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#FF7900] animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FF7900]">Bouquet Premium</span>
+                    </div>
+                    <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white">
+                      Grille des <span className="text-[#FF7900]">Chaînes</span>
+                    </h2>
+                    <p className="text-[10px] font-bold text-neutral-400 uppercase tracking-widest mt-1">
+                      Accédez instantanément à vos {dedupeByCore(categorisedList).length} chaînes Haute Définition
+                    </p>
+                  </div>
+
+                  {/* Quick Search and Quality Filter inside the tab */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                    {/* Search Input */}
+                    <div className="relative">
+                      <input
+                        type="search"
+                        placeholder="Rechercher une chaîne..."
+                        value={gridSearchTerm}
+                        onChange={(e) => setGridSearchTerm(e.target.value)}
+                        className="w-full sm:w-64 pl-10 pr-4 py-3 bg-[#111111] border border-white/5 focus:border-[#FF7900]/30 rounded-xl text-xs text-white placeholder-neutral-500 uppercase tracking-wide focus:outline-none transition-all shadow-inner"
+                      />
+                      <Search className="absolute left-3.5 top-3.5 text-neutral-500 w-4 h-4" />
+                    </div>
+
+                    {/* Filter count indicator */}
+                    <div className="px-4 py-3 bg-[#111111] rounded-xl border border-white/5 flex items-center gap-2">
+                      <span className="text-[9px] font-black text-neutral-400 uppercase tracking-widest">Résultats</span>
+                      <span className="text-xs font-black text-[#FF7900] font-mono bg-[#FF7900]/10 px-2 py-0.5 rounded-md">
+                        {filteredGridChannels.length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category Pills Slider/Container */}
+                <div className="border-b border-white/5 pb-4">
+                  <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
+                    {gridCategories.map((cat) => {
+                      const isSelected = selectedGridCategory === cat;
+                      const count = cat === "Tous" 
+                        ? dedupeByCore(categorisedList).length 
+                        : dedupeByCore(categorisedList).filter(ch => ch.category === cat).length;
+                      
+                      return (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedGridCategory(cat)}
+                          className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 whitespace-nowrap transition-all duration-300 border cursor-pointer active:scale-95 ${
+                            isSelected 
+                              ? "bg-[#FF7900] text-white border-transparent shadow-lg shadow-[#FF7900]/15" 
+                              : "bg-[#111111] text-neutral-400 border-white/5 hover:text-white hover:bg-neutral-900"
+                          }`}
+                        >
+                          <span>{cat}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono leading-none ${
+                            isSelected ? "bg-white/20 text-white" : "bg-neutral-850 text-neutral-500"
+                          }`}>
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Main TV Channels Grid */}
+                {filteredGridChannels.length > 0 ? (
+                  <ChannelGrid
+                    title={`${selectedGridCategory === "Tous" ? "Toutes les chaînes" : selectedGridCategory}`}
+                    channels={filteredGridChannels}
+                    onChannelSelect={handleChannelSelect}
+                    selectedChannelId={selectedChannel?.id}
+                    onShowInfo={setTechnicalInfoChannel}
+                  />
+                ) : (
+                  <div className="py-24 flex flex-col items-center justify-center text-center space-y-4 rounded-3xl border border-white/5 bg-[#0B0B0B]">
+                    <Search size={48} className="text-neutral-800 animate-pulse" />
+                    <div>
+                      <p className="text-lg font-bold text-white uppercase tracking-tight">Aucune chaîne trouvée</p>
+                      <p className="text-[10px] uppercase tracking-widest text-neutral-500 mt-1">Essayer d'ajuster vos filtres ou votre recherche</p>
+                    </div>
+                  </div>
+                )}
+
               </div>
             </div>
 
@@ -2819,7 +2953,7 @@ export default function App() {
             </div>
 
             {/* UNKNOWN TAB FALLBACK */}
-            <div className={!["accueil", "recherche", "sports", "favoris", "admin", "profil"].includes(activeTab) ? "animate-tab-fade-in block" : "hidden"}>
+            <div className={!["accueil", "chaines", "recherche", "sports", "favoris", "admin", "profil", "integrations"].includes(activeTab) ? "animate-tab-fade-in block" : "hidden"}>
               <div className="flex flex-col items-center justify-center p-20 space-y-4">
                  <HelpCircle size={48} className="text-neutral-800" />
                  <p className="text-neutral-500 font-black uppercase tracking-widest text-xs tracking-tight">Section en développement</p>
@@ -2850,6 +2984,12 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Stream Specifications Overlay Modal */}
+      <StreamInfoModal 
+        channel={technicalInfoChannel} 
+        onClose={() => setTechnicalInfoChannel(null)} 
+      />
 
       {/* Floating Bottom Nav */}
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />

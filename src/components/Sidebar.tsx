@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Home, Tv, Search, Star, User, Trophy, Settings, Calendar, Plug, LayoutGrid } from "lucide-react";
+import { Home, Tv, Search, Star, User, Trophy, Settings, Calendar, Plug } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;
@@ -9,8 +9,8 @@ interface SidebarProps {
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const tabs = [
     { id: "accueil", label: "Accueil", icon: Home },
+    { id: "chaines", label: "Chaînes TV", icon: Tv },
     { id: "sports", label: "Sports", icon: Trophy },
-    { id: "multiscreen", label: "Multi-Écrans", icon: LayoutGrid },
     { id: "recherche", label: "Recherche", icon: Search },
     { id: "favoris", label: "Favoris", icon: Star },
     { id: "integrations", label: "Intégrations", icon: Plug },

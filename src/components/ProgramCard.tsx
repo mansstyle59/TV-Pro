@@ -1,5 +1,6 @@
 import React from "react";
 import { motion } from "motion/react";
+import { Info } from "lucide-react";
 import { Channel } from "../types";
 import { formatEpgTime, getEpgProgress } from "../utils/epgUtils";
 
@@ -9,6 +10,7 @@ export interface ProgramCardProps {
   onMouseEnter?: (channel: Channel) => void;
   isPlaying?: boolean;
   className?: string;
+  onShowInfo?: (channel: Channel) => void;
 }
 
 const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) => {
@@ -44,7 +46,7 @@ const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) =>
   );
 };
 
-export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMouseEnter, isPlaying, className }) => {
+export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMouseEnter, isPlaying, className, onShowInfo }) => {
   const currentProgram = channel.epg?.current;
   const progress = currentProgram ? getEpgProgress(currentProgram.start, currentProgram.stop) : 0;
 
@@ -110,6 +112,21 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMo
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="ml-1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
            </div>
         </div>
+
+        {/* Technical Info Button 'i' */}
+        {onShowInfo && (
+           <button
+             onClick={(e) => {
+               e.stopPropagation();
+               e.preventDefault();
+               onShowInfo(channel);
+             }}
+             className="absolute bottom-3 right-3 z-30 p-1.5 sm:p-2 bg-neutral-950/80 hover:bg-[#FF7900] text-white rounded-xl border border-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100 shadow-xl"
+             title="Détails techniques du flux"
+           >
+             <Info size={12} className="text-white" />
+           </button>
+        )}
 
         {/* Progress Bar - Thicker and Glowy */}
         {currentProgram && progress > 0 && (
