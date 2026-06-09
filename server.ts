@@ -857,6 +857,34 @@ function getEpgForChannel(channelName: string) {
   return null;
 }
 
+// Look up logo for a single channel name
+app.get("/api/logo-lookup", (req, res) => {
+  const name = req.query.name as string;
+  if (!name) {
+    return res.status(400).json({ error: "Missing name parameter" });
+  }
+  const logo = getLogoForChannel(name);
+  res.json({ logo: logo || null });
+});
+
+// Look up logos for multiple channel names in batch
+app.post("/api/logo-lookup-batch", (req, res) => {
+  const names = req.body.names;
+  if (!Array.isArray(names)) {
+    return res.status(400).json({ error: "names must be an array of strings" });
+  }
+  const results: Record<string, string> = {};
+  for (const name of names) {
+    if (typeof name === "string" && name.trim()) {
+      const logo = getLogoForChannel(name);
+      if (logo) {
+        results[name] = logo;
+      }
+    }
+  }
+  res.json({ logos: results });
+});
+
 // REST API endpoint to get French channels with embedded current/next TV programmes
 app.get("/api/channels", async (req, res) => {
   const force = req.query.force === "true";

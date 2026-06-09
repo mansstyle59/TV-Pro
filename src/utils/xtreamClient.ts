@@ -1,4 +1,5 @@
 import { Channel, EpgProgramme } from "../types";
+import { getApiUrl } from "./urlHelper";
 
 export interface XtreamAccountInfo {
   username: string;
@@ -148,7 +149,7 @@ export async function fetchXtreamChannels(): Promise<Channel[]> {
     }
     
     // 3. Map Xtream channel scheme to React internal Channel scheme
-    return data.map((item: any) => {
+    const mapped: Channel[] = data.map((item: any) => {
       const streamId = item.stream_id;
       const originalName = item.name || "Chaîne Sans Nom";
       
@@ -188,6 +189,48 @@ export async function fetchXtreamChannels(): Promise<Channel[]> {
         groupTitle: categoryName
       };
     });
+
+    // 4. Batch query back-end logos from github/iptv-org cache to enrich empty or poor quality logos
+    try {
+      const namesToLookup = Array.from(
+        new Set(
+          mapped
+            .filter(ch => !ch.logo || ch.logo.includes("placeholder") || ch.logo === "" || ch.logo.trim() === "")
+            .map(ch => ch.name)
+        )
+      );
+
+      if (namesToLookup.length > 0) {
+        console.log(`[Xtream Logo Enricher] Attempting batch logo lookup on ${namesToLookup.length} channels from GitHub cache...`);
+        const logoLookupUrl = getApiUrl("api/logo-lookup-batch");
+        const logoResp = await fetch(logoLookupUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ names: namesToLookup })
+        });
+        
+        if (logoResp.ok) {
+          const logoData = await logoResp.json();
+          if (logoData && logoData.logos) {
+            let enrichedCount = 0;
+            mapped.forEach(ch => {
+              const matchedLogo = logoData.logos[ch.name];
+              if ((!ch.logo || ch.logo.includes("placeholder") || ch.logo === "") && matchedLogo) {
+                ch.logo = matchedLogo;
+                enrichedCount++;
+              }
+            });
+            console.log(`[Xtream Logo Enricher] Successfully enriched ${enrichedCount} channels with high-quality logos from GitHub.`);
+          }
+        }
+      }
+    } catch (logoErr) {
+      console.warn("[Xtream Logo Enricher] Batch logo lookup failed:", logoErr);
+    }
+
+    return mapped;
   } catch (err) {
     console.error("Failed loading Xtream streams:", err);
     throw err;
