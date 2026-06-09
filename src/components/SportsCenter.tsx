@@ -20,6 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ChannelLogo } from './ChannelLogo';
 
 interface EpgProgramme {
   title: string;
@@ -409,18 +410,11 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                           {/* Channel Logo & Badging info */}
                           <div className="flex items-start justify-between">
                             <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-white/5 flex items-center justify-center p-1.5 group-hover:scale-105 transition-transform duration-300 relative overflow-hidden shrink-0">
-                              {channel.logo ? (
-                                <img 
-                                  src={channel.logo} 
-                                  alt={channel.name} 
-                                  className="w-full h-full object-contain filter brightness-95"
-                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                />
-                              ) : null}
-                              {/* Overlay inside logo box if empty */}
-                              {!channel.logo && (
-                                <Radio size={20} className="text-neutral-500" />
-                              )}
+                              <ChannelLogo 
+                                logo={channel.logo} 
+                                name={channel.name} 
+                                className="w-full h-full object-contain filter brightness-95" 
+                              />
                             </div>
 
                             <div className="flex flex-col items-end gap-1 shrink-0">

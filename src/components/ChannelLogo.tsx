@@ -41,8 +41,20 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
     return clean.slice(0, 3).toUpperCase();
   }, [name]);
 
+  // Normalize iptv-org logos to the new working path
+  const parsedLogo = React.useMemo(() => {
+    if (!logo) return logo;
+    let cleanLogo = logo.trim();
+    if (cleanLogo.includes("iptv-org") && (cleanLogo.includes("/images/channels/") || cleanLogo.includes("/images/logos/"))) {
+      const parts = cleanLogo.split("/");
+      const filename = parts[parts.length - 1];
+      return `https://iptv-org.github.io/logos/logos/${filename}`;
+    }
+    return cleanLogo;
+  }, [logo]);
+
   // If there's an error loading or no logo provided, return premium stylized text initial
-  if (error || !logo || logo.trim() === "") {
+  if (error || !parsedLogo || parsedLogo.trim() === "") {
     return (
       <span 
         className="text-[10px] sm:text-xs font-black text-white/90 bg-gradient-to-br from-[#1C1C1E] to-[#0A0A0A] border border-white/10 rounded-xl w-full h-full flex items-center justify-center uppercase select-none p-1 shadow-inner text-center font-sans tracking-wider"
@@ -55,7 +67,7 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
 
   return (
     <img 
-      src={logo} 
+      src={parsedLogo} 
       alt={name}
       loading="lazy"
       className={className}
