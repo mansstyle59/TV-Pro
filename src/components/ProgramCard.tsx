@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { Info } from "lucide-react";
 import { Channel } from "../types";
 import { formatEpgTime, getEpgProgress } from "../utils/epgUtils";
+import { ChannelLogo } from "./ChannelLogo";
 
 export interface ProgramCardProps {
   channel: Channel;
@@ -12,39 +13,6 @@ export interface ProgramCardProps {
   className?: string;
   onShowInfo?: (channel: Channel) => void;
 }
-
-const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) => {
-  const [error, setError] = React.useState(false);
-
-  const initials = React.useMemo(() => {
-    return name
-      .replace(/[^a-zA-Z0-9 ]/g, "")
-      .split(" ")
-      .map(p => p[0])
-      .join("")
-      .slice(0, 3)
-      .toUpperCase() || name.slice(0, 2).toUpperCase();
-  }, [name]);
-  
-  if (error || !logo) {
-    return (
-      <span className="text-[10px] font-black text-white/90 leading-none select-none uppercase">
-        {initials}
-      </span>
-    );
-  }
-  
-  return (
-    <img 
-      src={logo} 
-      alt={name}
-      loading="lazy"
-      className="w-full h-full object-contain"
-      referrerPolicy="no-referrer"
-      onError={() => setError(true)}
-    />
-  );
-};
 
 export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMouseEnter, isPlaying, className, onShowInfo }) => {
   const currentProgram = channel.epg?.current;
@@ -102,7 +70,7 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMo
 
             {/* Channel Logo Container */}
             <div className={`w-8 h-8 md:w-10 md:h-10 bg-white/10 backdrop-blur-2xl rounded-xl border border-white/10 flex items-center justify-center p-1.5 md:p-2 shadow-2xl transition-all duration-500 group-hover:bg-white/20 group-hover:scale-110`}>
-              <LogoImage logo={channel.logo} name={channel.name} />
+              <ChannelLogo logo={channel.logo} name={channel.name} className="w-full h-full object-contain" />
             </div>
         </div>
 

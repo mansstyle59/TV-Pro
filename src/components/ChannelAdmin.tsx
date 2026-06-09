@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Search, X, Edit, Check, Trash2, Plus, RotateCcw, Globe, Tv, List, Filter, ArrowRight, Hash, RefreshCw, Loader2, Database, Download, Upload, Activity, AlertCircle, CheckCircle2, ChevronRight, FileJson } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { ChannelLogo } from './ChannelLogo';
 import { Channel } from '../types';
 import { getApiUrl } from '../utils/urlHelper';
 
@@ -530,7 +531,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center p-2 overflow-hidden border border-white/5 group-hover:border-white/10 transition-colors shadow-inner">
-                            {c.logo ? <img src={c.logo} alt="" loading="lazy" className="max-w-full max-h-full object-contain filter group-hover:brightness-110 transition-all" /> : <Tv size={20} className="text-neutral-800" />}
+                            <ChannelLogo logo={c.logo} name={c.name} className="max-w-full max-h-full object-contain filter group-hover:brightness-110 transition-all" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
@@ -622,7 +623,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
                     <div key={item.id} className="p-3 bg-neutral-900 border border-white/5 rounded-xl flex items-center justify-between group hover:border-white/10 transition-all">
                       <div className="flex items-center gap-3 overflow-hidden">
                         <div className="w-8 h-8 bg-black rounded p-1 shrink-0 flex items-center justify-center">
-                          {item.logo ? <img src={item.logo} alt="" loading="lazy" className="max-w-full max-h-full object-contain" /> : <Globe size={14} className="text-neutral-800" />}
+                          <ChannelLogo logo={item.logo} name={item.name} className="max-w-full max-h-full object-contain" />
                         </div>
                         <span className="text-[11px] font-bold text-white truncate pr-2">{item.name}</span>
                       </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import { ChannelLogo } from "./ChannelLogo";
 import { 
   X, 
   Activity, 
@@ -183,11 +184,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
             <div className="p-6 border-b border-white/5 flex items-center justify-between relative z-10 bg-[#0B0B0B]/80 backdrop-blur-md">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-neutral-900 border border-white/5 p-1.5 rounded-xl flex items-center justify-center shrink-0">
-                  {channel.logo ? (
-                    <img src={channel.logo} alt={channel.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                  ) : (
-                    <Tv className="w-6 h-6 text-neutral-500" />
-                  )}
+                  <ChannelLogo logo={channel.logo} name={channel.name} className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">

@@ -2,6 +2,7 @@ import React from "react";
 import { Channel } from "../types";
 import { motion } from "motion/react";
 import { Info } from "lucide-react";
+import { ChannelLogo } from "./ChannelLogo";
 
 interface ChannelGridProps {
   title: string;
@@ -10,40 +11,6 @@ interface ChannelGridProps {
   selectedChannelId?: number;
   onShowInfo?: (channel: Channel) => void;
 }
-
-const LogoImage: React.FC<{ logo?: string; name: string }> = ({ logo, name }) => {
-  const [error, setError] = React.useState(false);
-
-  // Clean initials matching standard French acronym entries
-  const initials = React.useMemo(() => {
-    return name
-      .replace(/[^a-zA-Z0-9 ]/g, "")
-      .split(" ")
-      .map(p => p[0])
-      .join("")
-      .slice(0, 3)
-      .toUpperCase() || name.slice(0, 2).toUpperCase();
-  }, [name]);
-  
-  if (error || !logo) {
-    return (
-      <span className="text-xs font-black text-white/70 bg-gradient-to-br from-neutral-800 to-neutral-900 border border-white/5 rounded-xl w-full h-full flex items-center justify-center uppercase select-none p-1">
-        {initials}
-      </span>
-    );
-  }
-  
-  return (
-    <img 
-      src={logo} 
-      alt={name}
-      loading="lazy"
-      className="w-full h-full object-contain filter group-hover:brightness-125 transition-all duration-300 drop-shadow-lg"
-      referrerPolicy="no-referrer"
-      onError={() => setError(true)}
-    />
-  );
-};
 
 export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onChannelSelect, selectedChannelId, onShowInfo }) => {
   if (channels.length === 0) return null;
@@ -88,7 +55,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               <div className="absolute inset-0 bg-linear-to-br from-brand-500/0 to-brand-500/0 group-hover:from-brand-500/5 group-hover:to-brand-500/10 transition-all duration-700" />
               
               <div className="w-full h-full relative z-10 flex items-center justify-center transition-transform duration-500 group-hover:scale-110">
-                 <LogoImage logo={channel.logo} name={channel.name} />
+                 <ChannelLogo logo={channel.logo} name={channel.name} className="w-full h-full object-contain filter group-hover:brightness-125 transition-all duration-300 drop-shadow-lg" />
               </div>
               
               {/* Technical Info Button 'i' */}
