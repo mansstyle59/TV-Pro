@@ -53,7 +53,7 @@ import { SportsCenter } from "./components/SportsCenter";
 import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
 import { Integrations } from "./components/Integrations";
-import { getApiUrl } from "./utils/urlHelper";
+import { getApiUrl, isGitHubPages, getAppHostUrlOnly } from "./utils/urlHelper";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -434,6 +434,21 @@ export default function App() {
   });
   const [prefetchedEpg, setPrefetchedEpg] = useState<Record<string, any>>({});
   const [isPlayerLoading, setIsPlayerLoading] = useState(false);
+  const [backendServerUrl, setBackendServerUrl] = useState(() => localStorage.getItem("backend_server_url") || "");
+
+  const handleSaveServerUrl = (url: string) => {
+    const cleanUrl = url.trim();
+    if (cleanUrl) {
+      localStorage.setItem("backend_server_url", cleanUrl);
+    } else {
+      localStorage.removeItem("backend_server_url");
+    }
+    setBackendServerUrl(cleanUrl);
+    // Silent delay then reload channels with force true
+    setTimeout(() => {
+      loadChannels(true);
+    }, 100);
+  };
 
   // Persist favorites to localStorage
   useEffect(() => {
@@ -1907,8 +1922,66 @@ export default function App() {
       <main className="flex-grow w-full max-w-[1600px] mx-auto pt-4 sm:pt-8 pb-40 px-0">
         {loading ? (
           <div className="flex flex-col items-center justify-center p-20 text-neutral-500">
-            <RefreshCw className="w-10 h-10 animate-spin mb-4 text-brand-500" />
-            <p className="text-sm font-medium">Synchronisation des chaînes...</p>
+            <RefreshCw className="w-10 h-10 animate-spin mb-4 text-[#FF7900]" />
+            <p className="text-xs font-black uppercase tracking-widest text-[#FF7900]">Synchronisation des chaînes...</p>
+          </div>
+        ) : error && channels.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-6 sm:p-20 text-center max-w-xl mx-auto">
+            <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 text-red-500 mb-6 animate-pulse">
+              <Settings size={40} className="text-[#FF7900]" />
+            </div>
+            <h2 className="text-2xl font-black uppercase tracking-tight text-white mb-3">Serveur non configuré</h2>
+            <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
+              {error}
+              <br />
+              <span className="text-xs text-neutral-500 mt-2 block">
+                Si vous exécutez l'application en mode statique (ex. GitHub Pages), un serveur d'API d'arrière-plan actif est requis pour le traitement des signatures de flux, les redirections de segments et la synchronisation du guide des programmes (EPG).
+              </span>
+            </p>
+
+            {/* Custom Server Configuration Card */}
+            <div className="w-full bg-neutral-900 border border-white/5 p-6 rounded-3xl text-left space-y-4 mb-8">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-400">
+                Adresse URL du Serveur d'API (Back-End)
+              </label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  placeholder="https://votre-serveur.run.app"
+                  defaultValue={localStorage.getItem("backend_server_url") || ""}
+                  id="error-backend-input"
+                  className="flex-grow bg-neutral-950 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#FF7900] font-mono"
+                />
+                <button
+                  onClick={() => {
+                    const val = (document.getElementById("error-backend-input") as HTMLInputElement)?.value.trim();
+                    if (val) {
+                      localStorage.setItem("backend_server_url", val.replace(/\/$/, ""));
+                    } else {
+                      localStorage.removeItem("backend_server_url");
+                    }
+                    setError(null);
+                    loadChannels();
+                  }}
+                  className="bg-[#FF7900] text-white font-black text-[10px] uppercase tracking-widest px-6 py-3.5 rounded-xl hover:bg-orange-600 active:scale-95 transition-all shadow-lg"
+                >
+                  Valider
+                </button>
+              </div>
+              <p className="text-[10px] text-neutral-500 leading-relaxed">
+                Renseignez ici l'adresse de votre hébergement Cloud Run actif. Exemple : <code className="bg-black/30 p-1 rounded font-mono text-[9px] text-[#FF7900]">https://ais-pre-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app</code>
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                setError(null);
+                loadChannels(true);
+              }}
+              className="px-6 py-3 text-neutral-300 hover:text-white border border-white/10 hover:border-white/20 bg-neutral-900/50 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
+            >
+              Réessayer
+            </button>
           </div>
         ) : (
           <>
@@ -2908,7 +2981,64 @@ export default function App() {
                  </button>
 
                  <div className="px-6 py-4 flex items-center justify-between mt-4">
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">Système & Maintenance</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">Serveur d'API & Réseau</h3>
+                  </div>
+
+                  <div className="p-6 sm:p-8 bg-neutral-950/50 rounded-3xl border border-white/5 space-y-4">
+                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
+                        <div className="text-left space-y-1">
+                           <p className="text-sm font-black text-white uppercase tracking-widest">Serveur d'API Actuel</p>
+                           <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest font-sans">
+                              {localStorage.getItem("backend_server_url") 
+                                 ? "Serveur personnalisé actif" 
+                                 : "Mode natif (détection automatique)"}
+                           </p>
+                        </div>
+                        {localStorage.getItem("backend_server_url") && (
+                           <button
+                              onClick={() => {
+                                 localStorage.removeItem("backend_server_url");
+                                 window.location.reload();
+                              }}
+                              className="px-4 py-2 bg-red-500/15 border border-red-500/20 text-red-500 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                           >
+                              Réinitialiser
+                           </button>
+                        )}
+                     </div>
+
+                     <div className="space-y-3">
+                        <p className="text-[11px] text-neutral-400 leading-relaxed font-sans">
+                           Si votre application est hébergée sur un serveur statique (sur GitHub Pages par exemple), configurez l'URL complète de votre serveur d'API Cloud Run actif ci-dessous pour assurer le bon fonctionnement de la télévision en direct, la signature de flux et l'EPG.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                           <input
+                              type="text"
+                              placeholder="Saisissez l'URL de votre serveur actif (ex: https://ais-pre-...)"
+                              defaultValue={localStorage.getItem("backend_server_url") || ""}
+                              id="profil-backend-input"
+                              className="flex-grow bg-neutral-900 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#FF7900] font-mono"
+                           />
+                           <button
+                              onClick={() => {
+                                 const val = (document.getElementById("profil-backend-input") as HTMLInputElement)?.value.trim();
+                                 if (val) {
+                                    localStorage.setItem("backend_server_url", val.replace(/\/$/, ""));
+                                 } else {
+                                    localStorage.removeItem("backend_server_url");
+                                 }
+                                 window.location.reload();
+                              }}
+                              className="bg-[#FF7900] text-white font-black text-[10px] uppercase tracking-widest px-6 py-3.5 rounded-xl hover:bg-orange-600 transition-all cursor-pointer shadow-lg"
+                           >
+                              Enregistrer
+                           </button>
+                        </div>
+                     </div>
+                  </div>
+
+                  <div className="px-6 py-4 flex items-center justify-between mt-4">
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">Système & Maintenance</h3>
                  </div>
 
                  <div className="p-6 sm:p-8 bg-neutral-950/50 rounded-3xl border border-transparent flex flex-col sm:flex-row gap-6 sm:items-center justify-between">
