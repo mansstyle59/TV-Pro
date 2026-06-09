@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Home, Trophy, Search, Star, User, Settings, Calendar } from "lucide-react";
+import { Home, Trophy, Search, Star, User, Settings, Calendar, LayoutGrid } from "lucide-react";
 
 interface BottomNavProps {
   activeTab: string;
@@ -10,6 +10,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const tabs = [
     { id: "accueil", label: "Accueil", icon: Home },
     { id: "sports", label: "Sports", icon: Trophy },
+    { id: "multiscreen", label: "Multi-Écrans", icon: LayoutGrid },
     { id: "recherche", label: "Recherche", icon: Search },
     { id: "favoris", label: "Favoris", icon: Star },
   ];

@@ -81,6 +81,9 @@ export function HlsPlayer({
   
   // Custom Settings
   const [levels, setLevels] = useState<{ id: number; height: number; bitrate: number }[]>([]);
+  const [premiumBufferBoost, setPremiumBufferBoost] = useState<boolean>(() => {
+    return localStorage.getItem("vavoo_premium_buffer_boost") === "true";
+  });
   const [currentLevel, setCurrentLevel] = useState(-1);
   const [showSettings, setShowSettings] = useState(false);
   const [isPiPSupported, setIsPiPSupported] = useState(false);
@@ -341,23 +344,23 @@ export function HlsPlayer({
 
     if (Hls.isSupported()) {
       const hls = new Hls({
-        maxMaxBufferLength: 5,               // Reduced max buffer
+        maxMaxBufferLength: premiumBufferBoost ? 35 : 5,               // Increased buffer for premium stability
         enableWorker: true,
-        lowLatencyMode: true,
-        backBufferLength: 5,                // Further reduced backbuffer
-        liveSyncDurationCount: 1,            // Further reduced sync duration
-        liveMaxLatencyDurationCount: 1.5,    // Sync more aggressively
-        maxBufferLength: 3,                  // Tiny 3-second buffer
-        maxBufferSize: 20 * 1024 * 1024,     // Caps memory use to prevent memory-induced pixelation or freeze
-        highBufferWatchdogPeriod: 2,         // Heartbeat check for stuck playback buffer
-        manifestLoadingMaxRetry: 4,          // Retry manifest loading up to 4 times
-        manifestLoadingRetryDelay: 400,
-        levelLoadingMaxRetry: 4,             // Retry levels up to 4 times
-        levelLoadingRetryDelay: 400,
-        fragLoadingMaxRetry: 8,              // Dynamic recovery: retry segments 8 times before failing
-        fragLoadingRetryDelay: 400,          // Retry segment fast after minor packet loss
-        fragLoadingTimeOut: 5000,            // Limit fragment download time to jump forward if stuck
-        progressive: true                    // Fetch and decode incrementally for immediate frame render
+        lowLatencyMode: !premiumBufferBoost,                           // Trade dynamic drift for ultra packet stability
+        backBufferLength: premiumBufferBoost ? 15 : 5,                
+        liveSyncDurationCount: premiumBufferBoost ? 4 : 1,            
+        liveMaxLatencyDurationCount: premiumBufferBoost ? 8 : 1.5,    
+        maxBufferLength: premiumBufferBoost ? 25 : 3,                  // Expand buffer up to 25s to survive latency drops
+        maxBufferSize: premiumBufferBoost ? 64 * 1024 * 1024 : 20 * 1024 * 1024,
+        highBufferWatchdogPeriod: 2,         
+        manifestLoadingMaxRetry: premiumBufferBoost ? 8 : 4,          
+        manifestLoadingRetryDelay: 500,
+        levelLoadingMaxRetry: premiumBufferBoost ? 8 : 4,             
+        levelLoadingRetryDelay: 500,
+        fragLoadingMaxRetry: premiumBufferBoost ? 15 : 8,             // 15 segment download retries
+        fragLoadingRetryDelay: 500,          
+        fragLoadingTimeOut: premiumBufferBoost ? 15000 : 5000,        // Increase socket timeout up to 15s to keep playing
+        progressive: true                    
       });
       hlsRef.current = hls;
 
@@ -450,7 +453,7 @@ export function HlsPlayer({
         hlsRef.current = null;
       }
     };
-  }, [url]);
+  }, [url, premiumBufferBoost]);
 
   // Cast framework initialization
   useEffect(() => {
@@ -1142,9 +1145,34 @@ export function HlsPlayer({
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute bottom-20 right-4 md:right-8 w-64 bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl p-5 z-50 shadow-2xl space-y-4"
+            className="absolute bottom-20 right-4 md:right-8 w-64 bg-black/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 z-50 shadow-2xl space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
+            <div>
+              <h4 className="text-[10px] font-bold uppercase text-neutral-400 mb-2 tracking-widest font-sans text-left">Optimisation Premium</h4>
+              <button
+                onClick={() => {
+                  const newVal = !premiumBufferBoost;
+                  setPremiumBufferBoost(newVal);
+                  localStorage.setItem("vavoo_premium_buffer_boost", String(newVal));
+                  flashHUD(newVal ? "Booster de Flux Actif" : "Mode Latence Standard active");
+                }}
+                className={`w-full flex items-center justify-between p-2 rounded-xl border transition-all ${
+                  premiumBufferBoost 
+                    ? "bg-[#FF7900]/10 border-[#FF7900]/30 text-[#FF7900]" 
+                    : "bg-white/5 border-white/5 text-neutral-400 hover:text-white"
+                }`}
+              >
+                <div className="text-left">
+                  <span className="text-[10px] font-bold block uppercase tracking-wider">Antisaccades Pro</span>
+                  <span className="text-[8px] text-neutral-500 block leading-none font-medium mt-0.5">Augmente le cache pour éviter le buffering</span>
+                </div>
+                <div className={`w-7 h-4 rounded-full p-0.5 transition-colors ${premiumBufferBoost ? "bg-[#FF7900]" : "bg-neutral-850"}`}>
+                  <div className={`w-3 h-3 rounded-full bg-white transition-transform ${premiumBufferBoost ? "translate-x-3" : "translate-x-0"}`} />
+                </div>
+              </button>
+            </div>
+
             <div>
               <h4 className="text-[10px] font-bold uppercase text-neutral-400 mb-2 tracking-widest font-sans text-left">Recadrage d'image</h4>
               <div className="grid grid-cols-3 gap-1 p-1 bg-white/5 rounded-xl border border-white/5">

@@ -51,8 +51,8 @@ import { SplashScreen } from "./components/SplashScreen";
 import { SportsCenter } from "./components/SportsCenter";
 import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
-
 import { Integrations } from "./components/Integrations";
+import { Multiplex } from "./components/Multiplex";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -2542,6 +2542,13 @@ export default function App() {
                     </div>
                   )}
                </div>
+              </div>
+            </div>
+
+            {/* INTEGRATIONS TAB */}
+            <div className={activeTab === "multiscreen" ? "animate-tab-fade-in block" : "hidden"}>
+              <div className="max-w-7xl mx-auto px-6 pb-40 pt-12">
+                <Multiplex channels={categorisedList} />
               </div>
             </div>
 

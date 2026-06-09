@@ -2314,18 +2314,38 @@ app.get("/api/xmltv.xml", async (req, res) => {
 // M3U Playlist export Endpoint (often called MHub format / M3U)
 app.get("/api/playlist.m3u", async (req, res) => {
   try {
-    const channels = await fetchAppChannels(false);
+    const channels = await getActiveChannelsWithMetadata();
+    const sortedCategories = getSortedCategories(channels);
+    const categoryOrderMap = new Map<string, number>();
+    sortedCategories.forEach((cat, idx) => {
+      categoryOrderMap.set(cat, idx);
+    });
+
+    const sortedChannels = [...channels].sort((a, b) => {
+      const catA = a.category || "Généraliste";
+      const catB = b.category || "Généraliste";
+      const scoreA = categoryOrderMap.get(catA) ?? 999;
+      const scoreB = categoryOrderMap.get(catB) ?? 999;
+      
+      if (scoreA !== scoreB) {
+        return scoreA - scoreB;
+      }
+      return 0; // Keeps existing LCN/Name sorting within the same category
+    });
+
     const host = req.get('host');
     let m3u = `#EXTM3U x-tvg-url="${req.protocol}://${host}/api/xmltv.xml"\n`;
-    channels.forEach(c => {
-      m3u += `#EXTINF:-1 tvg-id="${c.id}" tvg-name="${c.name}" tvg-logo="${c.logo || ''}" tvg-chno="${c.p || ''}",${c.name}\n`;
+    sortedChannels.forEach(c => {
+      const cat = c.category || "Généraliste";
+      m3u += `#EXTINF:-1 tvg-id="${c.id}" tvg-name="${c.name}" tvg-logo="${c.logo || ''}" tvg-chno="${c.p || ''}" group-title="${cat}",${c.name}\n`;
       // Direct stream link via local proxy
       m3u += `${req.protocol}://${host}/api/stream/${c.id}/index.m3u8\n`;
     });
     res.setHeader('Content-Type', 'audio/x-mpegurl');
     res.setHeader('Content-Disposition', 'attachment; filename="playlist.m3u"');
     res.send(m3u);
-  } catch (err) {
+  } catch (err: any) {
+    console.error("Error generating M3U:", err);
     res.status(500).send("Error generating M3U");
   }
 });
