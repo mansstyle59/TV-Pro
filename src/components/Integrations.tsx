@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Copy, Download, Plug, ExternalLink, PlaySquare, MonitorPlay, Tv, Rocket, Check } from "lucide-react";
+import { getAppBaseUrl } from "../utils/urlHelper";
 
 export function Integrations() {
   const [copiedApp, setCopiedApp] = useState<string | null>(null);
-  const host = window.location.origin;
+  const host = getAppBaseUrl();
 
   const copyToClipboard = async (text: string, appName: string) => {
     let success = false;

@@ -20,7 +20,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
     <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 bg-[#0B0B0B] border-r border-[#151515] p-4 z-50">
       <div className="flex items-center gap-3 px-2 mb-8" onClick={() => onTabChange("accueil")}>
         <img 
-          src="/pwa-192x192.svg" 
+          src="./pwa-192x192.svg" 
           alt="Flux Tv Pro Logo" 
           className="w-10 h-10 object-contain rounded-xl hover:scale-105 transition-transform duration-300 cursor-pointer" 
           referrerPolicy="no-referrer"

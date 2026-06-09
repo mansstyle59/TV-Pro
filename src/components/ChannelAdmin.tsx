@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Search, X, Edit, Check, Trash2, Plus, RotateCcw, Globe, Tv, List, Filter, ArrowRight, Hash, RefreshCw, Loader2, Database, Download, Upload, Activity, AlertCircle, CheckCircle2, ChevronRight, FileJson } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Channel } from '../types';
+import { getApiUrl } from '../utils/urlHelper';
 
 interface DisplayChannel extends Channel {
   category?: string;
@@ -99,7 +100,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
   const testSingleStream = async (id: string | number, url?: string) => {
     setStreamStates(prev => ({ ...prev, [String(id)]: { status: 'testing' } }));
     try {
-      const res = await fetch("/api/admin/channels/test-stream", {
+      const res = await fetch(getApiUrl("/api/admin/channels/test-stream"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, url })
@@ -160,7 +161,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
           if (!content || (typeof content !== 'object')) {
             throw new Error("Le fichier de sauvegarde doit être un JSON d'administration valide.");
           }
-          const res = await fetch("/api/admin/restore", {
+          const res = await fetch(getApiUrl("/api/admin/restore"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ backup: content })
@@ -189,7 +190,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
     setIsLoadingLcn(true);
     setLcnStatusMessage("");
     try {
-      const res = await fetch("/api/admin/lcn");
+      const res = await fetch(getApiUrl("/api/admin/lcn"));
       const data = await res.json();
       if (data.success) {
         setLcnMap(data.lcnMap);
@@ -213,7 +214,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
     setIsLoadingLcn(true);
     setLcnStatusMessage("");
     try {
-      const res = await fetch("/api/admin/lcn/save", {
+      const res = await fetch(getApiUrl("/api/admin/lcn/save"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lcnMap })
@@ -237,7 +238,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
     setIsLoadingLcn(true);
     setLcnStatusMessage("");
     try {
-      const res = await fetch("/api/admin/lcn/auto-update", {
+      const res = await fetch(getApiUrl("/api/admin/lcn/auto-update"), {
         method: "POST"
       });
       const data = await res.json();
@@ -261,7 +262,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
     setIsLoadingLcn(true);
     setLcnStatusMessage("");
     try {
-      const res = await fetch("/api/admin/lcn/reset", {
+      const res = await fetch(getApiUrl("/api/admin/lcn/reset"), {
         method: "POST"
       });
       const data = await res.json();
@@ -293,7 +294,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
       if (selectedCountry) params.set("country", selectedCountry);
       if (catalogSearch) params.set("search", catalogSearch);
       
-      const res = await fetch(`/api/admin/vavoo-catalog?${params.toString()}`);
+      const res = await fetch(getApiUrl(`/api/admin/vavoo-catalog?${params.toString()}`));
       const data = await res.json();
       if (data.success) {
         setCatalog(data.channels);
@@ -308,7 +309,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
 
   const toggleChannelActivation = async (id: number | string, action: 'activate' | 'deactivate') => {
     try {
-      const res = await fetch("/api/admin/channels/bulk-toggle", {
+      const res = await fetch(getApiUrl("/api/admin/channels/bulk-toggle"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: [id], action })
@@ -329,7 +330,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
   const handleDelete = async (id: number | string, name: string) => {
     if (!window.confirm(`Voulez-vous vraiment supprimer/masquer la chaîne "${name}" ?`)) return;
     try {
-      const res = await fetch("/api/admin/channels/delete", {
+      const res = await fetch(getApiUrl("/api/admin/channels/delete"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id })
@@ -348,7 +349,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
   const saveEdit = async (id: number | string) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/admin/channels/edit", {
+      const res = await fetch(getApiUrl("/api/admin/channels/edit"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, ...editForm })
@@ -373,7 +374,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
     setAddError("");
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/admin/channels/add", {
+      const res = await fetch(getApiUrl("/api/admin/channels/add"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(addForm)
@@ -397,7 +398,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
   const handleResetConfig = async () => {
     if (!window.confirm("Rétablir la configuration d'usine ?")) return;
     try {
-      const res = await fetch("/api/admin/channels/reset", {
+      const res = await fetch(getApiUrl("/api/admin/channels/reset"), {
         method: "POST"
       });
       if (res.ok) reload();
@@ -897,7 +898,7 @@ export const ChannelAdmin: React.FC<Props> = ({ channels, reload }) => {
                       </p>
                     </div>
                     <a
-                      href="/api/admin/backup"
+                      href={getApiUrl("/api/admin/backup")}
                       download="tv-aggregator-config.json"
                       className="w-full py-2 bg-brand-500/10 hover:bg-brand-500 text-brand-400 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-wider text-center transition-all"
                     >

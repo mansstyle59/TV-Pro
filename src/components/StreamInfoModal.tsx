@@ -15,6 +15,7 @@ import {
   Tv
 } from "lucide-react";
 import { Channel } from "../types";
+import { getApiUrl } from "../utils/urlHelper";
 
 interface StreamInfoModalProps {
   channel: Channel | null;
@@ -52,7 +53,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
     const startTime = performance.now();
 
     // Use absolute URL from channel endpoint
-    const streamUrl = `/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`;
+    const streamUrl = getApiUrl(`/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`);
 
     fetch(streamUrl)
       .then(async (res) => {

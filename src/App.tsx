@@ -53,6 +53,7 @@ import { SportsCenter } from "./components/SportsCenter";
 import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
 import { Integrations } from "./components/Integrations";
+import { getApiUrl } from "./utils/urlHelper";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -510,7 +511,7 @@ export default function App() {
   const prefetchEpg = async (channelName: string) => {
     if (prefetchedEpg[channelName]) return;
     try {
-      const response = await fetch(`/api/epg/${encodeURIComponent(channelName)}`);
+      const response = await fetch(getApiUrl(`/api/epg/${encodeURIComponent(channelName)}`));
       const data = await response.json();
       if (data.success) {
         setPrefetchedEpg(prev => ({ ...prev, [channelName]: data.programmes }));
@@ -581,7 +582,7 @@ export default function App() {
     setError(null);
 
     try {
-      const url = `/api/channels${forceRefetch ? "?force=true" : ""}`;
+      const url = getApiUrl(`/api/channels${forceRefetch ? "?force=true" : ""}`);
       const response = await fetch(url);
       const data = await response.json();
 
@@ -1030,7 +1031,7 @@ export default function App() {
   };
 
   const getActiveStreamUrl = (channel: Channel): string => {
-    return `/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`;
+    return getApiUrl(`/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`);
   };
 
   // Navigation focus state for TV/Keyboard
@@ -1091,7 +1092,7 @@ export default function App() {
 
     let m3uContent = "#EXTM3U x-tvg-url=\"https://raw.githubusercontent.com/Catch-up-TV-and-More/xmltv/master/tv_guide_fr.xml\"\n\n";
     channels.forEach(channel => {
-      const channelUrl = `${window.location.origin}/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`;
+      const channelUrl = getApiUrl(`/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`);
       m3uContent += `#EXTINF:-1 tvg-id="${channel.id}" tvg-name="${channel.name}" tvg-country="FR" group-title="${categorizeChannel(channel.name)}",${channel.name}\n`;
       m3uContent += `#EXTVLCOPT:http-user-agent=VAVOO/2.6\n`;
       m3uContent += `${channelUrl}\n\n`;
@@ -1473,7 +1474,7 @@ export default function App() {
               {/* Logo (Visually hidden on desktop since Sidebar is visible) */}
               <div className="flex items-center gap-3 group cursor-pointer lg:hidden" onClick={() => setActiveTab("accueil")}>
                 <div className="w-10 h-10 bg-[#0c0c0d] border border-white/5 rounded-xl flex items-center justify-center shadow-lg group-hover:scale-105 transition-all duration-300 overflow-hidden">
-                   <img src="/pwa-192x192.svg" alt="Flux Tv Pro" className="w-[102%] h-[102%] object-contain rounded-xl" referrerPolicy="no-referrer" />
+                   <img src="./pwa-192x192.svg" alt="Flux Tv Pro" className="w-[102%] h-[102%] object-contain rounded-xl" referrerPolicy="no-referrer" />
                 </div>
                 <div>
                   <h1 className="text-sm font-black tracking-tighter leading-none text-white uppercase">Flux Tv Pro</h1>

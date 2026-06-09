@@ -26,7 +26,7 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
             className="flex flex-col items-center gap-6"
           >
             <div className="relative w-24 h-24 bg-brand-500 rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(255,121,0,0.3)]">
-              <img src="/pwa-192x192.svg" alt="App Icon" className="w-14 h-14" />
+              <img src="./pwa-192x192.svg" alt="App Icon" className="w-14 h-14" />
               
               <motion.div
                 animate={{ 

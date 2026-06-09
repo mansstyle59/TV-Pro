@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Clock, Info, Calendar, ChevronRight, X, Play } from "lucide-react";
 import { EpgProgramme } from "../types";
 import { formatEpgTime, getEpgProgress } from "../utils/epgUtils";
+import { getApiUrl } from "../utils/urlHelper";
 
 interface EpgTimelineProps {
   channelName: string;
@@ -20,7 +21,7 @@ export function EpgTimeline({ channelName, onClose, onProgramClick }: EpgTimelin
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/epg/${encodeURIComponent(channelName)}`);
+        const response = await fetch(getApiUrl(`/api/epg/${encodeURIComponent(channelName)}`));
         const data = await response.json();
         if (data.success) {
           setProgrammes(data.programmes || []);
