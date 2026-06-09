@@ -1,11 +1,37 @@
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Copy, Download, Plug, ExternalLink, PlaySquare, MonitorPlay, Tv, Rocket, Check } from "lucide-react";
+import { Copy, Download, Plug, ExternalLink, PlaySquare, MonitorPlay, Tv, Rocket, Check, RefreshCw } from "lucide-react";
 import { getAppBaseUrl } from "../utils/urlHelper";
 
 export function Integrations() {
   const [copiedApp, setCopiedApp] = useState<string | null>(null);
   const host = getAppBaseUrl();
+
+  const [shortXtreamUrl, setShortXtreamUrl] = useState<string>("");
+  const [shorteningXtream, setShorteningXtream] = useState<boolean>(false);
+
+  const [shortM3uUrl, setShortM3uUrl] = useState<string>("");
+  const [shorteningM3u, setShorteningM3u] = useState<boolean>(false);
+
+  const [shortXmltvUrl, setShortXmltvUrl] = useState<string>("");
+  const [shorteningXmltv, setShorteningXmltv] = useState<boolean>(false);
+
+  const generateShortUrl = async (url: string, setShortUrl: (u: string) => void, setLoading: (l: boolean) => void) => {
+    setLoading(true);
+    try {
+      const resp = await fetch(`/api/shorten?url=${encodeURIComponent(url)}`);
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.shortUrl) {
+          setShortUrl(data.shortUrl);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to shorten URL:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const copyToClipboard = async (text: string, appName: string) => {
     let success = false;
@@ -250,6 +276,43 @@ export function Integrations() {
                     </div>
                   </div>
 
+                  {/* Row for shortened Host */}
+                  <div className={`bg-[#0B0B0B] p-3 rounded-lg flex flex-col gap-2 border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] font-bold text-[#FF7900] uppercase tracking-wider block mb-1">Hôte Raccourci (pour télécommande)</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          {shorteningXtream ? (
+                            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                              <RefreshCw size={12} className="animate-spin text-[#FF7900]" /> Génération...
+                            </span>
+                          ) : shortXtreamUrl ? (
+                            <span className="text-xs font-mono text-emerald-400 break-all select-all font-bold">
+                              {shortXtreamUrl.replace(/^https?:\/\//, "")}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => generateShortUrl(host, setShortXtreamUrl, setShorteningXtream)}
+                              className="text-[9px] bg-neutral-900 hover:bg-[#FF7900]/10 hover:border-[#FF7900]/30 border border-white/10 px-2.5 py-1.5 rounded-lg text-white font-black uppercase tracking-wider transition-all pointer-events-auto cursor-pointer"
+                            >
+                              Rétrécir l'adresse
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      {shortXtreamUrl && (
+                        <button 
+                          onClick={() => copyToClipboard(shortXtreamUrl.replace(/^https?:\/\//, ""), "xtream_short_clean")} 
+                          className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === "xtream_short_clean" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                          title="Copier l'hôte raccourci"
+                        >
+                          {copiedApp === "xtream_short_clean" ? <Check size={16} /> : <Copy size={16} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-2">
                     <div className={`bg-[#0B0B0B] p-3 rounded-lg flex justify-between items-center border border-[#2A2A2A] ${app.borderHover} transition-colors`}>
                       <div className="min-w-0">
@@ -333,6 +396,148 @@ export function Integrations() {
             )}
           </motion.div>
         ))}
+      </div>
+
+      {/* Unified Smart TV URL Shortener block */}
+      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-[#121212] to-[#0A0A0A] border border-[#FF7900]/20 relative overflow-hidden shadow-2xl text-left">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#FF7900]/5 to-transparent blur-3xl pointer-events-none rounded-full" />
+        
+        <div className="z-10 relative space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#FF7900]/10 rounded-xl flex items-center justify-center border border-[#FF7900]/20 text-[#FF7900]">
+              <Tv size={20} />
+            </div>
+            <div>
+              <h3 className="text-lg font-black uppercase tracking-tight text-white">
+                Raccourcisseur d'URL pour Smart TV & Box IPTV
+              </h3>
+              <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider mt-0.5">
+                Saisie facile à la télécommande (Smarters, TiviMate, Apple TV...)
+              </p>
+            </div>
+          </div>
+          
+          <p className="text-sm text-gray-300 leading-relaxed font-semibold">
+            Taper de longues adresses sur votre téléviseur est laborieux. Générez ci-dessous un lien <span className="text-[#FF7900] underline font-bold">le plus court possible</span> (ex: <code className="font-mono bg-black/40 px-1 py-0.5 rounded border border-white/5 text-[#FF7900]">is.gd/abc</code>) pour l'entrer en quelques clics !
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+            {/* M3U Link Slot */}
+            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-white/5 space-y-3 flex flex-col justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest block">Format M3U</span>
+                <span className="text-xs font-bold text-white block">Playlist de chaînes</span>
+                <p className="text-[11px] text-neutral-500 font-medium">Pour charger toutes vos catégories de chaînes.</p>
+              </div>
+              
+              <div className="space-y-2 pt-2">
+                {shortM3uUrl ? (
+                  <div className="bg-black/50 p-2.5 rounded-lg border border-emerald-500/20 flex items-center justify-between gap-2">
+                    <code className="text-xs font-mono text-emerald-400 break-all truncate font-bold font-semibold select-all">{shortM3uUrl}</code>
+                    <button
+                      onClick={() => copyToClipboard(shortM3uUrl, "short_m3u_copy")}
+                      className="p-1 px-2 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors flex-shrink-0 text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      {copiedApp === "short_m3u_copy" ? "Copié !" : "Copier"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => generateShortUrl(m3uLink, setShortM3uUrl, setShorteningM3u)}
+                    disabled={shorteningM3u}
+                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-900 border border-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {shorteningM3u ? (
+                      <>
+                        <RefreshCw size={12} className="animate-spin text-[#FF7900]" /> Génération...
+                      </>
+                    ) : (
+                      "Créer URL Courte"
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* EPG XMLTV Slot */}
+            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-white/5 space-y-3 flex flex-col justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block">Format XMLTV</span>
+                <span className="text-xs font-bold text-white block">Guide des programmes (EPG)</span>
+                <p className="text-[11px] text-neutral-500 font-medium">Pour afficher le programme TV en direct.</p>
+              </div>
+              
+              <div className="space-y-2 pt-2">
+                {shortXmltvUrl ? (
+                  <div className="bg-black/50 p-2.5 rounded-lg border border-emerald-500/20 flex items-center justify-between gap-2">
+                    <code className="text-xs font-mono text-emerald-400 break-all truncate font-bold font-semibold select-all">{shortXmltvUrl}</code>
+                    <button
+                      onClick={() => copyToClipboard(shortXmltvUrl, "short_xmltv_copy")}
+                      className="p-1 px-2 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors flex-shrink-0 text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      {copiedApp === "short_xmltv_copy" ? "Copié !" : "Copier"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => generateShortUrl(xmltvLink, setShortXmltvUrl, setShorteningXmltv)}
+                    disabled={shorteningXmltv}
+                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-900 border border-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {shorteningXmltv ? (
+                      <>
+                        <RefreshCw size={12} className="animate-spin text-[#FF7900]" /> Génération...
+                      </>
+                    ) : (
+                      "Créer URL Courte"
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Xtream Host Slot */}
+            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-white/5 space-y-3 flex flex-col justify-between">
+              <div className="space-y-1">
+                <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block">API Xtream Codes</span>
+                <span className="text-xs font-bold text-white block">Hôte de connexion du serveur</span>
+                <p className="text-[11px] text-neutral-500 font-medium">Pour vous connecter avec "user" et "pass".</p>
+              </div>
+              
+              <div className="space-y-2 pt-2">
+                {shortXtreamUrl ? (
+                  <div className="bg-black/50 p-2.5 rounded-lg border border-emerald-500/20 flex items-center justify-between gap-2">
+                    <code className="text-xs font-mono text-emerald-400 break-all truncate font-bold font-semibold select-all">{shortXtreamUrl}</code>
+                    <button
+                      onClick={() => copyToClipboard(shortXtreamUrl, "short_xtream_copy")}
+                      className="p-1 px-2 rounded bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors flex-shrink-0 text-[10px] font-black uppercase tracking-wider cursor-pointer"
+                    >
+                      {copiedApp === "short_xtream_copy" ? "Copié !" : "Copier"}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => generateShortUrl(host, setShortXtreamUrl, setShorteningXtream)}
+                    disabled={shorteningXtream}
+                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-900 border border-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {shorteningXtream ? (
+                      <>
+                        <RefreshCw size={12} className="animate-spin text-[#FF7900]" /> Génération...
+                      </>
+                    ) : (
+                      "Créer URL Courte"
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 bg-emerald-500/10 border border-emerald-500/15 rounded-xl text-[11px] text-emerald-300 leading-normal font-bold">
+            ℹ️ CONSEIL SMART TV : Les serveurs de redirection et URL courtes sont entièrement supportés par les lecteurs IPTV de Smart TV (TiviMate, IPTV Smarters...). Les redirections vers les playlists et le guide TV sont transparentes !
+          </div>
+        </div>
       </div>
       
       <div className="mt-8 bg-gradient-to-r from-[#FF7900]/10 to-transparent p-6 rounded-xl border border-[#FF7900]/20 overflow-hidden">

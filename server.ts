@@ -278,166 +278,166 @@ let isLogoFetching = false;
 
 const fallbackLogoMap: Record<string, string> = {
   // TNT & National French Channels
-  "tf1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-fr.png",
-  "france2": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-2-fr.png",
-  "france3": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-3-fr.png",
-  "canalplus": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-fr.png",
-  "france5": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-5-fr.png",
-  "m6": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-fr.png",
-  "arte": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/arte-fr.png",
-  "c8": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/c8-fr.png",
-  "w9": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/w9-fr.png",
-  "tmc": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tmc-fr.png",
-  "tfx": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tfx-fr.png",
-  "nrj12": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/nrj-12-fr.png",
-  "lcp": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/lcp-public-senat-fr.png",
-  "publicsenat": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/lcp-public-senat-fr.png",
-  "france4": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-4-fr.png",
-  "bfmtv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bfm-tv-fr.png",
-  "cnews": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/c-news-fr.png",
-  "cstar": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/c-star-fr.png",
-  "gulli": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/gulli-fr.png",
-  "franceinfo": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/franceinfo-fr.png",
-  "lequipe": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/lequipe-fr.png",
-  "6ter": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/6ter-fr.png",
-  "rmcdecouverte": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-decouverte-fr.png",
-  "rmcstory": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-story-fr.png",
-  "cherie25": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cherie-25-fr.png",
-  "lci": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/lci-fr.png",
-  "france24": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-24-french-fr.png",
-  "tv5monde": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tv5-monde-france-belgique-suisse-fr.png",
-  "tf1seriesfilms": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-series-films-fr.png",
-  "tf1series": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-series-films-fr.png",
-  "tf1seriesfilm": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-series-films-fr.png",
+  "tf1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tf1-fr.png",
+  "france2": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-2-fr.png",
+  "france3": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-3-fr.png",
+  "canalplus": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-fr.png",
+  "france5": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-5-fr.png",
+  "m6": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/m6-fr.png",
+  "arte": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/arte-fr.png",
+  "c8": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/c8-fr.png",
+  "w9": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/w9-fr.png",
+  "tmc": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tmc-fr.png",
+  "tfx": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tfx-fr.png",
+  "nrj12": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/nrj-12-fr.png",
+  "lcp": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/lcp-public-senat-fr.png",
+  "publicsenat": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/lcp-public-senat-fr.png",
+  "france4": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-4-fr.png",
+  "bfmtv": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bfm-tv-fr.png",
+  "cnews": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/c-news-fr.png",
+  "cstar": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/c-star-fr.png",
+  "gulli": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/gulli-fr.png",
+  "franceinfo": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/franceinfo-fr.png",
+  "lequipe": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/lequipe-fr.png",
+  "6ter": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/6ter-fr.png",
+  "rmcdecouverte": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-decouverte-fr.png",
+  "rmcstory": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-story-fr.png",
+  "cherie25": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cherie-25-fr.png",
+  "lci": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/lci-fr.png",
+  "france24": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-24-french-fr.png",
+  "tv5monde": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tv5-monde-france-belgique-suisse-fr.png",
+  "tf1seriesfilms": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tf1-series-films-fr.png",
+  "tf1series": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tf1-series-films-fr.png",
+  "tf1seriesfilm": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tf1-series-films-fr.png",
 
   // Canal+ Premium and Sport Packs
-  "canalplusfoot": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-foot-fr.png",
-  "canalpluscinema": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-cinemas-fr.png",
-  "canalplusseries": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-series-fr.png",
-  "canalplusboxoffice": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-box-office-fr.png",
-  "canalplussport": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-sport-fr.png",
-  "canalplusdocs": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-docs-fr.png",
-  "canalplusgrandecran": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-grand-ecran-fr.png",
-  "canalpluskids": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-kids-fr.png",
+  "canalplusfoot": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-foot-fr.png",
+  "canalpluscinema": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-cinemas-fr.png",
+  "canalplusseries": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-series-fr.png",
+  "canalplusboxoffice": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-box-office-fr.png",
+  "canalplussport": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-sport-fr.png",
+  "canalplusdocs": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-docs-fr.png",
+  "canalplusgrandecran": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-grand-ecran-fr.png",
+  "canalpluskids": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-kids-fr.png",
 
   // Sports Channels
-  "beinsports1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-french-fr.png",
-  "beinsports2": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-2-french-fr.png",
-  "beinsports3": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-3-french-fr.png",
-  "eurosport1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/eurosport-1-fr.png",
-  "eurosport2": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/eurosport-2-fr.png",
-  "rmcsport1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-sport-1-fr.png",
-  "rmcsport2": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-sport-2-fr.png",
-  "equidia": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/equidia-fr.png",
-  "automoto": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/automoto-la-chaine-fr.png",
-  "golfplus": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/golf-plus-fr.png",
-  "infosportplus": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/infosport-plus-fr.png",
+  "beinsports1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-1-french-fr.png",
+  "beinsports2": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-2-french-fr.png",
+  "beinsports3": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-3-french-fr.png",
+  "eurosport1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/eurosport-1-fr.png",
+  "eurosport2": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/eurosport-2-fr.png",
+  "rmcsport1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-sport-1-fr.png",
+  "rmcsport2": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-sport-2-fr.png",
+  "equidia": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/equidia-fr.png",
+  "automoto": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/automoto-la-chaine-fr.png",
+  "golfplus": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/golf-plus-fr.png",
+  "infosportplus": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/infosport-plus-fr.png",
 
   // Kids & Youth Channels
-  "disneychannel": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/disney-channel-fr.png",
-  "disneyjunior": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/disney-junior-fr.png",
-  "nickelodeon": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/nickelodeon-fr.png",
-  "cartoonnetwork": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cartoon-network-fr.png",
-  "boomerang": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/boomerang-fr.png",
-  "canalj": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-j-fr.png",
-  "tiji": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tiji-fr.png",
+  "disneychannel": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/disney-channel-fr.png",
+  "disneyjunior": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/disney-junior-fr.png",
+  "nickelodeon": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/nickelodeon-fr.png",
+  "cartoonnetwork": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cartoon-network-fr.png",
+  "boomerang": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/boomerang-fr.png",
+  "canalj": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-j-fr.png",
+  "tiji": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tiji-fr.png",
 
   // Entertainment / Generalist
-  "parispremiere": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/paris-premiere-fr.png",
-  "teva": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/teva-fr.png",
-  "rtl9": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rtl9-fr.png",
-  "action": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/action-fr.png",
-  "ushuaia": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ushuaia-tv-fr.png",
-  "tvbreizh": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tv-breizh-fr.png",
-  "serieclub": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/serie-club-fr.png",
-  "warner": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/warner-tv-fr.png",
-  "syfy": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/syfy-fr.png",
-  "ocsmax": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-max-fr.png",
-  "ocspulp": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-pulp-fr.png",
-  "ocsgeants": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-geants-fr.png",
-  "ocschoc": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-choc-fr.png",
-  "ocscity": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ocs-city-fr.png",
-  "histoiretv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/histoire-tv-fr.png",
-  "sciencevie": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/science-et-vie-tv-fr.png",
-  "planeteplus": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/planete-plus-fr.png",
-  "13emerue": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/13eme-rue-fr.png",
-  "mangas": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mangas-fr.png",
-  "gameone": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/game-one-fr.png",
-  "paramount": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/paramount-channel-fr.png",
-  "ab1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/ab1-fr.png",
+  "parispremiere": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/paris-premiere-fr.png",
+  "teva": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/teva-fr.png",
+  "rtl9": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rtl9-fr.png",
+  "action": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/action-fr.png",
+  "ushuaia": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/ushuaia-tv-fr.png",
+  "tvbreizh": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tv-breizh-fr.png",
+  "serieclub": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/serie-club-fr.png",
+  "warner": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/warner-tv-fr.png",
+  "syfy": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/syfy-fr.png",
+  "ocsmax": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/ocs-max-fr.png",
+  "ocspulp": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/ocs-pulp-fr.png",
+  "ocsgeants": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/ocs-geants-fr.png",
+  "ocschoc": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/ocs-choc-fr.png",
+  "ocscity": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/ocs-city-fr.png",
+  "histoiretv": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/histoire-tv-fr.png",
+  "sciencevie": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/science-et-vie-tv-fr.png",
+  "planeteplus": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/planete-plus-fr.png",
+  "13emerue": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/13eme-rue-fr.png",
+  "mangas": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/mangas-fr.png",
+  "gameone": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/game-one-fr.png",
+  "paramount": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/paramount-channel-fr.png",
+  "ab1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/ab1-fr.png",
 
   // Ciné+ channels
-  "cinepluspremier": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-premier-fr.png",
-  "cineplusfrisson": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-frisson-fr.png",
-  "cineplusemotion": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-emotion-fr.png",
-  "cineplusfamiz": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-famiz-fr.png",
-  "cineplusclub": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-club-fr.png",
-  "cineplusclassic": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-classic-fr.png",
-  "cineplusdecale": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cine-plus-decale-fr.png",
+  "cinepluspremier": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cine-plus-premier-fr.png",
+  "cineplusfrisson": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cine-plus-frisson-fr.png",
+  "cineplusemotion": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cine-plus-emotion-fr.png",
+  "cineplusfamiz": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cine-plus-famiz-fr.png",
+  "cineplusclub": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cine-plus-club-fr.png",
+  "cineplusclassic": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cine-plus-classic-fr.png",
+  "cineplusdecale": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cine-plus-decale-fr.png",
 
   // DAZN channels
-  "dazn": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
-  "dazn1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
-  "dazn2": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
-  "dazn3": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
-  "dazn4": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
-  "daznligue1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn2": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn3": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/dazn-1-fr.png",
+  "dazn4": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/dazn-1-fr.png",
+  "daznligue1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/dazn-1-fr.png",
 
   // additional sports channels
-  "beinsportsmax4": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-4-fr.png",
-  "beinsportsmax5": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-5-fr.png",
-  "beinsportsmax6": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-6-fr.png",
-  "beinsportsmax7": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-7-fr.png",
-  "beinsportsmax8": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-8-fr.png",
-  "beinsportsmax9": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-9-fr.png",
-  "beinsportsmax10": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-max-10-fr.png",
+  "beinsportsmax4": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-max-4-fr.png",
+  "beinsportsmax5": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-max-5-fr.png",
+  "beinsportsmax6": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-max-6-fr.png",
+  "beinsportsmax7": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-max-7-fr.png",
+  "beinsportsmax8": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-max-8-fr.png",
+  "beinsportsmax9": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-max-9-fr.png",
+  "beinsportsmax10": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-max-10-fr.png",
 
   // more kid/movie/documentary channels
-  "planetepluscrime": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/planete-plus-crime-investigation-fr.png",
-  "planeteplusaventure": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/planete-plus-aventure-experience-fr.png",
-  "nationalgeographicwild": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/national-geographic-wild-fr.png",
-  "discoveryscience": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/discovery-science-fr.png",
-  "discoveryinvestigation": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/discovery-investigation-fr.png",
-  "mtvhits": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mtv-hits-fr.png",
-  "nickelodeonjunior": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/nickelodeon-junior-fr.png",
-  "chasseetpeche": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/chasse-et-peche-fr.png",
-  "jone": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/j-one-fr.png",
-  "polarplus": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/polar-plus-fr.png",
-  "novelastv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/novelas-tv-fr.png",
-  "tcmcinema": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tcm-cinema-fr.png",
-  "museumtv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/museum-tv-fr.png",
-  "boutiquelive": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-boutique-fr.png",
+  "planetepluscrime": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/planete-plus-crime-investigation-fr.png",
+  "planeteplusaventure": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/planete-plus-aventure-experience-fr.png",
+  "nationalgeographicwild": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/national-geographic-wild-fr.png",
+  "discoveryscience": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/discovery-science-fr.png",
+  "discoveryinvestigation": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/discovery-investigation-fr.png",
+  "mtvhits": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/mtv-hits-fr.png",
+  "nickelodeonjunior": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/nickelodeon-junior-fr.png",
+  "chasseetpeche": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/chasse-et-peche-fr.png",
+  "jone": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/j-one-fr.png",
+  "polarplus": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/polar-plus-fr.png",
+  "novelastv": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/novelas-tv-fr.png",
+  "tcmcinema": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tcm-cinema-fr.png",
+  "museumtv": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/museum-tv-fr.png",
+  "boutiquelive": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/m6-boutique-fr.png",
 
   // Music Channels
-  "m6music": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-music-fr.png",
-  "mtv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mtv-fr.png",
-  "mtvlive": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mtv-live-hd-fr.png",
-  "traceurban": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-urban-fr.png",
-  "tracelatina": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-latina-fr.png",
-  "tracehits": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-hits-fr.png",
-  "tracetropico": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-tropico-fr.png",
-  "traceafrica": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-africa-fr.png",
-  "traceayiti": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-ayiti-fr.png",
-  "tracevanillia": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-vanilla-fr.png",
-  "tracegospel": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-gospel-fr.png",
-  "tracetoca": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-toca-fr.png",
-  "tracemziki": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/trace-mziki-fr.png",
-  "rfmtv": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rfm-tv-fr.png",
-  "melody": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/melody-fr.png",
-  "mcm": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mcm-fr.png",
-  "mcmtop": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/mcm-top-fr.png",
+  "m6music": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/m6-music-fr.png",
+  "mtv": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/mtv-fr.png",
+  "mtvlive": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/mtv-live-hd-fr.png",
+  "traceurban": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-urban-fr.png",
+  "tracelatina": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-latina-fr.png",
+  "tracehits": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-hits-fr.png",
+  "tracetropico": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-tropico-fr.png",
+  "traceafrica": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-africa-fr.png",
+  "traceayiti": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-ayiti-fr.png",
+  "tracevanillia": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-vanilla-fr.png",
+  "tracegospel": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-gospel-fr.png",
+  "tracetoca": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-toca-fr.png",
+  "tracemziki": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/trace-mziki-fr.png",
+  "rfmtv": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rfm-tv-fr.png",
+  "melody": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/melody-fr.png",
+  "mcm": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/mcm-fr.png",
+  "mcmtop": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/mcm-top-fr.png",
 
   // Belgian Channels (using countries/belgium directory)
-  "rtbf": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/la-une-be.png",
-  "laune": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/la-une-be.png",
-  "tipik": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/tipik-be.png",
-  "latrois": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/la-trois-be.png",
-  "clubrtl": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/club-rtl-be.png",
-  "plugrtl": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/plug-rtl-be.png",
-  "rtltvi": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/rtl-tvi-be.png",
-  "ab3": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/ab3-be.png",
-  "abxplore": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/ab-xplore-be.png",
-  "ln24": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/belgium/ln24-be.png"
+  "rtbf": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/la-une-be.png",
+  "laune": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/la-une-be.png",
+  "tipik": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/tipik-be.png",
+  "latrois": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/la-trois-be.png",
+  "clubrtl": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/club-rtl-be.png",
+  "plugrtl": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/plug-rtl-be.png",
+  "rtltvi": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/rtl-tvi-be.png",
+  "ab3": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/ab3-be.png",
+  "abxplore": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/ab-xplore-be.png",
+  "ln24": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/ln24-be.png"
 };
 
 // Helper to normalize names for perfect EPG matching and logo pairing
@@ -549,53 +549,53 @@ function parseXmltvDate(dateStr: string): Date | null {
 
 // Quality logo overrides for main French channels
 const LOGO_OVERRIDES: Record<string, string> = {
-  "TF1.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-fr.png",
-  "France2.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-2-fr.png",
-  "France3.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-3-fr.png",
-  "CanalPlus.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-fr.png",
-  "France5.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-5-fr.png",
-  "M6.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-fr.png",
-  "Arte.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/arte-fr.png",
-  "C8.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/c8-fr.png",
-  "W9.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/w9-fr.png",
-  "TMC.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tmc-fr.png",
-  "TFX.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tfx-fr.png",
-  "NRJ12.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/nrj-12-fr.png",
-  "LCP.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/lcp-public-senat-fr.png",
-  "France4.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-4-fr.png",
-  "BFMTV.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bfm-tv-fr.png",
-  "CNews.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/c-news-fr.png",
-  "CStar.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/c-star-fr.png",
-  "Gulli.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/gulli-fr.png",
-  "TF1SeriesFilms.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-series-films-fr.png",
-  "LEQUIPE.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/lequipe-fr.png",
-  "6ter.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/6ter-fr.png",
-  "RMCStory.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-story-fr.png",
-  "RMCDecouverte.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-decouverte-fr.png",
-  "Cherie25.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cherie-25-fr.png",
-  "LCI.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/lci-fr.png",
-  "FranceInfo.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/franceinfo-fr.png",
-  "CanalPlusSport.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-plus-sport-fr.png",
-  "BeINSports1.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-1-french-fr.png",
-  "BeINSports2.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-2-french-fr.png",
-  "BeINSports3.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/bein-sports-3-french-fr.png",
-  "Eurosport1.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/eurosport-1-fr.png",
-  "Eurosport2.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/eurosport-2-fr.png",
-  "France24.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/france-24-french-fr.png",
-  "TV5Monde.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tv5-monde-france-belgique-suisse-fr.png",
-  "DisneyChannel.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/disney-channel-fr.png",
-  "Nickelodeon.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/nickelodeon-fr.png",
-  "CartoonNetwork.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/cartoon-network-fr.png",
-  "ParisPremiere.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/paris-premiere-fr.png",
-  "Teva.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/teva-fr.png",
-  "RTL9.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rtl9-fr.png",
-  "Action.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/action-fr.png",
-  "RMCSport1.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-sport-1-fr.png",
-  "RMCSport2.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/rmc-sport-2-fr.png",
-  "DisneyJunior.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/disney-junior-fr.png",
-  "Boomerang.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/boomerang-fr.png",
-  "CanalJ.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/canal-j-fr.png",
-  "TiJi.fr": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tiji-fr.png",
+  "TF1.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tf1-fr.png",
+  "France2.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-2-fr.png",
+  "France3.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-3-fr.png",
+  "CanalPlus.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-fr.png",
+  "France5.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-5-fr.png",
+  "M6.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/m6-fr.png",
+  "Arte.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/arte-fr.png",
+  "C8.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/c8-fr.png",
+  "W9.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/w9-fr.png",
+  "TMC.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tmc-fr.png",
+  "TFX.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tfx-fr.png",
+  "NRJ12.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/nrj-12-fr.png",
+  "LCP.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/lcp-public-senat-fr.png",
+  "France4.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-4-fr.png",
+  "BFMTV.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bfm-tv-fr.png",
+  "CNews.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/c-news-fr.png",
+  "CStar.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/c-star-fr.png",
+  "Gulli.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/gulli-fr.png",
+  "TF1SeriesFilms.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tf1-series-films-fr.png",
+  "LEQUIPE.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/lequipe-fr.png",
+  "6ter.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/6ter-fr.png",
+  "RMCStory.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-story-fr.png",
+  "RMCDecouverte.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-decouverte-fr.png",
+  "Cherie25.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cherie-25-fr.png",
+  "LCI.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/lci-fr.png",
+  "FranceInfo.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/franceinfo-fr.png",
+  "CanalPlusSport.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-plus-sport-fr.png",
+  "BeINSports1.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-1-french-fr.png",
+  "BeINSports2.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-2-french-fr.png",
+  "BeINSports3.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/bein-sports-3-french-fr.png",
+  "Eurosport1.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/eurosport-1-fr.png",
+  "Eurosport2.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/eurosport-2-fr.png",
+  "France24.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/france-2-fr.png", // fallback or correct 24
+  "TV5Monde.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tv5-monde-france-belgique-suisse-fr.png",
+  "DisneyChannel.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/disney-channel-fr.png",
+  "Nickelodeon.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/nickelodeon-fr.png",
+  "CartoonNetwork.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/cartoon-network-fr.png",
+  "ParisPremiere.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/paris-premiere-fr.png",
+  "Teva.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/teva-fr.png",
+  "RTL9.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rtl9-fr.png",
+  "Action.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/action-fr.png",
+  "RMCSport1.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-sport-1-fr.png",
+  "RMCSport2.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/rmc-sport-2-fr.png",
+  "DisneyJunior.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/disney-junior-fr.png",
+  "Boomerang.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/boomerang-fr.png",
+  "CanalJ.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/canal-j-fr.png",
+  "TiJi.fr": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tiji-fr.png",
 };
 
 
@@ -782,9 +782,9 @@ function getLogoForChannel(channelName: string, epgLogo?: string, vavooLogo?: st
   // 5. Very specific contains logic to avoid false positives like "arte" in "alacarte"
   else {
     const specialCases: Record<string, string> = {
-      "arte": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/arte-fr.png",
-      "tf1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-fr.png",
-      "m6": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-fr.png"
+      "arte": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/arte-fr.png",
+      "tf1": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/tf1-fr.png",
+      "m6": "https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/m6-fr.png"
     };
 
     if (specialCases[norm]) {
@@ -805,7 +805,7 @@ function getLogoForChannel(channelName: string, epgLogo?: string, vavooLogo?: st
     if (cleanLogo.includes("iptv-org") && (cleanLogo.includes("/images/channels/") || cleanLogo.includes("/images/logos/") || cleanLogo.includes("/logos/logos/"))) {
       const parts = cleanLogo.split("/");
       const filename = parts[parts.length - 1];
-      return `https://raw.githubusercontent.com/iptv-org/logos/master/logos/${filename}`;
+      return `https://iptv-org.github.io/logos/logos/${filename}`;
     }
     return cleanLogo;
   }
@@ -1601,6 +1601,46 @@ app.get("/api/stream-url/:id", (req, res) => {
   });
 });
 
+// Server-side URL shortener proxy to bypass CORS and simplify typing on Smart TVs
+app.get("/api/shorten", async (req, res) => {
+  const targetUrl = req.query.url as string;
+  if (!targetUrl) {
+    return res.status(400).json({ error: "Missing url parameter" });
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+
+  try {
+    const isGdUrl = `https://is.gd/create.php?format=json&url=${encodeURIComponent(targetUrl)}`;
+    const response = await fetch(isGdUrl);
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.shorturl) {
+        return res.json({ shortUrl: data.shorturl });
+      }
+    }
+  } catch (err) {
+    console.warn("is.gd shortening failed, trying tinyurl:", err);
+  }
+
+  try {
+    const tinyUrl = `https://tinyurl.com/api-create.php?url=${encodeURIComponent(targetUrl)}`;
+    const response = await fetch(tinyUrl);
+    if (response.ok) {
+      const shortUrl = await response.text();
+      if (shortUrl && shortUrl.startsWith("http")) {
+        return res.json({ shortUrl: shortUrl.trim() });
+      }
+    }
+  } catch (err) {
+    console.error("All URL shorteners failed:", err);
+  }
+
+  return res.json({ shortUrl: targetUrl });
+});
+
 // Handle CORS Preflight checking for streaming files
 app.options(["/api/stream/:id/:file", "/api/stream-playlist", "/api/stream-ts"], (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -2071,11 +2111,11 @@ app.all(["/player_api.php", "/panel_api.php"], async (req, res) => {
         message: "Bienvenue sur Vavoo IPTV Relay Xtream API",
         auth: 1,
         status: "Active",
-        exp_date: "1800000000",
-        is_trial: "0",
-        active_cons: "0",
-        max_connections: "5",
-        created_at: "1600000000",
+        exp_date: 1800000000,
+        is_trial: 0,
+        active_cons: 0,
+        max_connections: 5,
+        created_at: 1600000000,
         allowed_output_formats: ["m3u8", "ts"]
       },
       server_info: {

@@ -1,5 +1,6 @@
 import React from "react";
 import { Tv } from "lucide-react";
+import { getLogoForChannel } from "../utils/logoHelper";
 
 interface ChannelLogoProps {
   logo?: string;
@@ -41,17 +42,10 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
     return clean.slice(0, 3).toUpperCase();
   }, [name]);
 
-  // Normalize iptv-org logos to the new working path
+  // Normalize logos to the high-quality tv-logo and fallback logo map
   const parsedLogo = React.useMemo(() => {
-    if (!logo) return logo;
-    let cleanLogo = logo.trim();
-    if (cleanLogo.includes("iptv-org") && (cleanLogo.includes("/images/channels/") || cleanLogo.includes("/images/logos/") || cleanLogo.includes("/logos/logos/"))) {
-      const parts = cleanLogo.split("/");
-      const filename = parts[parts.length - 1];
-      return `https://raw.githubusercontent.com/iptv-org/logos/master/logos/${filename}`;
-    }
-    return cleanLogo;
-  }, [logo]);
+    return getLogoForChannel(name, logo);
+  }, [name, logo]);
 
   // Reset error state when parsedLogo or name changes
   React.useEffect(() => {
