@@ -45,13 +45,18 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
   const parsedLogo = React.useMemo(() => {
     if (!logo) return logo;
     let cleanLogo = logo.trim();
-    if (cleanLogo.includes("iptv-org") && (cleanLogo.includes("/images/channels/") || cleanLogo.includes("/images/logos/"))) {
+    if (cleanLogo.includes("iptv-org") && (cleanLogo.includes("/images/channels/") || cleanLogo.includes("/images/logos/") || cleanLogo.includes("/logos/logos/"))) {
       const parts = cleanLogo.split("/");
       const filename = parts[parts.length - 1];
-      return `https://iptv-org.github.io/logos/logos/${filename}`;
+      return `https://raw.githubusercontent.com/iptv-org/logos/master/logos/${filename}`;
     }
     return cleanLogo;
   }, [logo]);
+
+  // Reset error state when parsedLogo or name changes
+  React.useEffect(() => {
+    setError(false);
+  }, [parsedLogo, name]);
 
   // If there's an error loading or no logo provided, return premium stylized text initial
   if (error || !parsedLogo || parsedLogo.trim() === "") {

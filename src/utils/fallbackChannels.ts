@@ -309,10 +309,10 @@ export const FALLBACK_CHANNELS: Channel[] = [
 
 // Auto-correct any legacy logo URLs in fallback channels to ensure 100% coverage on static hosts
 FALLBACK_CHANNELS.forEach(ch => {
-  if (ch.logo && ch.logo.includes("iptv-org") && (ch.logo.includes("/images/channels/") || ch.logo.includes("/images/logos/"))) {
+  if (ch.logo && ch.logo.includes("iptv-org") && (ch.logo.includes("/images/channels/") || ch.logo.includes("/images/logos/") || ch.logo.includes("/logos/logos/"))) {
     const parts = ch.logo.split("/");
     const filename = parts[parts.length - 1];
-    ch.logo = `https://iptv-org.github.io/logos/logos/${filename}`;
+    ch.logo = `https://raw.githubusercontent.com/iptv-org/logos/master/logos/${filename}`;
   }
 });
 

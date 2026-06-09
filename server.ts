@@ -761,42 +761,53 @@ async function updateLogoData() {
 function getLogoForChannel(channelName: string, epgLogo?: string, vavooLogo?: string): string | undefined {
   const norm = normalizeName(channelName);
   
+  let result: string | undefined = undefined;
+
   // 1. Exact match in fallback (high priority)
   if (fallbackLogoMap[norm]) {
-    return fallbackLogoMap[norm];
+    result = fallbackLogoMap[norm];
   }
-
   // 2. Exact match in full logo map
-  if (channelLogoMap[norm]) {
-    return channelLogoMap[norm];
+  else if (channelLogoMap[norm]) {
+    result = channelLogoMap[norm];
   }
-  
   // 3. EPG provided logo
-  if (epgLogo) {
-    return epgLogo;
+  else if (epgLogo) {
+    result = epgLogo;
   }
-
   // 4. Vavoo provided logo
-  if (vavooLogo) {
-    return vavooLogo;
+  else if (vavooLogo) {
+    result = vavooLogo;
   }
-  
   // 5. Very specific contains logic to avoid false positives like "arte" in "alacarte"
-  const specialCases: Record<string, string> = {
-    "arte": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/arte-fr.png",
-    "tf1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-fr.png",
-    "m6": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-fr.png"
-  };
+  else {
+    const specialCases: Record<string, string> = {
+      "arte": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/arte-fr.png",
+      "tf1": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/tf1-fr.png",
+      "m6": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/france/m6-fr.png"
+    };
 
-  if (specialCases[norm]) return specialCases[norm];
-
-  // Only use fuzzy matching if the name is sufficiently long or not a special case
-  if (norm.length > 4) {
-    for (const [key, logoUrl] of Object.entries(fallbackLogoMap)) {
-      if (key !== "arte" && (key.includes(norm) || norm.includes(key))) {
-        return logoUrl;
+    if (specialCases[norm]) {
+      result = specialCases[norm];
+    } else if (norm.length > 4) {
+      for (const [key, logoUrl] of Object.entries(fallbackLogoMap)) {
+        if (key !== "arte" && (key.includes(norm) || norm.includes(key))) {
+          result = logoUrl;
+          break;
+        }
       }
     }
+  }
+
+  // Normalize iptv-org logos
+  if (result) {
+    let cleanLogo = result.trim();
+    if (cleanLogo.includes("iptv-org") && (cleanLogo.includes("/images/channels/") || cleanLogo.includes("/images/logos/") || cleanLogo.includes("/logos/logos/"))) {
+      const parts = cleanLogo.split("/");
+      const filename = parts[parts.length - 1];
+      return `https://raw.githubusercontent.com/iptv-org/logos/master/logos/${filename}`;
+    }
+    return cleanLogo;
   }
 
   return undefined;
