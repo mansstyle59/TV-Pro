@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="L'expérience TV premium réinventée" />
+    <base href="/TV-Pro/">
+    <link rel="manifest" href="/TV-Pro/manifest.json" />
+    <link rel="apple-touch-icon" href="/TV-Pro/pwa-192x192.svg" />
+    <link rel="icon" type="image/svg+xml" href="/TV-Pro/pwa-192x192.svg" />
+    <title>Flux Tv Pro</title>
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/TV-Pro/src/main.tsx"></script>
+    <script>
+      // Redirect 404s to index.html for SPA routing
+      if (!window.location.href.includes('.')) {
+        window.location.href = '/TV-Pro/';
+      }
+    </script>
+  </body>
+</html>
