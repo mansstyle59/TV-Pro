@@ -37,6 +37,8 @@ jobs:
         run: npm ci || npm install
 
       - name: Build production assets
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL || vars.VITE_API_URL || '' }}
         run: npm run build
 
       - name: Support clean page loading for direct routes

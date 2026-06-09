@@ -11,8 +11,17 @@ export const getAppBaseUrl = (): string => {
     return envUrl.replace(/\/$/, "");
   }
 
-  // Fallback: standard relative origin
+  // Third priority: auto-fallback for static hosting (e.g. GitHub Pages) to the active Cloud Run server
   const loc = window.location;
+  const host = loc.hostname;
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0" || host.startsWith("192.168.");
+  const isCloudRun = host.endsWith(".run.app");
+
+  if (!isLocal && !isCloudRun) {
+    return "https://ais-pre-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app";
+  }
+
+  // Fallback: standard relative origin
   let path = loc.pathname;
   
   if (path.endsWith("/index.html")) {
