@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { Readable } from "stream";
 
 interface Channel {
@@ -2354,6 +2353,7 @@ app.get("/api/playlist.m3u", async (req, res) => {
 async function setupVite() {
   if (process.env.NODE_ENV !== "production") {
     console.log("Running in DEVELOPMENT mode. Initializing Vite middleware...");
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

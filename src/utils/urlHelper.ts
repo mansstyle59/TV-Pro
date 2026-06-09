@@ -18,7 +18,7 @@ export const getAppBaseUrl = (): string => {
   const isCloudRun = host.endsWith(".run.app");
 
   if (!isLocal && !isCloudRun) {
-    return "https://ais-pre-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app";
+    return "https://ais-dev-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app";
   }
 
   // Fallback: standard relative origin

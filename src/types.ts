@@ -16,6 +16,8 @@ export interface Channel {
   logo?: string;
   categoryOverride?: string;
   qualityLabel?: string;
+  streamUrl?: string;
+  groupTitle?: string;
   epg?: {
     current: EpgProgramme | null;
     next: EpgProgramme | null;

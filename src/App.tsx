@@ -54,6 +54,7 @@ import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
 import { Integrations } from "./components/Integrations";
 import { getApiUrl, isGitHubPages, getAppHostUrlOnly, getAppBaseUrl } from "./utils/urlHelper";
+import { FALLBACK_CHANNELS, getFallbackLcnMap } from "./utils/fallbackChannels";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -350,8 +351,9 @@ function getChannelSortWeight(c: { name: string; category: string; core: string;
 
 
 export default function App() {
-  const [isAuthorized, setIsAuthorized] = useState(() => localStorage.getItem('isAuthorized') === 'true');
-  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem('isAdmin') === 'true');
+  // Access code and protection bypassed by default for total unrestricted access
+  const [isAuthorized, setIsAuthorized] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(true);
   
   // Auth state - completely local state
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem('isAuthenticated') === 'true');
@@ -601,18 +603,20 @@ export default function App() {
       const response = await fetch(url);
       const data = await response.json();
 
-      if (data.success && Array.isArray(data.channels)) {
+      if (data.success && Array.isArray(data.channels) && data.channels.length > 0) {
         if (data.lcnMap) {
           LCN_MAP = data.lcnMap;
         }
         setChannels(data.channels);
-        // Do NOT auto-play/auto-select TF1 on open to allow displaying the ready-to-stream grid instead!
       } else {
-        setError(data.error || "Une erreur est survenue lors du chargement des chaînes.");
+        console.log("Response empty or unsuccessful. Activating local fallback channels list...");
+        LCN_MAP = getFallbackLcnMap();
+        setChannels(FALLBACK_CHANNELS);
       }
     } catch (err: any) {
-      console.error(err);
-      setError("Impossible de contacter le serveur. Veuillez réessayer.");
+      console.warn("Could not contact server. Running in 100% Client-Side fallback mode for GitHub Pages:", err);
+      LCN_MAP = getFallbackLcnMap();
+      setChannels(FALLBACK_CHANNELS);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -1046,6 +1050,9 @@ export default function App() {
   };
 
   const getActiveStreamUrl = (channel: Channel): string => {
+    if (channel.streamUrl) {
+      return channel.streamUrl;
+    }
     return getApiUrl(`/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`);
   };
 
@@ -1942,13 +1949,13 @@ export default function App() {
 
             {/* Quick Launch on Active Server Button */}
             <a
-              href="https://ais-pre-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app"
+              href="https://ais-dev-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full bg-[#FF7900] text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-2xl hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-3 mb-6 shadow-xl shadow-orange-500/20"
+              className="w-full bg-[#FF7900] text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-2xl hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-3 mb-6 shadow-xl shadow-orange-500/20 animate-bounce"
             >
               <Play size={14} className="fill-current" />
-              Lancer sur la Version Active (Cloud Run)
+              Lancer sur le Serveur Actif (Cloud Run)
             </a>
 
             {/* Custom Server Configuration Card */}
