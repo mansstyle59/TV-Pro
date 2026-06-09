@@ -4,6 +4,7 @@ import { Clock, Info, Calendar, ChevronRight, X, Play } from "lucide-react";
 import { EpgProgramme } from "../types";
 import { formatEpgTime, getEpgProgress } from "../utils/epgUtils";
 import { getApiUrl } from "../utils/urlHelper";
+import { generateFallbackEpg } from "../utils/fallbackEpg";
 
 interface EpgTimelineProps {
   channelName: string;
@@ -22,14 +23,17 @@ export function EpgTimeline({ channelName, onClose, onProgramClick }: EpgTimelin
       setError(null);
       try {
         const response = await fetch(getApiUrl(`/api/epg/${encodeURIComponent(channelName)}`));
+        if (!response.ok) throw new Error("Server EPG unavailable");
         const data = await response.json();
-        if (data.success) {
-          setProgrammes(data.programmes || []);
+        if (data.success && Array.isArray(data.programmes) && data.programmes.length > 0) {
+          setProgrammes(data.programmes);
         } else {
-          setError(data.error || "Impossible de charger le guide TV");
+          console.log("No backend EPG data for " + channelName + ", generating client-side fallback...");
+          setProgrammes(generateFallbackEpg(channelName));
         }
       } catch (err) {
-        setError("Erreur de connexion au service EPG");
+        console.warn("EPG server offline. Generating dynamic client schedule...", err);
+        setProgrammes(generateFallbackEpg(channelName));
       } finally {
         setLoading(false);
       }

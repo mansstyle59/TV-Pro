@@ -53,8 +53,11 @@ import { SportsCenter } from "./components/SportsCenter";
 import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
 import { Integrations } from "./components/Integrations";
+import { XtreamConfigWidget } from "./components/XtreamConfigWidget";
 import { getApiUrl, isGitHubPages, getAppHostUrlOnly, getAppBaseUrl } from "./utils/urlHelper";
 import { FALLBACK_CHANNELS, getFallbackLcnMap } from "./utils/fallbackChannels";
+import { getFallbackEpgCurrentAndNext } from "./utils/fallbackEpg";
+import { getSavedXtreamCredentials, fetchXtreamChannels, fetchXtreamShortEpg } from "./utils/xtreamClient";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -598,6 +601,32 @@ export default function App() {
     }
     setError(null);
 
+    // 1. First priority: Check if Xtream mode is active
+    const xtreamCreds = getSavedXtreamCredentials();
+    if (xtreamCreds.enabled) {
+      try {
+        console.log("Xtream Codes mode active. Loading custom playlist directly from server...");
+        const xtreamChs = await fetchXtreamChannels();
+        if (xtreamChs && xtreamChs.length > 0) {
+          // Map real-time fallback EPG for instant visual pleasure
+          const enriched = xtreamChs.map(ch => ({
+            ...ch,
+            epg: getFallbackEpgCurrentAndNext(ch.name)
+          }));
+          setChannels(enriched);
+          return;
+        } else {
+          console.warn("Xtream Codes returned 0 streams. Reverting to system streams...");
+        }
+      } catch (err) {
+        console.error("Failed loading Xtream streams on boot:", err);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    }
+
+    // 2. Second priority: Standard API fetch or Vavoo core
     try {
       const url = getApiUrl(`/api/channels${forceRefetch ? "?force=true" : ""}`);
       const response = await fetch(url);
@@ -609,14 +638,22 @@ export default function App() {
         }
         setChannels(data.channels);
       } else {
-        console.log("Response empty or unsuccessful. Activating local fallback channels list...");
+        console.log("Response empty or unsuccessful. Activating local fallback channels list with dynamic EPG...");
         LCN_MAP = getFallbackLcnMap();
-        setChannels(FALLBACK_CHANNELS);
+        const enriched = FALLBACK_CHANNELS.map(ch => ({
+          ...ch,
+          epg: getFallbackEpgCurrentAndNext(ch.name)
+        }));
+        setChannels(enriched);
       }
     } catch (err: any) {
       console.warn("Could not contact server. Running in 100% Client-Side fallback mode for GitHub Pages:", err);
       LCN_MAP = getFallbackLcnMap();
-      setChannels(FALLBACK_CHANNELS);
+      const enriched = FALLBACK_CHANNELS.map(ch => ({
+        ...ch,
+        epg: getFallbackEpgCurrentAndNext(ch.name)
+      }));
+      setChannels(enriched);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -1092,6 +1129,27 @@ export default function App() {
     addToHistory(channel.id);
     setFocusedIndex(-1); // Reset focus when playing
     window.scrollTo({ top: 0, behavior: "smooth" });
+    
+    // If it's an Xtream channel, dynamically fetch the latest live EPG listing on-demand!
+    if (channel.country === "Xtream Live") {
+      fetchXtreamShortEpg(channel.id).then(epgData => {
+        if (epgData.current || epgData.next) {
+          setSelectedChannel(prev => {
+            if (prev && prev.id === channel.id) {
+              return { ...prev, epg: epgData };
+            }
+            return prev;
+          });
+          // Also store it inside the channel list so the grids and carousels render it in real-time
+          setChannels(prevList => prevList.map(ch => {
+            if (ch.id === channel.id) {
+              return { ...ch, epg: epgData };
+            }
+            return ch;
+          }));
+        }
+      }).catch(err => console.warn("Failed loading short EPG on-demand for Xtream channel:", err));
+    }
     
     // Simulate fast flow sync
     setTimeout(() => {
@@ -3008,6 +3066,12 @@ export default function App() {
                  </button>
 
                  <div className="px-6 py-4 flex items-center justify-between mt-4">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FF7900]">Source IPTV Personnalisée</h3>
+                  </div>
+
+                  <XtreamConfigWidget onSuccess={() => loadChannels(true)} />
+
+                  <div className="px-6 py-4 flex items-center justify-between mt-4">
                     <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-neutral-500">Serveur d'API & Réseau</h3>
                   </div>
 
