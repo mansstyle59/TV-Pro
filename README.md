@@ -2,26 +2,62 @@
 
 Plateforme de streaming IPTV haute performance.
 
-## Déploiement sur GitHub
+## À propos
 
-Pour partager votre projet sur GitHub :
+TV PRO Explore est une Progressive Web App (PWA) conçue pour offrir une expérience de streaming fluide et performante sur plusieurs plateformes, notamment Android TV.
 
-1. Créez un nouveau repository sur [GitHub](https://github.com/).
-2. Initialisez les commandes suivantes dans votre terminal local :
+## Caractéristiques
 
+- ✨ Progressive Web App (PWA)
+- 📱 Compatible Android TV
+- 🎮 Navigation par télécommande/D-pad
+- ⚡ Performance optimisée
+- 🔌 Support WebView
+
+## Installation
+
+### Prérequis
+
+- Git
+- Node.js (v14+)
+- npm ou yarn
+
+### Déploiement
+
+1. Clonez le repository :
    ```bash
-   git init
-   git add .
-   git commit -m "Initial commit of TV PRO Explore"
-   git branch -M main
-   git remote add origin <VOTRE_URL_GITHUB_REPOSITORY>
-   git push -u origin main
+   git clone https://github.com/mansstyle59/TV-Pro.git
+   cd TV-Pro
    ```
 
-## Adaptations pour Android TV
+2. Installez les dépendances :
+   ```bash
+   npm install
+   ```
 
-Cette application est une PWA (Progressive Web App). Pour une expérience optimale sur Android TV (support de la télécommande/D-pad, comportement natif) :
+3. Lancez l'application :
+   ```bash
+   npm run dev
+   ```
 
-1. **Wrapper WebView** : Il est recommandé de créer un projet Android natif minimal (Kotlin/Jetpack Compose) qui contient une `WebView` en plein écran.
-2. **Navigation D-pad** : Assurez-vous d'ajouter des écouteurs de touches (KeyEvents) dans votre wrapper Android pour mapper les boutons de la télécommande (Up, Down, Left, Right, Center) vers des événements de navigation JavaScript (`key="ArrowUp"`, etc.).
-3. **Optimisations** : Dans le code de cette application, assurez-vous que tous les éléments interactifs sont accessibles via le focus clavier (utilisez des `tabIndex` appropriés et des styles `:focus` visibles).
+## Adaptations Android TV
+
+Cette application est optimisée pour Android TV :
+
+- **Wrapper WebView** : Créez un projet Android natif minimal (Kotlin/Jetpack Compose) avec une `WebView` en plein écran
+- **Navigation D-pad** : Les écouteurs de touches (KeyEvents) mappent les boutons de la télécommande (Up, Down, Left, Right, Center)
+- **Accessibilité** : Tous les éléments interactifs sont accessibles via le focus clavier avec `tabIndex` et styles `:focus` appropriés
+
+## Technologies
+
+- TypeScript
+- JavaScript
+- PWA
+
+## Licence
+
+Voir le fichier LICENSE pour plus de détails.
+
+## Support
+
+Pour plus d'informations, visitez [GitHub](https://github.com/mansstyle59/TV-Pro).
