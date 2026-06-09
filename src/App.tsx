@@ -53,7 +53,7 @@ import { SportsCenter } from "./components/SportsCenter";
 import { AccessCodeGate } from "./components/AccessCodeGate";
 import { formatEpgTime, getEpgProgress } from "./utils/epgUtils";
 import { Integrations } from "./components/Integrations";
-import { getApiUrl, isGitHubPages, getAppHostUrlOnly } from "./utils/urlHelper";
+import { getApiUrl, isGitHubPages, getAppHostUrlOnly, getAppBaseUrl } from "./utils/urlHelper";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -1930,14 +1930,26 @@ export default function App() {
             <div className="w-20 h-20 bg-red-500/10 rounded-[2rem] flex items-center justify-center border border-red-500/20 text-red-500 mb-6 animate-pulse">
               <Settings size={40} className="text-[#FF7900]" />
             </div>
-            <h2 className="text-2xl font-black uppercase tracking-tight text-white mb-3">Serveur non configuré</h2>
+            
+            <h2 className="text-2xl font-black uppercase tracking-tight text-white mb-2">Serveur non configuré</h2>
             <p className="text-neutral-400 text-sm mb-6 leading-relaxed">
               {error}
               <br />
               <span className="text-xs text-neutral-500 mt-2 block">
-                Si vous exécutez l'application en mode statique (ex. GitHub Pages), un serveur d'API d'arrière-plan actif est requis pour le traitement des signatures de flux, les redirections de segments et la synchronisation du guide des programmes (EPG).
+                Si vous exécutez l'application en mode statique (ex. GitHub Pages), un serveur d'API d'arrière-plan actif est requis pour le traitement des signatures de flux, les redirections de segments et la synchronisation du guide d'EPG.
               </span>
             </p>
+
+            {/* Quick Launch on Active Server Button */}
+            <a
+              href="https://ais-pre-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full bg-[#FF7900] text-white font-black text-xs uppercase tracking-widest py-4 px-6 rounded-2xl hover:bg-orange-600 active:scale-98 transition-all flex items-center justify-center gap-3 mb-6 shadow-xl shadow-orange-500/20"
+            >
+              <Play size={14} className="fill-current" />
+              Lancer sur la Version Active (Cloud Run)
+            </a>
 
             {/* Custom Server Configuration Card */}
             <div className="w-full bg-neutral-900 border border-white/5 p-6 rounded-3xl text-left space-y-4 mb-8">
@@ -1948,7 +1960,7 @@ export default function App() {
                 <input
                   type="text"
                   placeholder="https://votre-serveur.run.app"
-                  defaultValue={localStorage.getItem("backend_server_url") || ""}
+                  defaultValue={localStorage.getItem("backend_server_url") || getAppBaseUrl()}
                   id="error-backend-input"
                   className="flex-grow bg-neutral-950 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#FF7900] font-mono"
                 />
@@ -1968,9 +1980,17 @@ export default function App() {
                   Valider
                 </button>
               </div>
-              <p className="text-[10px] text-neutral-500 leading-relaxed">
-                Renseignez ici l'adresse de votre hébergement Cloud Run actif. Exemple : <code className="bg-black/30 p-1 rounded font-mono text-[9px] text-[#FF7900]">https://ais-pre-td6du2u6cbmmoutnjwycwl-277169902875.europe-west2.run.app</code>
-              </p>
+              <div className="text-[10px] text-neutral-500 leading-relaxed space-y-2">
+                <p>
+                  Par défaut, l'application utilise l'adresse de démonstration active :
+                </p>
+                <code className="bg-black/30 p-1.5 rounded font-mono text-[9px] text-[#FF7900] block truncate select-all">
+                  {getAppBaseUrl()}
+                </code>
+                <p className="text-amber-500/90 font-medium pt-1 border-t border-white/5">
+                  💡 Note : Si vous utilisez GitHub Pages, la sécurité du navigateur bloque les requêtes cross-origin vers le serveur d'évaluation, car celui-ci requiert un cookie de sécurité de session. Pour utiliser l'application immédiatement et regarder vos chaînes, cliquez sur le bouton orange "Lancer sur la Version Active (Cloud Run)" ci-dessus !
+                </p>
+              </div>
             </div>
 
             <button
