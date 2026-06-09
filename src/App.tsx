@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { 
   Search, 
@@ -406,6 +406,18 @@ export default function App() {
   const [showFullEpg, setShowFullEpg] = useState(false);
   const [sportsSubTab, setSportsSubTab] = useState<string>("program");
   const [selectedChannel, setSelectedChannel] = useState<DisplayChannel | null>(null);
+  const [lastEpgRefresh, setLastEpgRefresh] = useState<Date>(new Date());
+  
+  const selectedChannelRef = useRef<DisplayChannel | null>(null);
+  const channelsRef = useRef<Channel[]>([]);
+
+  useEffect(() => {
+    selectedChannelRef.current = selectedChannel;
+  }, [selectedChannel]);
+
+  useEffect(() => {
+    channelsRef.current = channels;
+  }, [channels]);
   const [technicalInfoChannel, setTechnicalInfoChannel] = useState<Channel | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [failedChannels, setFailedChannels] = useState<Set<number>>(new Set());
@@ -660,8 +672,77 @@ export default function App() {
     }
   };
 
+  const refreshEpg = async () => {
+    const activeChan = selectedChannelRef.current;
+    
+    // 1. Check if Xtream mode is active
+    const xtreamCreds = getSavedXtreamCredentials();
+    if (xtreamCreds.enabled) {
+      console.log("[EPG Auto-Refresh] Advancing Xtream fallback EPG schedules...");
+      setChannels(prevList => prevList.map(ch => ({
+        ...ch,
+        epg: getFallbackEpgCurrentAndNext(ch.name)
+      })));
+      
+      if (activeChan && activeChan.country === "Xtream Live") {
+        try {
+          const epgData = await fetchXtreamShortEpg(activeChan.id);
+          if (epgData.current || epgData.next) {
+            setSelectedChannel(prev => {
+              if (prev && prev.id === activeChan.id) {
+                return { ...prev, epg: epgData };
+              }
+              return prev;
+            });
+            setChannels(prevList => prevList.map(ch => {
+              if (ch.id === activeChan.id) {
+                return { ...ch, epg: epgData };
+              }
+              return ch;
+            }));
+          }
+        } catch (err) {
+          console.warn("[EPG Auto-Refresh] Failed refreshing active Xtream channel:", err);
+        }
+      }
+      setLastEpgRefresh(new Date());
+      return;
+    }
+
+    // 2. Standard API fetch background update
+    try {
+      const url = getApiUrl("/api/channels");
+      const response = await fetch(url);
+      const data = await response.json();
+      if (data.success && Array.isArray(data.channels) && data.channels.length > 0) {
+        console.log("[EPG Auto-Refresh] Successfully refreshed EPG data from server.");
+        setChannels(data.channels);
+      } else {
+        setChannels(prevList => prevList.map(ch => ({
+          ...ch,
+          epg: getFallbackEpgCurrentAndNext(ch.name)
+        })));
+      }
+    } catch (err) {
+      console.warn("[EPG Auto-Refresh] Local client EPG update fallback due to offline backend:", err);
+      setChannels(prevList => prevList.map(ch => ({
+        ...ch,
+        epg: getFallbackEpgCurrentAndNext(ch.name)
+      })));
+    }
+    setLastEpgRefresh(new Date());
+  };
+
   useEffect(() => {
     loadChannels();
+
+    // Auto-refresh EPG every 30 seconds to seamlessly advance current/next shows
+    const interval = setInterval(() => {
+      console.log("[EPG Service] Running background EPG refresh...");
+      refreshEpg();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Categorizer rule-set based on channel name
@@ -1737,12 +1818,19 @@ export default function App() {
                       <div className="relative z-10 space-y-6">
                         {/* EPG Header */}
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="relative flex h-2.5 w-2.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                            </span>
-                            <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">En Direct</span>
+                          <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-3">
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                              </span>
+                              <span className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em]">En Direct</span>
+                            </div>
+                            {lastEpgRefresh && (
+                              <span className="text-[9px] font-mono text-neutral-500 font-bold uppercase tracking-wider hidden sm:inline-block">
+                                MàJ Auto: {lastEpgRefresh.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                              </span>
+                            )}
                           </div>
                           
                           {selectedChannel.epg.current.category && (

@@ -18,8 +18,10 @@ export function EpgTimeline({ channelName, onClose, onProgramClick }: EpgTimelin
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchFullEpg() {
-      setLoading(true);
+    async function fetchFullEpg(isSilent = false) {
+      if (!isSilent) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const response = await fetch(getApiUrl(`/api/epg/${encodeURIComponent(channelName)}`));
@@ -35,10 +37,19 @@ export function EpgTimeline({ channelName, onClose, onProgramClick }: EpgTimelin
         console.warn("EPG server offline. Generating dynamic client schedule...", err);
         setProgrammes(generateFallbackEpg(channelName));
       } finally {
-        setLoading(false);
+        if (!isSilent) {
+          setLoading(false);
+        }
       }
     }
     fetchFullEpg();
+
+    // Auto-refresh the 24h schedule every 30 seconds of sitting in the modal to advance active states
+    const interval = setInterval(() => {
+      fetchFullEpg(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [channelName]);
 
   const isCurrent = (start: string, stop: string) => {
