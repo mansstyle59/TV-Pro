@@ -57,7 +57,7 @@ import { XtreamConfigWidget } from "./components/XtreamConfigWidget";
 import { getApiUrl, isGitHubPages, getAppHostUrlOnly, getAppBaseUrl } from "./utils/urlHelper";
 import { FALLBACK_CHANNELS, getFallbackLcnMap } from "./utils/fallbackChannels";
 import { getFallbackEpgCurrentAndNext } from "./utils/fallbackEpg";
-import { getSavedXtreamCredentials, fetchXtreamChannels, fetchXtreamShortEpg } from "./utils/xtreamClient";
+import { getSavedXtreamCredentials, fetchXtreamChannels, fetchXtreamShortEpg, fetchXtreamCategoriesList, fetchXtreamChannelsByCategory, XtreamCategory } from "./utils/xtreamClient";
 
 interface DisplayChannel extends Channel {
   category: string;
@@ -419,6 +419,13 @@ export default function App() {
     channelsRef.current = channels;
   }, [channels]);
   const [technicalInfoChannel, setTechnicalInfoChannel] = useState<Channel | null>(null);
+  const [xtreamEnabledState, setXtreamEnabledState] = useState<boolean>(() => {
+    return getSavedXtreamCredentials().enabled;
+  });
+  const [xtreamCategories, setXtreamCategories] = useState<XtreamCategory[]>([]);
+  const [selectedXtreamCategoryId, setSelectedXtreamCategoryId] = useState<string>("");
+  const [categorySearchQuery, setCategorySearchQuery] = useState<string>("");
+  const [loadingXtreamCategory, setLoadingXtreamCategory] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [failedChannels, setFailedChannels] = useState<Set<number>>(new Set());
   const [favorites, setFavorites] = useState<number[]>([]);
@@ -615,27 +622,45 @@ export default function App() {
 
     // 1. First priority: Check if Xtream mode is active
     const xtreamCreds = getSavedXtreamCredentials();
+    setXtreamEnabledState(xtreamCreds.enabled);
     if (xtreamCreds.enabled) {
       try {
-        console.log("Xtream Codes mode active. Loading custom playlist directly from server...");
-        const xtreamChs = await fetchXtreamChannels();
-        if (xtreamChs && xtreamChs.length > 0) {
-          // Map real-time fallback EPG for instant visual pleasure
-          const enriched = xtreamChs.map(ch => ({
-            ...ch,
-            epg: getFallbackEpgCurrentAndNext(ch.name)
-          }));
-          setChannels(enriched);
-          return;
-        } else {
-          console.warn("Xtream Codes returned 0 streams. Reverting to system streams...");
+        console.log("Xtream Codes mode active. Loading categories first...");
+        const cats = await fetchXtreamCategoriesList();
+        setXtreamCategories(cats);
+        if (cats.length > 0) {
+          // Choose initial category ID to boot with (or keep existing)
+          const categoryIdToLoad = selectedXtreamCategoryId || cats[0].id;
+          if (!selectedXtreamCategoryId) {
+            setSelectedXtreamCategoryId(categoryIdToLoad);
+          }
+          
+          console.log(`Loading custom playlist for category: ${categoryIdToLoad}`);
+          setLoadingXtreamCategory(true);
+          const xtreamChs = await fetchXtreamChannelsByCategory(categoryIdToLoad);
+          setLoadingXtreamCategory(false);
+          
+          if (xtreamChs && xtreamChs.length > 0) {
+            const enriched = xtreamChs.map(ch => ({
+              ...ch,
+              epg: getFallbackEpgCurrentAndNext(ch.name)
+            }));
+            setChannels(enriched);
+            setLoading(false);
+            setRefreshing(false);
+            return;
+          }
         }
+        // Fallback or empty
+        setChannels([]);
       } catch (err) {
-        console.error("Failed loading Xtream streams on boot:", err);
+        console.error("Failed loading Xtream categories & streams on boot:", err);
       } finally {
         setLoading(false);
         setRefreshing(false);
+        setLoadingXtreamCategory(false);
       }
+      return;
     }
 
     // 2. Second priority: Standard API fetch or Vavoo core
@@ -744,6 +769,29 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const xtreamCreds = getSavedXtreamCredentials();
+    if (xtreamCreds.enabled && selectedXtreamCategoryId) {
+      const fetchCategoryChannels = async () => {
+        setLoadingXtreamCategory(true);
+        try {
+          console.log(`Dynamic reload: Loading streams for category ID ${selectedXtreamCategoryId}`);
+          const chs = await fetchXtreamChannelsByCategory(selectedXtreamCategoryId);
+          const enriched = chs.map(ch => ({
+            ...ch,
+            epg: getFallbackEpgCurrentAndNext(ch.name)
+          }));
+          setChannels(enriched);
+        } catch (err) {
+          console.error("Error fetching channels dynamically for category:", err);
+        } finally {
+          setLoadingXtreamCategory(false);
+        }
+      };
+      fetchCategoryChannels();
+    }
+  }, [selectedXtreamCategoryId]);
 
   // Categorizer rule-set based on channel name
   const categorizeChannel = (name: string): string => {
@@ -995,6 +1043,11 @@ export default function App() {
         return getChannelSortWeight(a) - getChannelSortWeight(b);
       });
   }, [channels, qualityFilter]);
+
+  const activeXtreamCategoryName = useMemo(() => {
+    const match = xtreamCategories.find(c => c.id === selectedXtreamCategoryId);
+    return match ? match.name : "Flux Xtream";
+  }, [xtreamCategories, selectedXtreamCategoryId]);
 
   // Helper to dedupe a list of channels by core name and select the absolute best active stream
   const dedupeByCore = (list: DisplayChannel[]) => {
@@ -1929,7 +1982,7 @@ export default function App() {
                          </span>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {alternativeChannels.map(alt => {
+                        {alternativeChannels.map((alt) => {
                           const isActive = alt.id === selectedChannel.id;
                           return (
                             <button
@@ -2552,7 +2605,57 @@ export default function App() {
                     </div>
 
                     {/* Category selection and Dynamic Search Filters */}
-                    <div className="flex flex-wrap justify-center gap-3 mt-10 relative z-20">
+                    {xtreamEnabledState ? (
+                      <div className="space-y-4 mt-8 relative z-20 w-full max-w-4xl mx-auto">
+                        <div className="flex flex-col sm:flex-row gap-3 items-center justify-between px-4">
+                          <span className="text-xs font-black uppercase tracking-widest text-[#FF7900] flex items-center gap-1.5 font-mono">
+                            <Tv size={14} className="text-[#FF7900]" /> Catégories Xtream ({xtreamCategories.length}) :
+                          </span>
+                          <div className="flex bg-neutral-950 border border-white/5 rounded-xl items-center px-3 py-1.5 w-full sm:w-64">
+                            <Search size={14} className="text-neutral-500 mr-2 shrink-0" />
+                            <input
+                              type="text"
+                              placeholder="Rechercher une catégorie..."
+                              value={categorySearchQuery}
+                              onChange={(e) => setCategorySearchQuery(e.target.value)}
+                              className="bg-transparent border-none outline-none text-xs text-white placeholder:text-neutral-500 w-full font-semibold"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Horizontal Scrollable Categories Container */}
+                        <div className="flex gap-2.5 overflow-x-auto py-2 px-4 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-transparent">
+                          {xtreamCategories
+                            .filter(cat => cat.name.toLowerCase().includes(categorySearchQuery.toLowerCase()))
+                            .map(cat => {
+                              const isActive = selectedXtreamCategoryId === cat.id;
+                              return (
+                                <button
+                                  key={cat.id}
+                                  type="button"
+                                  onClick={() => setSelectedXtreamCategoryId(cat.id)}
+                                  className={`px-4.5 py-2.5 rounded-full flex items-center gap-2 border transition-all duration-300 active:scale-95 shrink-0 whitespace-nowrap shadow-md cursor-pointer ${
+                                    isActive
+                                      ? "bg-[#FF7900] text-white border-[#FF7900] font-extrabold scale-105 shadow-lg shadow-[#FF7900]/40"
+                                      : "bg-neutral-900/40 backdrop-blur-xl border-white/10 hover:bg-neutral-800 text-neutral-400 hover:text-white"
+                                  }`}
+                                >
+                                  <Layers size={12} className={isActive ? "text-white animate-pulse" : "text-[#FF7900]"} />
+                                  <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider">{cat.name}</span>
+                                </button>
+                              );
+                            })
+                            }
+                        </div>
+                        {loadingXtreamCategory && (
+                          <div className="text-center py-2 text-[11px] font-bold text-neutral-400 font-mono animate-pulse flex items-center justify-center gap-2">
+                            <RefreshCw size={12} className="animate-spin text-[#FF7900]" />
+                            Chargement des flux...
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap justify-center gap-3 mt-10 relative z-20">
                        {[
                          { icon: Layers, label: "Tous", category: "Tous" },
                          { icon: Tv, label: "TNT & Général", category: "TNT & Généralistes" },
@@ -2571,7 +2674,7 @@ export default function App() {
                              onClick={() => {
                                setSearchCategory(chip.category);
                              }}
-                             className={`px-5 py-3 rounded-full flex items-center gap-3 border transition-all duration-300 active:scale-95 shadow-[0_4px_25px_rgba(0,0,0,0.5)] ${
+                             className={`px-5 py-3 rounded-full flex items-center gap-3 border transition-all duration-300 active:scale-95 shadow-xl ${
                                isActive 
                                  ? "bg-brand-500 text-white border-brand-500 font-extrabold scale-105 shadow-lg shadow-brand-500/30" 
                                  : "bg-neutral-900/50 backdrop-blur-xl border-white/5 hover:bg-neutral-800 text-neutral-400 hover:text-white"
@@ -2583,6 +2686,7 @@ export default function App() {
                          );
                        })}
                     </div>
+                  )}
                  </div>
               </div>
 
@@ -2615,7 +2719,7 @@ export default function App() {
                                      );
                                    }
                                    return true;
-                                 })
+                                   })
                                ).length} correspondances uniques
                             </p>
                          </div>

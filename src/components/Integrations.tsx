@@ -72,6 +72,7 @@ export function Integrations() {
 
   const mhubUrl = `${host}/mhub`;
   const m3uLink = `${host}/api/playlist.m3u`;
+  const sportsM3uLink = `${host}/api/sports.m3u`;
   const xmltvLink = `${host}/api/xmltv.xml`;
   const vlcLink = `vlc://${m3uLink}`;
 
@@ -202,6 +203,49 @@ export function Integrations() {
             className="flex items-center justify-center gap-2 px-6 py-4 bg-[#1E1E1E] hover:bg-[#2A2A2A] text-white rounded-xl text-xs font-black uppercase tracking-wider border border-white/5 transition-all cursor-pointer"
           >
             {copiedApp === "direct_m3u_top" ? (
+              <>
+                <Check size={18} className="text-emerald-400" />
+                Copié !
+              </>
+            ) : (
+              <>
+                <Copy size={18} />
+                Copier l'URL
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Sports Special Category Downloader */}
+      <div className="p-6 rounded-2xl bg-gradient-to-br from-[#121E16] to-[#0D120E] border border-emerald-500/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-emerald-500/5 to-transparent blur-3xl pointer-events-none rounded-full" />
+        <div className="z-10 space-y-2 max-w-xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-emerald-500/20 to-emerald-500/10 border border-emerald-500/20 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Spécial Chaînes de Sports</span>
+          </div>
+          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white">
+            Playlist M3U Spéciale Sports
+          </h3>
+          <p className="text-sm text-gray-300 leading-relaxed font-semibold">
+            Générez une playlist <code className="text-emerald-400 font-mono bg-black/60 px-1 py-0.5 rounded border border-white/5 font-semibold text-xs">sports.m3u</code> contenant uniquement les chaînes de sport et d'événements (beIN Sports, Eurosport, RMC Sport, Canal+ Sport, L'Équipe, Automoto, etc.). Idéale pour les décodeurs, Smart TV et lecteurs IPTV externes !
+          </p>
+        </div>
+        <div className="z-10 flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
+          <a
+            href={sportsM3uLink}
+            download="sports.m3u"
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+          >
+            <Download size={18} strokeWidth={3} />
+            Télécharger (.m3u)
+          </a>
+          <button
+            onClick={() => copyToClipboard(sportsM3uLink, "sports_m3u_top")}
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-[#142319] hover:bg-[#1a3224] text-white rounded-xl text-xs font-black uppercase tracking-wider border border-emerald-500/15 transition-all cursor-pointer"
+          >
+            {copiedApp === "sports_m3u_top" ? (
               <>
                 <Check size={18} className="text-emerald-400" />
                 Copié !
@@ -550,7 +594,7 @@ export function Integrations() {
             <p className="text-sm text-gray-400 mb-2">Vous n'utilisez pas ces logiciels ? Voici les liens standards :</p>
             <ul className="text-sm space-y-4 mt-4 text-gray-300">
               <li className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-                <span className="sm:min-w-[125px] font-semibold text-white flex-shrink-0 text-xs sm:text-sm">M3U Playlist:</span>
+                <span className="sm:min-w-[125px] font-semibold text-white flex-shrink-0 text-xs sm:text-sm">M3U Globale:</span>
                 <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-white/5 w-full max-w-lg justify-between min-w-0">
                   <code className="font-mono text-xs text-gray-300 truncate pr-2 select-all">{m3uLink}</code>
                   <button 
@@ -559,6 +603,19 @@ export function Integrations() {
                     title="Copier le lien"
                   >
                     {copiedApp === "m3u_universal" ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                  </button>
+                </div>
+              </li>
+              <li className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
+                <span className="sm:min-w-[125px] font-semibold text-white flex-shrink-0 text-xs sm:text-sm">M3U Sports:</span>
+                <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-emerald-500/10 w-full max-w-lg justify-between min-w-0">
+                  <code className="font-mono text-xs text-emerald-400 truncate pr-2 select-all font-semibold">{sportsM3uLink}</code>
+                  <button 
+                    onClick={() => copyToClipboard(sportsM3uLink, "m3u_sports_universal")}
+                    className="text-emerald-400 hover:text-emerald-300 transition-colors flex-shrink-0 p-1"
+                    title="Copier le lien"
+                  >
+                    {copiedApp === "m3u_sports_universal" ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                   </button>
                 </div>
               </li>

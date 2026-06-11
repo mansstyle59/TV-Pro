@@ -2102,28 +2102,31 @@ app.all(["/player_api.php", "/panel_api.php"], async (req, res) => {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
 
   if (!action) {
-    const host = req.get('host') || "localhost:3000";
-    const protocol = req.protocol;
+    const hostStr = req.headers['x-forwarded-host'] || req.get('host') || "localhost:3000";
+    const hostParts = String(hostStr).split(':');
+    const proxyProtocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const protocol = String(hostStr).includes("localhost") ? "http" : "https";
+
     return res.json({
       user_info: {
         username: String(username),
         password: String(password),
-        message: "Bienvenue sur Vavoo IPTV Relay Xtream API",
+        message: "Logged in successfully",
         auth: 1,
         status: "Active",
-        exp_date: 1800000000,
-        is_trial: 0,
-        active_cons: 0,
-        max_connections: 5,
-        created_at: 1600000000,
+        exp_date: "2099999999",
+        is_trial: "0",
+        active_cons: "0",
+        max_connections: "99",
+        created_at: "1600000000",
         allowed_output_formats: ["m3u8", "ts"]
       },
       server_info: {
-        url: host.split(':')[0],
-        port: host.split(':')[1] || (protocol === 'https' ? '443' : '80'),
+        url: hostParts[0],
+        port: hostParts[1] || (protocol === 'https' ? '443' : '80'),
         https_port: "443",
         server_protocol: protocol,
-        rtmp_port: "554",
+        rtmp_port: "8000",
         timezone: "Europe/Paris",
         timestamp_now: Math.floor(Date.now() / 1000),
         time_now: new Date().toISOString().replace('T', ' ').substring(0, 19)
@@ -2411,20 +2414,67 @@ app.get("/api/playlist.m3u", async (req, res) => {
       return 0; // Keeps existing LCN/Name sorting within the same category
     });
 
-    const host = req.get('host');
-    let m3u = `#EXTM3U x-tvg-url="${req.protocol}://${host}/api/xmltv.xml"\n`;
+    const hostStr = req.headers['x-forwarded-host'] || req.get('host') || "localhost:3000";
+    const protocol = req.headers['x-forwarded-proto'] || (String(hostStr).includes("localhost") ? "http" : "https");
+
+    let m3u = `#EXTM3U x-tvg-url="${protocol}://${hostStr}/api/xmltv.xml"\n`;
     sortedChannels.forEach(c => {
       const cat = c.category || "Généraliste";
       m3u += `#EXTINF:-1 tvg-id="${c.id}" tvg-name="${c.name}" tvg-logo="${c.logo || ''}" tvg-chno="${c.p || ''}" group-title="${cat}",${c.name}\n`;
       // Direct stream link via local proxy
-      m3u += `${req.protocol}://${host}/api/stream/${c.id}/index.m3u8\n`;
+      m3u += `${protocol}://${hostStr}/api/stream/${c.id}/index.m3u8\n`;
     });
     res.setHeader('Content-Type', 'audio/x-mpegurl');
     res.setHeader('Content-Disposition', 'attachment; filename="playlist.m3u"');
+    res.setHeader("Access-Control-Allow-Origin", "*");
     res.send(m3u);
   } catch (err: any) {
     console.error("Error generating M3U:", err);
     res.status(500).send("Error generating M3U");
+  }
+});
+
+// Sports M3U Playlist export Endpoint
+app.get("/api/sports.m3u", async (req, res) => {
+  try {
+    const channels = await getActiveChannelsWithMetadata();
+    
+    // Sports-related keywords to match channels
+    const sportsKeywords = [
+      "sport", "bein", "eurosport", "rmc", "dazn", "canal+ sport", "canal plus sport", 
+      "canal+ foot", "canal plus foot", "canal+ 360", "canal plus 360", "l'equipe", "lequipe", 
+      "automoto", "auto-moto", "golf", "chasse", "pêche", "peche", "moteur", "equidia", 
+      "es1", "olymp", "ufc", "fight", "football", "foot", "espn", "nba", "extreme", "tnt sport"
+    ];
+    
+    const sportsChannels = channels.filter(c => {
+      const cat = (c.category || "").toLowerCase();
+      const name = (c.name || "").toLowerCase();
+      
+      // Categorized as sports
+      if (cat.includes("sport")) return true;
+      
+      // Match keywords
+      return sportsKeywords.some(keyword => name.includes(keyword));
+    });
+
+    const hostStr = req.headers['x-forwarded-host'] || req.get('host') || "localhost:3000";
+    const protocol = req.headers['x-forwarded-proto'] || (String(hostStr).includes("localhost") ? "http" : "https");
+
+    let m3u = `#EXTM3U x-tvg-url="${protocol}://${hostStr}/api/xmltv.xml"\n`;
+    sportsChannels.forEach(c => {
+      const cat = c.category || "Sports";
+      m3u += `#EXTINF:-1 tvg-id="${c.id}" tvg-name="${c.name}" tvg-logo="${c.logo || ''}" tvg-chno="${c.p || ''}" group-title="${cat}",${c.name}\n`;
+      // Direct stream link via local proxy
+      m3u += `${protocol}://${hostStr}/api/stream/${c.id}/index.m3u8\n`;
+    });
+    res.setHeader('Content-Type', 'audio/x-mpegurl');
+    res.setHeader('Content-Disposition', 'attachment; filename="sports.m3u"');
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.send(m3u);
+  } catch (err: any) {
+    console.error("Error generating Sports M3U:", err);
+    res.status(500).send("Error generating Sports M3U");
   }
 });
 

@@ -360,3 +360,95 @@ function getDecodedString(str: string): string {
     return str;
   }
 }
+
+export interface XtreamCategory {
+  id: string;
+  name: string;
+}
+
+export async function fetchXtreamCategoriesList(): Promise<XtreamCategory[]> {
+  const { server, username, password, useCorsProxy } = getSavedXtreamCredentials();
+  if (!server || !username || !password) return [];
+  
+  try {
+    const rawUrl = `${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_categories`;
+    const targetUrl = buildUrl(rawUrl, useCorsProxy);
+    
+    const response = await fetch(targetUrl);
+    if (response.ok) {
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        return data.map((cat: any) => ({
+          id: cat.category_id.toString(),
+          name: cat.category_name
+        }));
+      }
+    }
+  } catch (err) {
+    console.warn("Could not load Xtream categories list:", err);
+  }
+  return [];
+}
+
+export async function fetchXtreamChannelsByCategory(categoryId: string): Promise<Channel[]> {
+  const { server, username, password, useCorsProxy } = getSavedXtreamCredentials();
+  if (!server || !username || !password) return [];
+  
+  try {
+    // Fetch categories first to resolve name
+    const categories = await fetchXtreamCategories();
+    const categoryName = categories[categoryId] || "Catégorie";
+
+    const rawUrl = `${server}/player_api.php?username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}&action=get_live_streams&category_id=${encodeURIComponent(categoryId)}`;
+    const targetUrl = buildUrl(rawUrl, useCorsProxy);
+    
+    const response = await fetch(targetUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP Error ${response.status}`);
+    }
+    
+    const data = await response.json();
+    if (!Array.isArray(data)) {
+      return [];
+    }
+    
+    const mapped: Channel[] = data.map((item: any) => {
+      const streamId = item.stream_id;
+      const originalName = item.name || "Chaîne Sans Nom";
+      
+      let name = originalName;
+      let qualityLabel = "HD";
+      if (originalName.toLowerCase().includes("fhd") || originalName.toLowerCase().includes("1080p")) {
+        qualityLabel = "FHD";
+      } else if (originalName.toLowerCase().includes("4k") || originalName.toLowerCase().includes("uhd")) {
+        qualityLabel = "4K";
+      } else if (originalName.toLowerCase().includes("sd") || originalName.toLowerCase().includes("576p")) {
+        qualityLabel = "SD";
+      }
+      
+      name = name
+        .replace(/^[\[|\(]?(FR|BE|CH|CH-FR|TNT|VIP|BACKUP|HD|FHD|4K|SD)[\]|\)]?/gi, "")
+        .replace(/^\s*[:-|•]\s*/g, "")
+        .trim();
+      
+      const streamUrl = `${server}/live/${encodeURIComponent(username)}/${encodeURIComponent(password)}/${streamId}.ts`;
+      
+      return {
+        id: Number(streamId),
+        name: name,
+        logo: item.stream_icon || "",
+        country: "Xtream Live",
+        categoryOverride: categoryName,
+        qualityLabel: qualityLabel,
+        streamUrl: streamUrl,
+        groupTitle: categoryName
+      };
+    });
+
+    return mapped;
+  } catch (err) {
+    console.error(`Failed loading Xtream streams for category ${categoryId}:`, err);
+    return [];
+  }
+}
+
