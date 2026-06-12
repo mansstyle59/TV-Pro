@@ -1510,9 +1510,14 @@ function resolveSegmentUrl(segmentLine: string, finalPlaylistUrl: string): strin
 }
 
 // Common function to fetch a playlist, parse and rewrite all relative paths to point back to our proxy
-async function handlePlaylistProxy(targetUrl: string, res: express.Response) {
+async function handlePlaylistProxy(targetUrl: string, req: express.Request, res: express.Response) {
   let attempt = 1;
   const maxAttempts = 2;
+
+  // Build the absolute backend API server URL (crucial for remote clients like GitHub Pages or Smart TVs)
+  const scheme = req.headers["x-forwarded-proto"] || req.protocol;
+  const host = req.headers["x-forwarded-host"] || req.get("host");
+  const baseApiUrl = `${scheme}://${host}`;
 
   while (attempt <= maxAttempts) {
     try {
@@ -1533,9 +1538,9 @@ async function handlePlaylistProxy(targetUrl: string, res: express.Response) {
           
           const absoluteUrl = resolveSegmentUrl(trimmed, finalUrl);
           if (trimmed.toLowerCase().includes(".m3u8") || absoluteUrl.toLowerCase().includes(".m3u8")) {
-            return `/api/stream-playlist?url=${encodeURIComponent(absoluteUrl)}`;
+            return `${baseApiUrl}/api/stream-playlist?url=${encodeURIComponent(absoluteUrl)}`;
           } else {
-            return `/api/stream-ts?url=${encodeURIComponent(absoluteUrl)}`;
+            return `${baseApiUrl}/api/stream-ts?url=${encodeURIComponent(absoluteUrl)}`;
           }
         });
 
@@ -1803,7 +1808,7 @@ app.get("/api/stream-playlist", async (req, res) => {
     res.status(400).send("Missing playlist URL query parameter");
     return;
   }
-  await handlePlaylistProxy(targetUrl, res);
+  await handlePlaylistProxy(targetUrl, req, res);
 });
 
 // Root proxy stream route: redirects or parses top-level index.m3u8 
@@ -1818,7 +1823,7 @@ app.get("/api/stream/:id/:file", async (req, res) => {
 
   if (customChan) {
     if (file.endsWith(".m3u8")) {
-      await handlePlaylistProxy(customChan.streamUrl, res);
+      await handlePlaylistProxy(customChan.streamUrl, req, res);
     } else {
       // Direct stream segments or ts fallback
       res.redirect(`/api/stream-ts?url=${encodeURIComponent(customChan.streamUrl)}`);
@@ -1828,7 +1833,7 @@ app.get("/api/stream/:id/:file", async (req, res) => {
 
   if (file.endsWith(".m3u8")) {
     const targetUrl = `https://vavoo.to/play/${id}/${file}` + (queryStr ? `?${queryStr}` : "");
-    await handlePlaylistProxy(targetUrl, res);
+    await handlePlaylistProxy(targetUrl, req, res);
   } else {
     // If the client fetches key files or direct .ts segments from original format
     const targetUrl = `https://vavoo.to/play/${id}/${file}` + (queryStr ? `?${queryStr}` : "");

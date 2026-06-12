@@ -22,7 +22,7 @@ import {
 import { Channel } from "./types";
 import { HlsPlayer } from "./components/HlsPlayer";
 import { ChannelLogo } from "./components/ChannelLogo";
-import { getApiUrl, getAppBaseUrl } from "./utils/urlHelper";
+import { getApiUrl, getAppBaseUrl, isGitHubPages } from "./utils/urlHelper";
 import { getCustomLogos, saveCustomLogo, normalizeName, fallbackLogoMap } from "./utils/logoHelper";
 import { FALLBACK_CHANNELS, getFallbackLcnMap } from "./utils/fallbackChannels";
 import { getFallbackEpgCurrentAndNext } from "./utils/fallbackEpg";
@@ -955,6 +955,19 @@ export default function App() {
                     <span className="text-[8.5px] font-mono text-neutral-600 block leading-tight">
                       Actuel : {getAppBaseUrl()}
                     </span>
+                    {isGitHubPages() && (
+                      <div className="p-3 rounded-lg bg-[#FF7900]/5 border border-[#FF7900]/20 text-[9px] text-neutral-300 leading-relaxed space-y-1.5 font-sans">
+                        <p className="font-bold flex items-center gap-1.5 text-[#FF7900]">
+                          <Info size={12} /> Hébergement Statique Capturé !
+                        </p>
+                        <p>
+                          Un hébergeur purement statique comme <strong>GitHub Pages</strong> ne peut pas exécuter le backend de décodage et de proxy nécessaire de façon autonome (NodeJS).
+                        </p>
+                        <p>
+                          Pour y parer, l'application a <strong>automatiquement branché son API sur votre serveur Cloud Run actif</strong> ci-dessus. Grâce aux optimisations géolocalisées, le streaming de vos flux fonctionne désormais de manière native et fluide sans aucune configuration requise !
+                        </p>
+                      </div>
+                    )}
                     <input
                       type="text"
                       placeholder="https://votre-serveur.run.app"
