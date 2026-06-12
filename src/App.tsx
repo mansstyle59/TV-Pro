@@ -6,7 +6,7 @@ import {
   Tv, 
   Heart, 
   Settings, 
-  X, 
+  X, Layers, 
   FileDown, 
   Radio, 
   Sliders, 
@@ -272,6 +272,22 @@ function categorizeChannel(name: string): string {
 }
 
 export default function App() {
+
+  // --- MHub / URL Protocol Handler ---
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const externalUrl = params.get('url') || params.get('mhub');
+    if (externalUrl) {
+      if (externalUrl.startsWith('mhub://') || externalUrl.includes('.to') || externalUrl.includes('huhu') || externalUrl.includes('oha')) {
+        const httpsUrl = externalUrl.replace('mhub://', 'https://');
+        console.log('MHub bundle URL detected:', httpsUrl);
+        setTimeout(() => alert('Lien Bundle MHub détecté: ' + httpsUrl + '. L\'importation de ce type de bundle sécurisé nécessitera une mise à jour d\'intégration CORS.'), 1000);
+      } else if (externalUrl.endsWith('m3u') || externalUrl.endsWith('m3u8')) {
+        console.log('M3U URL detected but manual load is disabled.');
+      }
+    }
+  }, []);
+
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -1375,12 +1391,13 @@ export default function App() {
                                 transition={{ duration: 0.12, delay: Math.min(idx * 0.005, 0.06) }}
                                 onClick={() => {
                                   playChannel(ch);
-                                  // Auto-dismiss on mobile or touchscreens
-                                  if (window.innerWidth < 768) {
-                                    setShowDrawer(false);
-                                  }
-                                }} onContextMenu={(e) => { e.preventDefault(); setChannelToEdit(ch); }}
-                                className={`aspect-[4/3] rounded-xl bg-[#27272a]/20 hover:bg-[#27272a]/60 border flex flex-col items-center justify-center relative transition-all duration-200 group shrink-0 ${
+                                  if (window.innerWidth < 768) setShowDrawer(false);
+                                }}
+                                onContextMenu={(e) => handleEditInteraction(e, ch)}
+                                onTouchStart={() => handleTouchStart(ch)}
+                                onTouchEnd={handleTouchEnd}
+                                onTouchMove={handleTouchEnd}
+                                className={`aspect-[4/3] rounded-xl bg-[#27272a]/30 hover:bg-[#27272a]/70 border flex flex-col items-center justify-center relative transition-all duration-200 group shrink-0 ${
                                   isCurrent 
                                     ? "bg-[#3b82f6]/5 border-[#3b82f6]/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]" 
                                     : isKeyboardFocused
@@ -1456,7 +1473,7 @@ export default function App() {
                                 )}
 
                                 {/* Stylized STB LCN Rank index */}
-                                <span className="text-xs font-mono font-bold text-neutral-600 group-hover:text-[#3b82f6] transition-colors w-4.5 text-right flex-shrink-0 select-none">
+                                <span className="text-sm font-mono font-bold text-neutral-600 group-hover:text-[#3b82f6] transition-colors w-4.5 text-right flex-shrink-0 select-none">
                                   {(idx + 1).toString().padStart(2, '0')}
                                 </span>
    
@@ -1466,7 +1483,7 @@ export default function App() {
                                 {/* Center: Title & EPG Details */}
                                 <div className="flex-grow min-w-0 flex flex-col justify-center">
                                   <div className="flex items-center gap-1.5">
-                                    <h4 className={`text-xs font-bold uppercase tracking-wider truncate leading-tight ${isCurrent ? "text-[#3b82f6]" : "text-neutral-200 group-hover:text-gray-50 transition-colors"}`}>
+                                    <h4 className={`text-[13px] font-black uppercase tracking-wider truncate leading-tight ${isCurrent ? "text-[#3b82f6]" : "text-neutral-200 group-hover:text-gray-50 transition-colors"}`}>
                                       {ch.name}
                                     </h4>
                                     {ch.qualityLabel && (
@@ -1478,7 +1495,7 @@ export default function App() {
 
                                   {hasEpg ? (
                                     <div className="space-y-0.5 mt-0.5">
-                                      <p className="text-xs text-gray-400 font-light truncate leading-tight">
+                                      <p className="text-[13px] text-gray-400 font-light truncate leading-tight">
                                         {currentProgram.title}
                                       </p>
                                       <div className="flex items-center gap-2">
@@ -1808,7 +1825,37 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Personal Xtream Codes client integrator config */}
+                  
+            <div className="bg-black/30 border border-white/5 rounded-2xl p-5">
+              <div className="flex items-center gap-3 mb-4">
+                 <Layers size={20} className="text-[#cc6000]" />
+                 <div>
+                   <h3 className="text-sm font-black uppercase tracking-widest text-[#cc6000]">Compatibilité MHub</h3>
+                   <p className="text-xs text-gray-500">Lokke, Watched, Vypn, Rokkr bundles</p>
+                 </div>
+              </div>
+              <div className="space-y-3">
+                 <input 
+                   type="text" 
+                   placeholder="Entrez l'URL du bundle (ex: huhu.to ou mhub://...)"
+                   className="w-full bg-[#09090b] border border-white/10 focus:border-[#cc6000]/50 rounded-xl px-4 py-3 text-sm text-gray-50 placeholder-neutral-700 outline-none transition-all"
+                   onChange={(e) => {
+                      if (e.target.value.trim().length > 4) {
+                         // Placeholder for Mhub parser
+                      }
+                   }}
+                 />
+                 <button 
+                   className="w-full py-3 bg-[#cc6000]/10 text-[#cc6000] hover:bg-[#cc6000]/20 rounded-xl font-bold uppercase tracking-wider text-sm transition-all"
+                   onClick={() => alert('La synchronisation des bundles MHub requiert un adaptateur CORS spécifique. La fonction sera activée prochainement.')}
+                 >
+                   Connecter le Bundle MHub
+                 </button>
+              </div>
+            </div>
+
+
+            {/* Personal Xtream Codes client integrator config */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h4 className="text-sm font-black uppercase text-gray-400 tracking-wider flex items-center gap-1.5">

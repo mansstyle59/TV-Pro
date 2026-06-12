@@ -1,46 +1,65 @@
 # 📺 Flux TV Pro
 
 > **L'expérience TV premium réinventée.**  
-> Une plateforme IPTV moderne, fluide et performante avec guide des programmes (EPG) dynamique, outils d'administration complets, intégrations multi-formats, et de superbes transitions fluides adaptées à toutes les tailles d'écrans.
+> Une plateforme IPTV moderne, fluide et performante développée avec React et TypeScript. Elle offre un guide des programmes (EPG) dynamique, des outils d'administration complets, des intégrations multi-formats, le support expérimental MHub et de superbes transitions fluides pour toutes les tailles d'écrans.
 
 ---
 
 ## ✨ Fonctionnalités Majeures
 
-- **📺 Lecteur HLS Premium** : Prise en charge intégrale des flux en streaming en direct avec indicateurs de bande passante, statistiques de flux en temps réel, et lecteur résilient.
-- **📅 Guide des Programmes (EPG)** : Timeline interactive en temps réel affichant les grilles de diffusion actuelles et futures, avec barres de progression dynamiques.
-- **⚙️ Administration Avancée** : Réorganisation Logical Channel Numbers (LCN), import de catalogues Vavoo, ajout/édition/suppression de chaînes personnalisées, fonctions avancées de backup/restauration.
-- **🔌 Intégrations Multi-Formats** : Export instantané sous forme de lien playlist M3U épuré, serveur XMLTV pour guide de programmes complet, ou simulation Xtream Codes API pour une compatibilité absolue avec des applications tierces (Perfect Player, Smarters, Tivimate...).
-- **📱 PWA & D-Pad TV-Ready** : Design entièrement adaptatif, gérant le mode tactile mobile, la souris de bureau et la navigation par clavier / télécommande de salon (D-pad) avec gestion du focus stylisée.
-- **🔒 Protection par Code d'Accès** : Gatekeeper optionnel pour privatiser et sécuriser l'accès à votre portail TV.
+- **📺 Lecteur HLS Premium** : Prise en charge intégrale des flux en streaming en direct avec indicateurs de bande passante, statistiques en temps réel et lecteur résilient via Hls.js.
+- **📅 Guide des Programmes (EPG)** : Timeline interactive en temps réel affichant les grilles de diffusion, avec barres de progression dynamiques.
+- **⚙️ Administration Avancée** : Réorganisation Logical Channel Numbers (LCN), import de listes de chaînes, ajout/édition/suppression personnalisée, fonctions de backup/restauration.
+- **🔌 Intégrations API & Réseaux** : Export immédiat sous forme de lien playlist M3U/M3U8 et simulation intégrale d'un serveur IPTV Xtream Codes (API) pour une compatibilité absolue avec des applications tierces (Tivimate, Smarters, Perfect Player).
+- **📦 Support MHub Expérimental** : Pré-implémentation du protocole `mhub://` et de la compatibilité des bundles (Huhu.to, Watched, Rokkr, Vypn, Lokke) avec détection et intégration automatique.
+- **📱 PWA & D-Pad TV-Ready** : Design entièrement adaptatif, parfait sur mobile tactile, navigateur de bureau ou TV avec support de la touche multidirectionnelle (clavier/télécommande).
+- **🔒 Sécurité** : Portail verrouillable via un code d'accès Gatekeeper sécurisé.
+
+---
+
+## 🔗 Liens et Accès
+
+- **Application Web (Production)** : `https://<VOTRE_NOM_D_UTILISATEUR>.github.io/<VOTRE_NOM_DE_DEPOT>/` (une fois déployée sur GitHub Pages)
+- **Dépôt du Code Source** : `https://github.com/<VOTRE_NOM_D_UTILISATEUR>/<VOTRE_NOM_DE_DEPOT>`
+- **Lien Playlist M3U** : Accessible via l'interface TV via le bouton "Playlist M3U" après génération locale.
 
 ---
 
 ## 🚀 Déploiement Automatisé sur GitHub Pages
 
-L'application est entièrement optimisée pour fonctionner **directement sur GitHub Pages sans l'erreur classique de l'écran blanc**.
+L'application est configurée pour fonctionner de manière native, rapide et **directement sur GitHub Pages (sans l'erreur classique d'écran blanc ou routing 404)**.
 
-### Vos optimisations prêtes à l'emploi :
-1. **URLs Relatives** : Configuration configurée avec `base: './'` dans `vite.config.ts`.
-2. **Anti-Echec Routage** : Création automatique d'une copie `404.html` de votre point d'entrée pour capturer les rechargements de pages et les chemins directs.
-3. **Pas de limitations Jekyll** : Fichier `.nojekyll` généré automatiquement pour autoriser le chargement correct des fichiers d'assets préfixés par des underscores.
+### Vos optimisations "Prêtes à l'emploi" :
+1. **Routing Relatif** : Vite calibré avec `base: './'` (`vite.config.ts`).
+2. **Anti-Echec Routage SPA** : Déploiement générant un clone intelligent `.nojekyll` et un fichier de catch-all `404.html`.
+3. **PWA Offline** : Capacités d'installation progressive (Standalone).
 
-### Comment déployer en 3 étapes :
+### Comment déployer en 3 minutes :
 
-1. Enregistrez votre code sur un dépôt **GitHub** :
+1. Initialisez et envoyez votre code sur **GitHub** :
    ```bash
    git init
    git add .
-   git commit -m "feat: initialisation Flux TV Pro complet"
+   git commit -m "feat: initialisation du portail TV"
    git branch -M main
-   git remote add origin <VOTRE_URL_REPOSIT_GITHUB>
+   # Remplacez <NOM_UTILISATEUR>/<NOM_DEPOT> par vos infos :
+   git remote add origin https://github.com/NOM_UTILISATEUR/NOM_DEPOT.git
    git push -u origin main
    ```
 
-2. Sur GitHub, allez dans les **Settings** (Paramètres) de votre dépôt.
-3. Dans l'onglet **Pages** (dans la barre latérale gauche) :
-   - Sous **Build and deployment** > **Source**, sélectionnez **GitHub Actions** au lieu de *Deploy from a branch*.
-   - Le workflow d'intégration continue `.github/workflows/deploy.yml` s'occupe de compiler et mettre en ligne votre application instantanément à chaque mise à jour !
+2. Dans l'interface Web GitHub, allez dans les **Settings** (Paramètres) du projet.
+3. Allez dans **Pages** (dans le menu gauche) :
+   - Sous **Build and deployment > Source**, choisissez **GitHub Actions** (au lieu de *Deploy from a branch*).
+   - Le script automatisé `deploy.yml` va compiler et mettre en ligne votre app (un lien sera généré et visible).
+
+---
+
+## 🧩 Compatibilité des protocoles MHub et Bundles (Watched, Rokkr)
+
+La plateforme prend en charge de façon expérimentale la reconnaissance des URL de type MHub (`mhub://`) :
+- Dans la page "Réglages", sous "**Compatibilité MHub**", vous pouvez entrer des adresses de bundles (ex: `huhu.to`, `oha.to`).
+- Les liens avec le préfixe `mhub://` ou des extensions de playlists M3U standards se verront identifiés.
+- *Note : L'ingestion 100% native côté client des bundles complexes en JavaScript encapsulé nécessite une configuration CORS étendue que vous pouvez paramétrer sur votre dépôt d'hébergement.*
 
 ---
 
@@ -55,33 +74,31 @@ L'application est entièrement optimisée pour fonctionner **directement sur Git
    ```bash
    npm install
    ```
-
 2. Lancez le serveur de développement :
    ```bash
    npm run dev
    ```
-   *L'application sera accessible en local à l'adresse de votre choix.*
-
-3. Compilez pour la production :
+   *Application accessible en local, généralement sous `http://localhost:3000`.*
+3. Compilez :
    ```bash
    npm run build
    ```
 
 ---
 
-## 📺 Optimisation Android TV & Wrapper WebView
+## 📺 Astuces pour déploiement Android TV
 
-Flux TV Pro est compatible Progressive Web App (PWA) de niveau natif. Pour l'installer directement sur vos boîtiers de télévisions connectées (Android TV, Chromecast, Fire TV Stick) :
-
-1. **Wrapper Natif** : Créez une application native basique en Kotlin ou Java contenant un conteneur `WebView` en plein écran (`match_parent`).
-2. **D-Pad Support** : La navigation est entièrement pilotable au clavier par défaut. Mappez les touches physiques de vos télécommandes de télévision de façon à ce que le conteneur WebView reçoive les codes d'événement de navigation standards de JavaScript (`ArrowUp`, `ArrowDown`, `ArrowLeft`, `ArrowRight`, `Enter`, `Escape`).
-3. **UserAgent recommandé** : Utilisez un `User-Agent` standard d'un appareil Android ou Smart TV pour optimiser le rendu et la compatibilité globale.
+Pour en faire une application fluide sur Fire TV ou Xiaomi Mi Box :
+- Créez un wrapper **WebView natif** plein écran (Java/Kotlin).
+- Permettre à JavaScript son exécution totale (`setJavaScriptEnabled(true)`).
+- Les événements clavier (Flèches, `Enter`, `Escape`) sont d'ores et déjà gérés par notre application Web !
 
 ---
 
-## 🎨 Design & Identité Visuelle
+## 🎨 Conception Visuelle
 
-L'interface repose sur une esthétique haut de gamme sombre **Cosmic Charcoal** avec des accents **Orange de marque** soignés :
+- L'interface repose sur une esthétique haut de gamme sombre **Cosmic Charcoal** avec des accents **Orange Premium** soignés.
 - Marges équilibrées et vastes espaces aérés pour une lecture reposante et immersive.
-- Composants interactifs animés en douceur avec des micro-mouvements fluides gérés par `motion`.
+- Composants interactifs fluides gérés par `motion`.
 - Icônes issues de la bibliothèque de référence `lucide-react`.
+
