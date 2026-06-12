@@ -17,11 +17,14 @@ import {
   Zap,
   Info,
   Clock,
-  Play
+  Play,
+  List,
+  LayoutGrid
 } from "lucide-react";
 import { Channel } from "./types";
 import { HlsPlayer } from "./components/HlsPlayer";
 import { ChannelLogo } from "./components/ChannelLogo";
+import { ExtendedEpgPanel } from "./components/ExtendedEpgPanel";
 import { getApiUrl, getAppBaseUrl, isGitHubPages } from "./utils/urlHelper";
 import { getCustomLogos, saveCustomLogo, normalizeName, fallbackLogoMap } from "./utils/logoHelper";
 import { FALLBACK_CHANNELS, getFallbackLcnMap } from "./utils/fallbackChannels";
@@ -243,23 +246,60 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<DisplayChannel | null>(null);
+  const [recentIds, setRecentIds] = useState<number[]>(() => {
+    try {
+      const saved = localStorage.getItem("recent_channels");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [sortBy, setSortBy] = useState<"lcn" | "name" | "favs">("lcn");
+
+  const playChannel = (ch: DisplayChannel | null, recordRecent = true) => {
+    setSelectedChannel(ch);
+    if (ch && recordRecent) {
+      setRecentIds(prev => {
+        const filtered = prev.filter(id => id !== ch.id);
+        const updated = [ch.id, ...filtered].slice(0, 15);
+        localStorage.setItem("recent_channels", JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
   const [failedChannels, setFailedChannels] = useState<Set<number>>(new Set());
   const [favorites, setFavorites] = useState<number[]>([]);
   const [qualityFilter, setQualityFilter] = useState<"all" | "hd">("all");
   
   // Custom State for the TV Hub drawer
   const [showDrawer, setShowDrawer] = useState(false);
+  const [detailedEpgChannel, setDetailedEpgChannel] = useState<DisplayChannel | null>(null);
   const [drawerTab, setDrawerTab] = useState<"channels" | "settings">("channels");
+  const [drawerChannelView, setDrawerChannelView] = useState<"list" | "grid">("list");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("Tous");
   
   // Performance pagination limits
   const [visibleCount, setVisibleCount] = useState(40);
+  
+  // States for keyboard navigation & fast zapping
+  const [activeKeyboardIdx, setActiveKeyboardIdx] = useState<number>(-1);
+  const [zappingNumber, setZappingNumber] = useState<string>("");
+  const [showZappingHUD, setShowZappingHUD] = useState(false);
 
   // Reset pagination size dynamically on category or search filter changes
   useEffect(() => {
     setVisibleCount(40);
+    setActiveKeyboardIdx(-1);
   }, [activeCategory, searchTerm]);
+
+  // Clean-up EPG details state when drawer is dismissed
+  useEffect(() => {
+    if (!showDrawer) {
+      setDetailedEpgChannel(null);
+    }
+  }, [showDrawer]);
   
   // Xtream credentials state
   const [xtreamInput, setXtreamInput] = useState(() => {
@@ -427,16 +467,18 @@ export default function App() {
     loadChannels();
   }, []);
 
-  // AUTO-PLAY: As soon as dedupe list is populated on boot, play the first channel
+  // AUTO-PLAY disabled to support visual landing grid selection
+  /*
   useEffect(() => {
     if (!selectedChannel && categorisedList.length > 0) {
       const list = dedupeByCore(categorisedList);
       if (list.length > 0) {
         // Select first available
-        setSelectedChannel(list[0]);
+        playChannel(list[0], false);
       }
     }
   }, [categorisedList, selectedChannel]);
+  */
 
   // Swapping active stream urls
   const getActiveStreamUrl = (channel: Channel): string => {
@@ -468,7 +510,7 @@ export default function App() {
     
     if (alternatives.length > 0) {
       console.log(`Fallback swap from ${selectedChannel.name} to ${alternatives[0].name}`);
-      setSelectedChannel(alternatives[0]);
+      playChannel(alternatives[0], false);
     }
   };
 
@@ -476,6 +518,15 @@ export default function App() {
   const handleDownloadM3U = () => {
     const url = getApiUrl("/api/playlist.m3u");
     window.location.href = url;
+  };
+
+  // Channel count in category helper for dynamic Drawer badges
+  const getCategoryCount = (cat: string): number => {
+    const list = dedupeByCore(categorisedList);
+    if (cat === "Tous") return list.length;
+    if (cat === "Favoris") return list.filter(c => favorites.includes(c.id)).length;
+    if (cat === "Récents") return recentIds.length;
+    return list.filter(c => c.category === cat).length;
   };
 
   // Xtream configuration saver
@@ -520,6 +571,10 @@ export default function App() {
     
     if (activeCategory === "Favoris") {
       list = list.filter(c => favorites.includes(c.id));
+    } else if (activeCategory === "Récents") {
+      list = recentIds
+        .map(id => list.find(c => c.id === id))
+        .filter((c): c is DisplayChannel => !!c);
     } else if (activeCategory !== "Tous") {
       list = list.filter(c => c.category === activeCategory);
     }
@@ -533,15 +588,115 @@ export default function App() {
       );
     }
 
+    // Apply sorting logic
+    if (sortBy === "name") {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
+    } else if (sortBy === "favs") {
+      list = [...list].sort((a, b) => {
+        const aFav = favorites.includes(a.id) ? 1 : 0;
+        const bFav = favorites.includes(b.id) ? 1 : 0;
+        return bFav - aFav;
+      });
+    }
+
     return list;
-  }, [categorisedList, activeCategory, searchTerm, favorites, failedChannels]);
+  }, [categorisedList, activeCategory, searchTerm, favorites, failedChannels, recentIds, sortBy]);
+
+  // Keyboard navigation & direct zapping controller effect
+  useEffect(() => {
+    let zappingTimer: NodeJS.Timeout;
+
+    const handleKeyNav = (e: KeyboardEvent) => {
+      // Ignore if typed inside active input field
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
+
+      const key = e.key;
+
+      if (showDrawer) {
+        // 1. Menu navigation when Drawer is visible
+        if (key === "ArrowDown") {
+          e.preventDefault();
+          setActiveKeyboardIdx(prev => {
+            const nextIdx = Math.min(filteredChannels.length - 1, prev + 1);
+            // Scroll target into visual viewport
+            const el = document.getElementById(`drawer-ch-${nextIdx}`);
+            if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            return nextIdx;
+          });
+        } else if (key === "ArrowUp") {
+          e.preventDefault();
+          setActiveKeyboardIdx(prev => {
+            const nextIdx = Math.max(0, prev - 1);
+            const el = document.getElementById(`drawer-ch-${nextIdx}`);
+            if (el) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            return nextIdx;
+          });
+        } else if (key === "Enter") {
+          if (activeKeyboardIdx >= 0 && activeKeyboardIdx < filteredChannels.length) {
+            e.preventDefault();
+            playChannel(filteredChannels[activeKeyboardIdx]);
+            if (window.innerWidth < 768) {
+              setShowDrawer(false);
+            }
+          }
+        } else if (key.toLowerCase() === "s" || key === "/") {
+          e.preventDefault();
+          const searchInput = document.getElementById("drawer-search-input") as HTMLInputElement | null;
+          if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+          }
+        }
+      } else if (selectedChannel) {
+        // 2. Continuous Zapping when playing a channel
+        if (/[0-9]/.test(key)) {
+          e.preventDefault();
+          setZappingNumber(prev => {
+            const nextVal = (prev + key).slice(-3); // Cap at 3 digits
+            setShowZappingHUD(true);
+
+            clearTimeout(zappingTimer);
+            zappingTimer = setTimeout(() => {
+              const channelIndex = parseInt(nextVal, 10) - 1;
+              const fullChannelList = dedupeByCore(categorisedList);
+              if (channelIndex >= 0 && channelIndex < fullChannelList.length) {
+                playChannel(fullChannelList[channelIndex]);
+              }
+              // Animate-out HUD delay
+              setTimeout(() => {
+                setShowZappingHUD(false);
+                setZappingNumber("");
+              }, 600);
+            }, 1100);
+
+            return nextVal;
+          });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyNav);
+    return () => {
+      window.removeEventListener("keydown", handleKeyNav);
+      clearTimeout(zappingTimer);
+    };
+  }, [showDrawer, filteredChannels, activeKeyboardIdx, selectedChannel, categorisedList]);
 
   // Dynamically collect active categories with channels
   const availableCategories = useMemo(() => {
     const list = dedupeByCore(categorisedList);
     const cats = Array.from(new Set(list.map(c => c.category).filter(Boolean)));
-    return ["Tous", "Favoris", ...cats];
-  }, [categorisedList]);
+    const base = ["Tous", "Favoris"];
+    if (recentIds.length > 0) {
+      base.push("Récents");
+    }
+    return [...base, ...cats];
+  }, [categorisedList, recentIds]);
 
   // Lazy load trigger scroll handler
   const handleListScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -554,16 +709,18 @@ export default function App() {
   return (
     <div id="root-layout" className="min-h-screen bg-black text-white antialiased overflow-hidden select-none relative font-sans">
       
-      {/* Floating Selector Menu Trigger - Elegant visual anchor */}
-      <button
-        id="tv-hub-menu-btn"
-        onClick={() => setShowDrawer(true)}
-        className="fixed top-5 left-5 z-[80] flex items-center gap-2.5 px-4.5 py-3 bg-black/60 hover:bg-black/85 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#FF7900]/50 text-white font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-2xl group hover:scale-[1.03] active:scale-95"
-      >
-        <Tv size={14} className="text-[#FF7900] group-hover:rotate-12 transition-transform" />
-        <span>Menu TV</span>
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
-      </button>
+      {/* Floating Selector Menu Trigger - Elegant visual anchor when not watching */}
+      {!selectedChannel && (
+        <button
+          id="tv-hub-menu-btn"
+          onClick={() => setShowDrawer(true)}
+          className="fixed top-5 left-5 z-[80] flex items-center gap-2.5 px-4.5 py-3 bg-black/60 hover:bg-black/85 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#FF7900]/50 text-white font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-2xl group hover:scale-[1.03] active:scale-95 animate-fade-in"
+        >
+          <Tv size={14} className="text-[#FF7900] group-hover:rotate-12 transition-transform" />
+          <span>Menu TV</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
+        </button>
+      )}
 
       {/* Main Full-page Video Player Area */}
       <main className="w-full h-screen relative bg-black flex items-center justify-center overflow-hidden">
@@ -580,18 +737,117 @@ export default function App() {
             </p>
           </div>
         ) : selectedChannel ? (
-          <div className="w-full h-full relative" id="theater-player-container">
+          <div className="w-full h-full relative font-sans" id="theater-player-container">
             <HlsPlayer
               url={getActiveStreamUrl(selectedChannel)}
               channelName={selectedChannel.name}
               programTitle={selectedChannel.epg?.current?.title}
               programDesc={selectedChannel.epg?.current?.desc}
               programImage={selectedChannel.epg?.current?.image || selectedChannel.epg?.current?.icon}
+              onBack={() => setSelectedChannel(null)}
+              onMenuTV={() => setShowDrawer(true)}
               onFatalError={handleStreamError}
               isFavorite={favorites.includes(selectedChannel.id)}
               onToggleFavorite={() => toggleFavorite(selectedChannel.id)}
               fullViewport={true}
             />
+
+            {/* STB-Style Floating Channel Zapping HUD Overlay */}
+            <AnimatePresence>
+              {showZappingHUD && zappingNumber && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.85, y: -20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.85, y: -20 }}
+                  className="absolute top-12 right-12 z-50 bg-neutral-950/90 border-2 border-[#FF7900]/40 rounded-2xl p-5 shadow-[0_0_40px_rgba(255,121,0,0.25)] flex flex-col items-center gap-1 cursor-none pointer-events-none select-none"
+                >
+                  <span className="text-[9px] font-black text-neutral-400 tracking-[0.25em] uppercase">ZAPPING DIRECT</span>
+                  <div className="font-mono text-3xl font-black text-[#FF7900] tracking-widest flex items-center gap-1.5 animate-pulse">
+                    <span className="opacity-40 font-semibold">CH</span>
+                    <span>{zappingNumber.padStart(3, "0")}</span>
+                  </div>
+                  <div className="w-12 h-1 bg-neutral-900 rounded-full mt-2 overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 1.1, ease: "linear" }}
+                      className="h-full bg-gradient-to-r from-[#FF7900] to-orange-500"
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : categorisedList.length > 0 ? (
+          <div className="w-full h-full overflow-y-auto pt-24 pb-20 px-4 sm:px-8 flex flex-col gap-6 max-w-7xl mx-auto text-sans animate-fade-in select-none">
+            
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-5 gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-10 bg-[#FF7900] rounded-full shadow-[0_0_15px_#FF7900]" />
+                <div className="flex flex-col text-left">
+                  <span className="text-[9px] font-black text-[#FF7900] uppercase tracking-[0.35em] leading-none mb-1">DENDEN TV</span>
+                  <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter leading-none">Chaînes en Direct</h1>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setDrawerTab("recherche");
+                    setShowDrawer(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/60 hover:bg-neutral-900 rounded-xl border border-white/5 hover:border-[#FF7900]/30 text-[10px] uppercase tracking-wider font-extrabold text-neutral-300 hover:text-white transition-all cursor-pointer"
+                >
+                  <Search size={12} className="text-[#FF7900]" />
+                  <span>Recherche</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setDrawerTab("settings");
+                    setShowDrawer(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/60 hover:bg-neutral-900 rounded-xl border border-white/5 hover:border-[#FF7900]/30 text-[10px] uppercase tracking-wider font-extrabold text-neutral-300 hover:text-white transition-all cursor-pointer"
+                >
+                  <Settings size={12} className="text-[#FF7900]" />
+                  <span>Paramètres</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Square Grid of channel blocks */}
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3 pb-8">
+              {dedupeByCore(categorisedList).map((ch, idx) => {
+                const isFavorite = favorites.includes(ch.id);
+                return (
+                  <motion.button
+                    key={ch.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.15, delay: Math.min(idx * 0.005, 0.12) }}
+                    onClick={() => playChannel(ch)}
+                    className="aspect-square rounded-2xl bg-[#151d2a]/50 hover:bg-[#151d2a]/95 border border-white/5 hover:border-[#FF7900]/40 flex flex-col items-center justify-center relative p-3 transition-all duration-300 group shadow-lg hover:scale-110 active:scale-95 cursor-pointer"
+                    title={ch.name}
+                  >
+                    {/* Heart badge if bookmarked */}
+                    {isFavorite && (
+                      <div className="absolute top-1.5 right-1.5">
+                        <Heart size={8} className="text-red-500 fill-current" />
+                      </div>
+                    )}
+
+                    <div className="scale-105 group-hover:scale-115 transition-transform duration-300">
+                      <ChannelLogo logo={ch.logo} name={ch.name} />
+                    </div>
+
+                    <div className="absolute inset-x-0 bottom-1.5 px-1 bg-black/5 rounded-b-2xl">
+                      <p className="text-[6.5px] font-black uppercase text-neutral-400 group-hover:text-white truncate tracking-wider leading-none text-center">
+                        {ch.name}
+                      </p>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center px-6">
@@ -711,6 +967,7 @@ export default function App() {
                         switch (c) {
                           case "Tous": return { icon: "🌐", label: "Tous" };
                           case "Favoris": return { icon: "❤️", label: "Favoris" };
+                          case "Récents": return { icon: "⏱️", label: "Récents" };
                           case "TNT & Généralistes": return { icon: "📺", label: "TNT" };
                           case "Sports": return { icon: "⚽", label: "Sports" };
                           case "Cinéma & Séries": return { icon: "🎬", label: "Cinéma" };
@@ -730,12 +987,15 @@ export default function App() {
                           onClick={() => setActiveCategory(cat)}
                           className={`px-3 py-1.5 rounded-full text-[9px] font-medium tracking-wider flex-shrink-0 flex items-center gap-1.5 transition-all duration-255 border ${
                             isActive 
-                              ? "bg-neutral-900 text-white border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.4)]" 
-                              : "bg-neutral-950/20 text-neutral-500 border-transparent hover:text-neutral-300 hover:bg-neutral-900/10"
+                              ? "bg-[#FF7900]/10 border-[#FF7900]/40 text-white shadow-[0_0_12px_rgba(255,121,0,0.1)]" 
+                              : "bg-neutral-900/60 text-neutral-400 border-white/[0.04] hover:text-neutral-200 hover:bg-neutral-900/90"
                           }`}
                         >
                           <span className="text-[10px]">{details.icon}</span>
                           <span className="font-bold uppercase text-[7.5px] tracking-[0.05em]">{details.label}</span>
+                          <span className="text-[7px] text-[#FF7900] bg-white/[0.04] px-1 rounded-sm font-mono font-bold">
+                            {getCategoryCount(cat)}
+                          </span>
                         </button>
                       );
                     })}
@@ -744,16 +1004,17 @@ export default function App() {
                   {/* Right Main Pane: Clean single list */}
                   <div className="flex-grow flex flex-col h-full overflow-hidden">
                     
-                    {/* Modern Refined Search Input */}
-                    <div className="p-3 border-b border-white/[0.03] flex-shrink-0 bg-neutral-950/20">
+                    {/* Modern Refined Search Input & Sorting Controls Area */}
+                    <div className="p-3 border-b border-white/[0.03] space-y-2 flex-shrink-0 bg-neutral-950/20">
                       <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" size={12} strokeWidth={2.5} />
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" size={11} strokeWidth={2.5} />
                         <input
+                          id="drawer-search-input"
                           type="text"
                           placeholder="Rechercher une chaîne..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full bg-neutral-950/40 border border-white/[0.04] hover:border-white/[0.08] rounded-lg pl-8 pr-8 py-1.5 text-[11px] text-white placeholder-neutral-600 focus:outline-none focus:border-[#FF7900]/30 transition-all font-sans font-light"
+                          className="w-full bg-neutral-950/45 border border-white/[0.04] hover:border-white/[0.08] focus:border-[#FF7900]/30 rounded-lg pl-7.5 pr-8 py-1.5 text-[10px] text-white placeholder-neutral-600 focus:outline-none transition-all font-sans font-light"
                         />
                         {searchTerm && (
                           <button
@@ -764,7 +1025,118 @@ export default function App() {
                           </button>
                         )}
                       </div>
+
+                      {/* Tactile Segmented Sorting Controls */}
+                      <div className="flex items-center justify-between text-[7.5px] font-black uppercase tracking-wider text-neutral-500 gap-2">
+                        <div className="flex items-center gap-1.5">
+                          <span>Trier par</span>
+                          <div className="flex gap-1 bg-black/45 p-0.5 rounded-md border border-white/[0.03]">
+                            <button
+                              onClick={() => setSortBy("lcn")}
+                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer ${
+                                sortBy === "lcn" 
+                                  ? "bg-[#FF7900] text-white font-black" 
+                                  : "text-neutral-500 hover:text-neutral-300"
+                              }`}
+                            >
+                              IPTV
+                            </button>
+                            <button
+                              onClick={() => setSortBy("name")}
+                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer ${
+                                sortBy === "name" 
+                                  ? "bg-[#FF7900] text-white font-black" 
+                                  : "text-neutral-500 hover:text-neutral-300"
+                              }`}
+                            >
+                              Nom (A-Z)
+                            </button>
+                            <button
+                              onClick={() => setSortBy("favs")}
+                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer flex items-center gap-0.5 ${
+                                sortBy === "favs" 
+                                  ? "bg-[#FF7900] text-white font-black" 
+                                  : "text-neutral-500 hover:text-neutral-300"
+                              }`}
+                            >
+                              ★ Favoris
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          <span>Affichage</span>
+                          <div className="flex gap-1 bg-black/45 p-0.5 rounded-md border border-white/[0.03]">
+                            <button
+                              onClick={() => setDrawerChannelView("list")}
+                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer flex items-center gap-1 ${
+                                drawerChannelView === "list"
+                                  ? "bg-[#FF7900] text-white font-black"
+                                  : "text-neutral-500 hover:text-neutral-300"
+                              }`}
+                              title="Vue Liste"
+                            >
+                              <List size={8} />
+                              Liste
+                            </button>
+                            <button
+                              onClick={() => setDrawerChannelView("grid")}
+                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer flex items-center gap-1 ${
+                                drawerChannelView === "grid"
+                                  ? "bg-[#FF7900] text-white font-black"
+                                  : "text-neutral-500 hover:text-neutral-300"
+                              }`}
+                              title="Vue Grille (Logos uniquement)"
+                            >
+                              <LayoutGrid size={8} />
+                              Grille
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
+                    {/* Recently Watched Quick Launcher Bar if present */}
+                    {recentIds.length > 0 && (
+                      <div className="px-3 py-2 border-b border-white/[0.03] bg-neutral-950/30 flex-shrink-0 animate-fade-in">
+                        <p className="text-[7.5px] font-black uppercase text-neutral-500 tracking-wider mb-2 flex items-center gap-1">
+                          <Clock size={9} className="text-[#FF7900]" />
+                          Dernières lectures
+                        </p>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+                          {recentIds
+                            .map(id => dedupeByCore(categorisedList).find(c => c.id === id))
+                            .filter((c): c is DisplayChannel => !!c)
+                            .slice(0, 8)
+                            .map((ch) => {
+                              const isCurrent = selectedChannel?.id === ch.id;
+                              return (
+                                <button
+                                  key={`recent-quick-${ch.id}`}
+                                  onClick={() => playChannel(ch)}
+                                  className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-left transition-all ${
+                                    isCurrent 
+                                      ? "bg-[#FF7900]/10 border-[#FF7900]/30 text-white shadow-[0_0_8px_rgba(255,121,0,0.15)]" 
+                                      : "bg-neutral-900 border-white/[0.03] hover:border-white/[0.1] text-neutral-300 hover:text-white"
+                                  }`}
+                                  title={`Lancer ${ch.name}`}
+                                >
+                                  <div className="w-4 h-4 rounded-md overflow-hidden bg-neutral-950 flex items-center justify-center p-0.5 border border-white/5 flex-shrink-0">
+                                    {ch.logo ? (
+                                      <img src={ch.logo} className="object-contain w-full h-full max-h-3" alt="" referrerPolicy="no-referrer" />
+                                    ) : (
+                                      <Tv size={8} className="text-[#FF7900]" />
+                                    )}
+                                  </div>
+                                  <span className="text-[9px] font-semibold truncate max-w-[70px] uppercase tracking-wide">
+                                    {ch.name}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Scrolling Channels Catalog list */}
                     <div 
@@ -788,115 +1160,198 @@ export default function App() {
                             Ajustez le titre ou changez de catégorie.
                           </p>
                         </div>
-                      ) : (
-                        filteredChannels.slice(0, visibleCount).map((ch, idx) => {
-                          const isCurrent = selectedChannel?.id === ch.id || selectedChannel?.core === ch.core;
-                          const currentProgram = ch.epg?.current;
-                          const hasEpg = !!currentProgram;
-                          
-                          return (
-                            <motion.div
-                              key={ch.id}
-                              initial={{ opacity: 0, y: 6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ duration: 0.16, delay: Math.min(idx * 0.006, 0.08) }}
-                              onClick={() => {
-                                setSelectedChannel(ch);
-                                // Auto-dismiss on mobile or touchscreens
-                                if (window.innerWidth < 768) {
-                                  setShowDrawer(false);
-                                }
-                              }}
-                              className={`flex items-center gap-3 p-2 hover:bg-white/[0.02] border border-transparent rounded-lg cursor-pointer group transition-all duration-150 relative ${
-                                isCurrent 
-                                  ? "bg-white/[0.03]" 
-                                  : ""
-                              }`}
-                            >
-                              {/* Left active line indicator */}
-                              {isCurrent && (
-                                <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#FF7900] rounded-r" />
-                              )}
+                      ) : drawerChannelView === "grid" ? (
+                        /* Alternative Grid View (Logos Only) */
+                        <div className="grid grid-cols-4 gap-2 pb-2">
+                          {filteredChannels.slice(0, visibleCount).map((ch, idx) => {
+                            const isCurrent = selectedChannel?.id === ch.id || selectedChannel?.core === ch.core;
+                            const isKeyboardFocused = idx === activeKeyboardIdx;
+                            
+                            return (
+                              <motion.button
+                                key={ch.id}
+                                id={`drawer-ch-${idx}`}
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ duration: 0.12, delay: Math.min(idx * 0.005, 0.06) }}
+                                onClick={() => {
+                                  playChannel(ch);
+                                  // Auto-dismiss on mobile or touchscreens
+                                  if (window.innerWidth < 768) {
+                                    setShowDrawer(false);
+                                  }
+                                }}
+                                className={`aspect-square rounded-xl bg-neutral-900/40 hover:bg-neutral-900/80 border flex items-center justify-center relative transition-all duration-150 group shrink-0 ${
+                                  isCurrent 
+                                    ? "bg-white/[0.04] border-[#FF7900] shadow-[0_0_12px_rgba(255,121,0,0.15)]" 
+                                    : isKeyboardFocused
+                                    ? "bg-[#FF7900]/10 border-[#FF7900]/25 shadow-[inset_0_0_8px_rgba(255,121,0,0.1)]"
+                                    : "border-white/[0.04] hover:border-white/[0.12]"
+                                }`}
+                                title={ch.name}
+                              >
+                                {/* Left active indicator dot */}
+                                {isCurrent && (
+                                  <span className="absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-[#FF7900]" />
+                                )}
 
-                              {/* Left: Component logo */}
-                              <ChannelLogo logo={ch.logo} name={ch.name} />
+                                {/* Heart indicator if favorite */}
+                                {favorites.includes(ch.id) && (
+                                  <div className="absolute top-1 right-1.5">
+                                    <Heart size={8} className="text-red-500 fill-current" />
+                                  </div>
+                                )}
 
-                              {/* Center: Title & EPG Details */}
-                              <div className="flex-grow min-w-0 flex flex-col justify-center">
-                                <div className="flex items-center gap-1.5">
-                                  <h4 className={`text-[11.5px] font-semibold uppercase tracking-wide truncate leading-tight ${isCurrent ? "text-[#FF7900]" : "text-neutral-200 group-hover:text-white transition-colors"}`}>
+                                {/* Logo center aligned */}
+                                <div className="scale-105 group-hover:scale-110 transition-transform duration-300">
+                                  <ChannelLogo logo={ch.logo} name={ch.name} />
+                                </div>
+
+                                {/* Custom mini label that slides up on hover */}
+                                <div className="absolute inset-x-0 bottom-0 bg-black/90 py-1 px-1 rounded-b-xl border-t border-white/[0.05] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                  <p className="text-[6.5px] font-black uppercase text-center text-white truncate tracking-wider leading-none">
                                     {ch.name}
-                                  </h4>
-                                  {ch.qualityLabel && (
-                                    <span className="text-[6px] px-1 py-0.5 bg-neutral-900 text-neutral-500 rounded border border-white/[0.04] uppercase font-mono font-bold leading-none">
-                                      {ch.qualityLabel}
-                                    </span>
+                                  </p>
+                                </div>
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        /* Default List View */
+                        <div className="space-y-1.5 pb-2">
+                          {filteredChannels.slice(0, visibleCount).map((ch, idx) => {
+                            const isCurrent = selectedChannel?.id === ch.id || selectedChannel?.core === ch.core;
+                            const isKeyboardFocused = idx === activeKeyboardIdx;
+                            const currentProgram = ch.epg?.current;
+                            const hasEpg = !!currentProgram;
+                            
+                            return (
+                              <motion.div
+                                key={ch.id}
+                                id={`drawer-ch-${idx}`}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.16, delay: Math.min(idx * 0.006, 0.08) }}
+                                onClick={() => {
+                                  playChannel(ch);
+                                  // Auto-dismiss on mobile or touchscreens
+                                  if (window.innerWidth < 768) {
+                                    setShowDrawer(false);
+                                  }
+                                }}
+                                className={`flex items-center gap-2 p-2 hover:bg-white/[0.02] border transition-all duration-150 rounded-lg cursor-pointer group relative ${
+                                  isCurrent 
+                                    ? "bg-white/[0.03] border-white/5" 
+                                    : isKeyboardFocused
+                                    ? "bg-[#FF7900]/10 border-[#FF7900]/25 shadow-[inset_0_0_8px_rgba(255,121,0,0.1)]"
+                                    : "border-transparent"
+                                }`}
+                              >
+                                {/* Left active line indicator */}
+                                {isCurrent && (
+                                  <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#FF7900] rounded-r" />
+                                )}
+
+                                {/* Stylized STB LCN Rank index */}
+                                <span className="text-[8px] font-mono font-bold text-neutral-600 group-hover:text-[#FF7900] transition-colors w-4.5 text-right flex-shrink-0 select-none">
+                                  {(idx + 1).toString().padStart(2, '0')}
+                                </span>
+   
+                                {/* Left: Component logo */}
+                                <ChannelLogo logo={ch.logo} name={ch.name} />
+
+                                {/* Center: Title & EPG Details */}
+                                <div className="flex-grow min-w-0 flex flex-col justify-center">
+                                  <div className="flex items-center gap-1.5">
+                                    <h4 className={`text-[11.5px] font-semibold uppercase tracking-wide truncate leading-tight ${isCurrent ? "text-[#FF7900]" : "text-neutral-200 group-hover:text-white transition-colors"}`}>
+                                      {ch.name}
+                                    </h4>
+                                    {ch.qualityLabel && (
+                                      <span className="text-[6px] px-1 py-0.5 bg-neutral-900 text-neutral-500 rounded border border-white/[0.04] uppercase font-mono font-bold leading-none">
+                                        {ch.qualityLabel}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {hasEpg ? (
+                                    <div className="space-y-0.5 mt-0.5">
+                                      <p className="text-[9px] text-neutral-400 font-light truncate leading-tight">
+                                        {currentProgram.title}
+                                      </p>
+                                      <div className="flex items-center gap-2">
+                                        {currentProgram.category && (
+                                          <span className="inline-block text-[7px] font-medium uppercase tracking-wider text-neutral-500 leading-none">
+                                            {currentProgram.category}
+                                          </span>
+                                        )}
+                                        
+                                        {currentProgram.start && (
+                                          <span className="text-[7px] font-mono text-neutral-600 leading-none">
+                                            {new Date(currentProgram.start).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
+                                          </span>
+                                        )}
+                                      </div>
+                                      
+                                      {/* Minimalist Timeline visual bar */}
+                                      <div className="w-full bg-neutral-900 h-[1.5px] rounded-full overflow-hidden mt-1 max-w-[100px]">
+                                        {(() => {
+                                          const start = new Date(currentProgram.start).getTime();
+                                          const stop = new Date(currentProgram.stop).getTime();
+                                          const now = Date.now();
+                                          const progress = Math.min(100, Math.max(0, ((now - start) / (stop - start)) * 100));
+                                          return (
+                                            <div 
+                                              className="h-full bg-gradient-to-r from-[#FF7900] to-orange-500 rounded-full" 
+                                              style={{ width: `${progress}%` }} 
+                                            />
+                                          );
+                                        })()}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <p className="text-[7px] font-semibold tracking-wider text-[#FF7900]/30 uppercase mt-0.5">
+                                      DIRECT CONTINU
+                                    </p>
                                   )}
                                 </div>
 
-                                {hasEpg ? (
-                                  <div className="space-y-0.5 mt-0.5">
-                                    <p className="text-[9px] text-neutral-400 font-light truncate leading-tight">
-                                      {currentProgram.title}
-                                    </p>
-                                    <div className="flex items-center gap-2">
-                                      {currentProgram.category && (
-                                        <span className="inline-block text-[7px] font-medium uppercase tracking-wider text-neutral-500 leading-none">
-                                          {currentProgram.category}
-                                        </span>
-                                      )}
-                                      
-                                      {currentProgram.start && (
-                                        <span className="text-[7px] font-mono text-neutral-600 leading-none">
-                                          {new Date(currentProgram.start).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
-                                        </span>
-                                      )}
-                                    </div>
-                                    
-                                    {/* Minimalist Timeline visual bar */}
-                                    <div className="w-full bg-neutral-900 h-[1.5px] rounded-full overflow-hidden mt-1 max-w-[100px]">
-                                      {(() => {
-                                        const start = new Date(currentProgram.start).getTime();
-                                        const stop = new Date(currentProgram.stop).getTime();
-                                        const now = Date.now();
-                                        const progress = Math.min(100, Math.max(0, ((now - start) / (stop - start)) * 100));
-                                        return (
-                                          <div 
-                                            className="h-full bg-gradient-to-r from-[#FF7900] to-orange-500 rounded-full" 
-                                            style={{ width: `${progress}%` }} 
-                                          />
-                                        );
-                                      })()}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-[7px] font-semibold tracking-wider text-[#FF7900]/30 uppercase mt-0.5">
-                                    DIRECT CONTINU
-                                  </p>
-                                )}
-                              </div>
+                                {/* Right Actions: Info/EPG & Favorite Toggle Buttons */}
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDetailedEpgChannel(ch);
+                                    }}
+                                    className="p-1 px-1.5 rounded bg-white/[0.02] hover:bg-white/[0.08] text-neutral-500 hover:text-[#FF7900] transition-colors border border-white/[0.04] cursor-pointer flex items-center gap-1"
+                                    title="Détails du programme & Guide TV"
+                                  >
+                                    <Info size={9.5} className="text-neutral-500 group-hover:text-[#FF7900] transition-colors" />
+                                    <span className="text-[6.5px] font-bold tracking-wider">EPG</span>
+                                  </button>
 
-                              {/* Right Actions: Favorite Toggle Button */}
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(ch.id);
-                                }}
-                                className="p-1 px-[7px] rounded text-neutral-500 transition-colors cursor-pointer"
-                                title={favorites.includes(ch.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
-                              >
-                                <Heart 
-                                  size={9.5} 
-                                  className={
-                                    favorites.includes(ch.id) 
-                                      ? "text-red-500 fill-current opacity-100" 
-                                      : "opacity-0 group-hover:opacity-100 transition-opacity text-neutral-500 hover:text-white"
-                                  } 
-                                />
-                              </button>
-                            </motion.div>
-                          );
-                        })
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleFavorite(ch.id);
+                                    }}
+                                    className="p-1 px-[7px] rounded text-neutral-500 transition-colors cursor-pointer"
+                                    title={favorites.includes(ch.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+                                  >
+                                    <Heart 
+                                      size={9.5} 
+                                      className={
+                                        favorites.includes(ch.id) 
+                                          ? "text-red-500 fill-current opacity-100" 
+                                          : "opacity-0 group-hover:opacity-100 transition-opacity text-neutral-500 hover:text-white"
+                                      } 
+                                    />
+                                  </button>
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
                       )}
                       
                       {/* Pagination end threshold indicator for more fluid feedback */}
@@ -1253,6 +1708,23 @@ export default function App() {
                   ABONNÉ PREMIUM
                 </span>
               </div>
+
+              {/* Extended EPG Details Overlay Panel */}
+              <AnimatePresence>
+                {detailedEpgChannel && (
+                  <ExtendedEpgPanel
+                    channel={detailedEpgChannel}
+                    onClose={() => setDetailedEpgChannel(null)}
+                    onPlay={() => {
+                      playChannel(detailedEpgChannel);
+                      setDetailedEpgChannel(null);
+                      if (window.innerWidth < 768) {
+                        setShowDrawer(false);
+                      }
+                    }}
+                  />
+                )}
+              </AnimatePresence>
             </motion.aside>
           </>
         )}

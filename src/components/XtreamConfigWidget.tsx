@@ -260,7 +260,7 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
                   className="sr-only peer"
                   disabled={loading}
                 />
-                <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 peer-checked:after:bg-white border border-white/5"></div>
+                <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#FF7900] peer-checked:after:bg-white border border-white/5"></div>
               </label>
             </div>
 
@@ -268,7 +268,7 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-orange-600 to-[#FF7900] text-white font-black text-[10px] uppercase tracking-widest py-4 rounded-xl hover:from-orange-500 hover:to-orange-500 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full bg-gradient-to-r from-cyan-600 to-[#FF7900] text-white font-black text-[10px] uppercase tracking-widest py-4 rounded-xl hover:from-cyan-500 hover:to-cyan-500 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
               >
                 {loading ? (
                   <>

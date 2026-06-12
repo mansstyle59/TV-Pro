@@ -112,12 +112,12 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
       };
     }
 
-    // Default premium look tailored to our orange branding
+    // Default premium look tailored to our blue/cyan branding
     return {
-      bg: "from-neutral-900 via-[#1F140E] to-neutral-950",
+      bg: "from-neutral-900 via-[#0F171E] to-neutral-950",
       border: "border-[#FF7900]/25",
       text: "text-white",
-      glow: "shadow-[0_0_10px_rgba(255,121,0,0.1)]",
+      glow: "shadow-[0_0_10px_rgba(0,168,225,0.1)]",
       badge: "LIVE TV",
       icon: null
     };

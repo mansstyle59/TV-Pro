@@ -14,6 +14,7 @@ import {
   Pause, 
   Tv, 
   AlertCircle, 
+  Lock,
   RefreshCw, 
   Volume2, 
   VolumeX, 
@@ -51,6 +52,7 @@ interface HlsPlayerProps {
   programDesc?: string;
   programImage?: string;
   onBack?: () => void;
+  onMenuTV?: () => void;
   onFatalError?: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
@@ -64,6 +66,7 @@ export function HlsPlayer({
   programDesc = "Aucune description disponible pour ce programme.", 
   programImage, 
   onBack, 
+  onMenuTV,
   onFatalError, 
   isFavorite, 
   onToggleFavorite,
@@ -91,6 +94,7 @@ export function HlsPlayer({
   const [isPiPSupported, setIsPiPSupported] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMixedContentBlocked, setIsMixedContentBlocked] = useState(false);
 
   // Cast states & devices
   const [showCastMenu, setShowCastMenu] = useState(false);
@@ -456,6 +460,25 @@ export function HlsPlayer({
       }
     };
   }, [url, premiumBufferBoost]);
+
+  // Check for HTTP on HTTPS Mixed Content blocking (GitHub Pages "chargement en continu" issue)
+  useEffect(() => {
+    setIsMixedContentBlocked(false);
+    if (!url) return;
+
+    const isPageSecure = window.location.protocol === "https:";
+    const isStreamInsecure = url.startsWith("http://");
+
+    if (isPageSecure && isStreamInsecure) {
+      const timer = setTimeout(() => {
+        if (loading && !error) {
+          setIsMixedContentBlocked(true);
+        }
+      }, 5500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [url, loading, error]);
 
   // Cast framework initialization
   useEffect(() => {
@@ -895,16 +918,33 @@ export function HlsPlayer({
             exit={{ opacity: 0, y: -25 }}
             className="absolute top-0 inset-x-0 p-4 pt-6 md:p-6 md:pt-8 bg-gradient-to-b from-black/80 via-black/30 to-transparent z-40 flex items-start justify-between"
           >
-            <div className="flex items-center gap-4 max-w-[70%]">
+            <div className="flex items-center gap-3 md:gap-4 max-w-[70%]">
                {onBack && (
                  <button 
                    onClick={(e) => {
                      e.stopPropagation();
                      onBack();
                    }}
-                   className="p-2.5 bg-white/5 hover:bg-white/10 text-white active:scale-95 border border-white/5 rounded-full transition-all duration-200 backdrop-blur-md"
+                   className="flex items-center gap-1.5 px-3 py-1.5 md:px-3.5 md:py-2 bg-white/5 hover:bg-white/10 text-neutral-300 hover:text-white border border-white/5 hover:border-white/20 rounded-full transition-all duration-200 backdrop-blur-md text-[10px] font-black uppercase tracking-wider active:scale-95 select-none"
+                   title="Quitter le lecteur"
                  >
-                   <ChevronLeft size={20} />
+                   <ChevronLeft size={14} className="text-neutral-400" />
+                   <span className="hidden sm:inline">Quitter</span>
+                 </button>
+               )}
+
+               {onMenuTV && (
+                 <button 
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     onMenuTV();
+                   }}
+                   className="flex items-center gap-2 px-3.5 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-neutral-900/95 to-black/95 border border-[#FF7900]/40 hover:border-[#FF7900]/80 text-white font-black text-[10px] uppercase tracking-widest rounded-full transition-all duration-300 shadow-xl shadow-[#FF7900]/5 hover:shadow-[#FF7900]/15 hover:scale-[1.03] active:scale-95 select-none backdrop-blur-md group"
+                   title="Menu TV (Liste des chaînes)"
+                 >
+                   <Tv size={13} className="text-[#FF7900] group-hover:rotate-12 transition-transform duration-300" />
+                   <span>Menu TV</span>
+                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
                  </button>
                )}
             <div className="flex flex-col">
@@ -1457,7 +1497,7 @@ export function HlsPlayer({
                 </button>
                 <button 
                   type="submit"
-                  className="flex-1 py-3.5 bg-[#FF7900] hover:bg-orange-600 text-white rounded-xl transition-all font-semibold"
+                  className="flex-1 py-3.5 bg-[#FF7900] hover:bg-[#cc6000] text-white rounded-xl transition-all font-semibold"
                 >
                   Ajouter
                 </button>
@@ -1540,6 +1580,19 @@ export function HlsPlayer({
 
             {/* Utility Tools */}
             <div className="flex items-center gap-4">
+              {onMenuTV && (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMenuTV();
+                  }}
+                  className="transition-all duration-200 p-1.5 rounded-lg border border-transparent text-[#FF7900] hover:text-white hover:bg-white/5 flex items-center justify-center active:scale-95"
+                  title="Menu TV (Liste des chaînes)"
+                >
+                  <Tv size={18} />
+                </button>
+              )}
+
               <button 
                 onClick={() => {
                   setShowCastMenu(!showCastMenu);
@@ -1584,6 +1637,53 @@ export function HlsPlayer({
       )}
     </AnimatePresence>
 
+      {/* Mixed Content Blocked overlay indicator */}
+      {isMixedContentBlocked && !error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-6 text-center select-text">
+          <div className="w-14 h-14 bg-[#FF7900]/10 border border-[#FF7900]/25 rounded-full flex items-center justify-center mb-3 text-[#FF7900] shadow-xl">
+            <Lock className="w-7 h-7" />
+          </div>
+          <p className="text-white text-xs font-black uppercase tracking-tight mb-2.5 flex items-center gap-2">
+            ⚠️ Blocage de Sécurité Navigateur (Contenu Mixte)
+          </p>
+          <div className="text-[10px] text-neutral-400 max-w-sm mb-4 text-left leading-relaxed space-y-2 bg-neutral-900/60 p-3.5 rounded-xl border border-white/5 font-medium">
+            <p className="text-neutral-300">
+              L'application tourne en <span className="text-[#FF7900] font-black font-mono">HTTPS</span> sécurisé, mais ce flux de chaîne IPTV utilise une adresse non sécurisée <span className="text-red-400 font-mono text-[9px] break-all">{url}</span>.
+            </p>
+            <p className="text-neutral-300">
+              Votre navigateur (Chrome/Safari/Edge) bloque le flux par mesure de sécurité, ce qui génère un <span className="font-bold underline text-[#FF7900]">chargement infini</span>.
+            </p>
+            <p className="border-t border-white/5 pt-1.5 font-bold text-[#FF7900]">
+              💡 Solution immédiate :
+            </p>
+            <p className="text-[9.5px] text-neutral-200">
+              Cliquez sur l'icône de <span className="font-bold text-[#FF7900]">Cadenas 🔒 / Glissière ⚙️</span> à gauche de la barre d'adresse de votre navigateur, allez dans les <span className="font-bold">Paramètres du site</span>, puis réglez <span className="font-bold text-[#FF7900]">"Contenu non sécurisé"</span> sur <span className="font-bold underline text-emerald-400">"Autoriser"</span>. Rechargez ensuite la page !
+            </p>
+          </div>
+          <div className="flex gap-3 shrink-0">
+            <button 
+              onClick={() => {
+                const upgradedUrl = url.replace("http://", "https://");
+                window.location.href = window.location.href; 
+                setIsMixedContentBlocked(false);
+                handleRetry();
+              }}
+              className="px-5 py-2 bg-[#FF7900] hover:bg-orange-600 text-white rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-300 cursor-pointer"
+            >
+              Forcer un essai HTTPS
+            </button>
+            {onBack && (
+              <button 
+                onClick={onBack} 
+                className="px-5 py-2 bg-neutral-900 hover:bg-neutral-800 border border-white/5 text-white rounded-full text-[9px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer"
+              >
+                Retour
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Beautiful High-contrast error state with automated retry trigger */}
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 z-50 p-6 text-center">
@@ -1595,7 +1695,7 @@ export function HlsPlayer({
           <div className="flex gap-4">
             <button 
               onClick={handleRetry} 
-              className="px-6 py-2.5 bg-[#FF7900] hover:bg-orange-600 text-white rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-2xl shadow-[#FF7900]/30 active:scale-95"
+              className="px-6 py-2.5 bg-[#FF7900] hover:bg-[#cc6000] text-white rounded-full text-xs font-black uppercase tracking-wider transition-all duration-300 shadow-2xl shadow-[#FF7900]/30 active:scale-95"
             >
               Forcer la reconnexion
             </button>

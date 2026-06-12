@@ -17,7 +17,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
   return (
     <div className="fixed bottom-2 left-4 right-4 md:left-1/4 md:right-1/4 z-[100] lg:hidden pb-safe">
-      <nav className="bg-[#151515]/70 backdrop-blur-2xl border border-white/10 rounded-2xl px-2 py-2 flex justify-around items-center w-full shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+      <nav className="bg-[#151d2a]/85 backdrop-blur-2xl border border-white/5 rounded-2xl px-2 py-2 flex justify-around items-center w-full shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -31,9 +31,9 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 <Icon 
                   size={isActive ? 22 : 20} 
                   strokeWidth={isActive ? 2.5 : 2} 
-                  className={isActive ? "text-[#FF7900]" : "text-[#A0A0A0] group-hover:text-white transition-colors"} 
+                  className={isActive ? "text-brand-500" : "text-[#8197A4] group-hover:text-white transition-colors"} 
                 />
-                <span className={`text-[7px] font-bold uppercase tracking-widest transition-colors ${isActive ? "text-[#FF7900]" : "text-[#A0A0A0]"}`}>
+                <span className={`text-[7px] font-bold uppercase tracking-widest transition-colors ${isActive ? "text-brand-500" : "text-[#8197A4]"}`}>
                   {tab.label}
                 </span>
               </div>

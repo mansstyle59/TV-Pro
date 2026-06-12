@@ -76,7 +76,7 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMo
 
         {/* Play Icon - Polished Design */}
         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0">
-           <div className="w-12 h-12 md:w-14 md:h-14 bg-[#FF7900]/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(255,121,0,0.4)] text-white">
+           <div className="w-12 h-12 md:w-14 md:h-14 bg-[#FF7900]/90 backdrop-blur-md rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,168,225,0.4)] text-white">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="ml-1"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
            </div>
         </div>
@@ -100,7 +100,7 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({ channel, onClick, onMo
         {currentProgram && progress > 0 && (
            <div className="absolute inset-x-0 bottom-0 h-1 bg-white/5 overflow-hidden">
               <motion.div 
-                className="h-full bg-[#FF7900] shadow-[0_0_15px_rgba(255,121,0,1)]"
+                className="h-full bg-[#FF7900] shadow-[0_0_15px_rgba(0,168,225,1)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 1.5, ease: "easeOut" }}

@@ -44,7 +44,7 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
               onClick={() => onTabChange(tab.id)}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
                 isActive 
-                  ? "bg-[#151515] text-[#FF7900]" 
+                  ? "bg-[#1A242F] text-[#FF7900]" 
                   : "text-[#A0A0A0] hover:text-white"
               }`}
             >

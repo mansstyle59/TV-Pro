@@ -175,7 +175,7 @@ export function Integrations() {
       </header>
 
       {/* Hero M3U Category Downloader */}
-      <div className="p-6 rounded-2xl bg-gradient-to-br from-[#1A1A1A] to-[#0E0E0E] border border-[#FF7900]/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
+      <div className="p-6 rounded-2xl bg-gradient-to-br from-[#151d2a] to-[#090e17] border border-[#FF7900]/20 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#FF7900]/5 to-transparent blur-3xl pointer-events-none rounded-full" />
         <div className="z-10 space-y-2 max-w-xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#FF7900]/20 to-[#FF7900]/10 border border-[#FF7900]/20 rounded-full">
@@ -185,7 +185,7 @@ export function Integrations() {
           <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white">
             Lien Rapide de Téléchargement M3U
           </h3>
-          <p className="text-sm text-gray-300 leading-relaxed font-semibold">
+          <p className="text-sm text-gray-300 leading-relaxed font-semibold font-sans">
             Téléchargez instantanément votre playlist <code className="text-[#FF7900] font-mono bg-black/60 px-1 py-0.5 rounded border border-white/5 font-semibold text-xs">playlist.m3u</code> contenant l'ensemble de vos chaînes <strong className="text-white">classées par catégories</strong>, avec <strong className="text-white">tous les logos</strong> configurés et rattachés pour vos lecteurs IPTV (VLC, Kodi, TiviMate, etc.).
           </p>
         </div>
@@ -193,7 +193,7 @@ export function Integrations() {
           <a
             href={m3uLink}
             download="playlist.m3u"
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-[#FF7900] to-[#E06A00] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-[#FF7900]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-[#FF7900] to-[#cc6000] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-[#FF7900]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
             <Download size={18} strokeWidth={3} />
             Télécharger (.m3u)
@@ -443,7 +443,7 @@ export function Integrations() {
       </div>
 
       {/* Unified Smart TV URL Shortener block */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-[#121212] to-[#0A0A0A] border border-[#FF7900]/20 relative overflow-hidden shadow-2xl text-left">
+      <div className="p-6 sm:p-8 rounded-2xl bg-gradient-to-br from-[#151d2a] to-[#090e17] border border-[#FF7900]/20 relative overflow-hidden shadow-2xl text-left">
         <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#FF7900]/5 to-transparent blur-3xl pointer-events-none rounded-full" />
         
         <div className="z-10 relative space-y-4">
