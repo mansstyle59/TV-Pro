@@ -1,7 +1,7 @@
 {
-  "name": "Flux Tv Pro",
-  "short_name": "Flux Tv Pro",
-  "description": "Plateforme IPTV Premium 100% Française",
+  "name": "DenDenTV",
+  "short_name": "DenDenTV",
+  "description": "DenDenTV - Plateforme IPTV Premium 100% Française",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

@@ -247,23 +247,95 @@ export function normalizeName(name: string): string {
   return n;
 }
 
+export function getCustomLogos(): Record<string, string> {
+  try {
+    if (typeof window !== "undefined") {
+      const customLogosString = localStorage.getItem("custom_channel_logos");
+      return customLogosString ? JSON.parse(customLogosString) : {};
+    }
+  } catch (e) {
+    console.error("Error reading custom_channel_logos", e);
+  }
+  return {};
+}
+
+export function saveCustomLogo(channelName: string, logoUrl: string): void {
+  const norm = normalizeName(channelName);
+  try {
+    if (typeof window !== "undefined") {
+      const customLogos = getCustomLogos();
+      if (logoUrl.trim()) {
+        customLogos[norm] = logoUrl.trim();
+      } else {
+        delete customLogos[norm];
+      }
+      localStorage.setItem("custom_channel_logos", JSON.stringify(customLogos));
+      window.dispatchEvent(new Event("custom_logo_updated"));
+    }
+  } catch (e) {
+    console.error("Error saving custom logo", e);
+  }
+}
+
+export function getSlugForName(name: string): string {
+  if (!name) return "";
+  let s = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Supprime les accents
+    .toLowerCase()
+    .replace(/\b(fr|be|ch|ca|vip|ts|m3u8|tnt|raw|hd|fhd|uhd|4k|sd|raw|backup|s1|s2|s3)\s*[:|-]\s*/gi, "") // Supprime les préfixes FR:, BE:, etc.
+    .replace(/\s*[\[\(](HD|SD|V2|Backup|FR|MULT|7\/24|Main|24\/7|HEVC|480p|1080p|720p|4K|AUTO|OLD|TS|M3U8|VIP|6|7)[\]\)]/gi, "")
+    .replace(/\s+\([^)]*\)/g, "") // Supprime les parenthèses
+    .replace(/\s+\[[^\]]*\]/g, "") // Supprime les crochets
+    .replace(/\s+fhd\s*/gi, " ")
+    .replace(/\s+hd\s*/gi, " ")
+    .replace(/\s+sd\s*/gi, " ")
+    .replace(/\s+4k\s*/gi, " ")
+    .replace(/\s+french\s*/gi, " ")
+    .replace(/\+/g, " plus "); // Remplace + par plus
+
+  // Supprime tous les caractères non-alphanumériques par des espaces, puis les joint par des tirets
+  s = s.replace(/[^a-z0-9]/g, " ")
+       .trim()
+       .replace(/\s+/g, "-");
+
+  return s;
+}
+
 export function getLogoForChannel(channelName: string, originalLogo?: string): string | undefined {
   const norm = normalizeName(channelName);
+
+  // 0. Check custom user-saved logos in local storage
+  const customLogos = getCustomLogos();
+  if (customLogos[norm]) {
+    return customLogos[norm];
+  }
 
   // 1. Direct hit in fallbackLogoMap
   if (fallbackLogoMap[norm]) {
     return fallbackLogoMap[norm];
   }
 
-  // 2. Specific French TNT Fallbacks - if name matches anywhere
-  const keys = Object.keys(fallbackLogoMap);
+  // 2. Specific French TNT Fallbacks - sorted by length descending so specific matches take precedence!
+  const keys = Object.keys(fallbackLogoMap).sort((a, b) => b.length - a.length);
   for (const k of keys) {
     if (k.length > 3 && (norm.includes(k) || k.includes(norm))) {
       return fallbackLogoMap[k];
     }
   }
 
-  // 3. Keep original logo but clean it up
+  // 3. Dynamic Logo Detection based on tv-logos repository conventions
+  const slug = getSlugForName(channelName);
+  if (slug) {
+    const isBelgian = /rtl|rtbf|laune|tipik|latrois|ab3|abxplore|ln24|be\b/i.test(channelName) || norm.endsWith("be");
+    if (isBelgian) {
+      return `https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/belgium/${slug}-be.png`;
+    } else {
+      return `https://raw.githubusercontent.com/tv-logos/tv-logos/main/countries/france/${slug}-fr.png`;
+    }
+  }
+
+  // 4. Keep original logo but clean it up
   if (originalLogo) {
     let cleanLogo = originalLogo.trim();
     if (cleanLogo.includes("iptv-org") && (cleanLogo.includes("/images/channels/") || cleanLogo.includes("/images/logos/") || cleanLogo.includes("/logos/logos/"))) {

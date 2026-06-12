@@ -42,8 +42,8 @@
     <path d="M78,94 A23,23 0 0,1 78,128" fill="none" stroke="url(#logoOrange)" stroke-width="3.2" stroke-linecap="round"/>
   </g>
 
-  <!-- Right Side: Bold Texts "FLUX" & "TV" -->
-  <text x="91" y="99" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="23" letter-spacing="-0.5" text-anchor="start">FLUX</text>
+  <!-- Right Side: Bold Texts "DENDEN" & "TV" -->
+  <text x="91" y="100" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="16" letter-spacing="0.5" text-anchor="start">DENDEN</text>
   <text x="91" y="128" fill="url(#logoOrange)" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" font-weight="900" font-size="33" letter-spacing="-0.5" text-anchor="start">TV</text>
 
   <!-- Bottom: Centered "PRO" overlapping Pill Capsule -->

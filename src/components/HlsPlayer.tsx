@@ -54,6 +54,7 @@ interface HlsPlayerProps {
   onFatalError?: () => void;
   isFavorite?: boolean;
   onToggleFavorite?: () => void;
+  fullViewport?: boolean;
 }
 
 export function HlsPlayer({ 
@@ -65,7 +66,8 @@ export function HlsPlayer({
   onBack, 
   onFatalError, 
   isFavorite, 
-  onToggleFavorite 
+  onToggleFavorite,
+  fullViewport = false
 }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -779,7 +781,9 @@ export function HlsPlayer({
     <div 
       ref={containerRef}
       onMouseMove={handleMouseMove}
-      className={`relative w-full aspect-video bg-[#050505] overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,1)] group border border-white/5 touch-none select-none transition-all duration-500 ${isFullscreen ? "" : "rounded-xl sm:rounded-2xl"}`}
+      className={`relative w-full bg-[#050505] overflow-hidden group touch-none select-none transition-all duration-500 ${
+        fullViewport ? "h-full" : "aspect-video shadow-[0_32px_64px_-16px_rgba(0,0,0,1)] border border-white/5"
+      } ${isFullscreen ? "h-screen w-screen" : (fullViewport ? "" : "rounded-xl sm:rounded-2xl")}`}
     >
       <video
         ref={videoRef}
@@ -806,17 +810,17 @@ export function HlsPlayer({
       {isCasting && (
         <div className="absolute inset-0 bg-neutral-950 flex flex-col items-center justify-center z-30 p-6 select-none border border-white/5 animate-fade-in text-sans">
           {/* Animated pulsing background glow */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] rounded-full bg-[#1E88FF]/10 blur-[90px] animate-pulse pointer-events-none" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[250px] h-[250px] rounded-full bg-[#FF7900]/10 blur-[90px] animate-pulse pointer-events-none" />
           
           <div className="flex flex-col items-center text-center space-y-5 max-w-sm relative z-10">
             <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center relative shadow-inner">
-              <div className="absolute inset-0 rounded-full border border-[#1E88FF]/40 animate-ping opacity-25" style={{ animationDuration: '3s' }} />
-              <Cast size={28} className="text-[#1E88FF] animate-pulse" />
+              <div className="absolute inset-0 rounded-full border border-[#FF7900]/40 animate-ping opacity-25" style={{ animationDuration: '3s' }} />
+              <Cast size={28} className="text-[#FF7900] animate-pulse" />
             </div>
             
             <div className="space-y-1">
-              <div className="flex items-center justify-center gap-1.5 text-[9px] uppercase font-bold tracking-widest text-[#1E88FF]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1E88FF] animate-pulse" />
+              <div className="flex items-center justify-center gap-1.5 text-[9px] uppercase font-bold tracking-widest text-[#FF7900]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF7900] animate-pulse" />
                 <span>Diffusion TV active</span>
               </div>
               <p className="text-sm font-semibold text-neutral-400 capitalize font-mono">{channelName}</p>
@@ -846,7 +850,7 @@ export function HlsPlayer({
       {/* Simulated Casting Connection Splash Cover */}
       {isConnectingCast && (
         <div className="absolute inset-0 bg-neutral-950/95 flex flex-col items-center justify-center z-50 p-6 select-none animate-fade-in text-sans">
-          <RefreshCw className="w-8 h-8 text-[#1E88FF] animate-spin mb-3" />
+          <RefreshCw className="w-8 h-8 text-[#FF7900] animate-spin mb-3" />
           <p className="text-white text-sm font-bold tracking-tight mb-1">Connexion à l'écran de télévision...</p>
           <p className="text-[10px] text-neutral-400 font-mono">Négociation du protocole IPTV Cast...</p>
         </div>
@@ -959,15 +963,15 @@ export function HlsPlayer({
               )}
               
               <button 
-                className={`p-2.5 bg-white/5 border border-white/5 hover:bg-white/10 rounded-full transition-all duration-200 backdrop-blur-md relative google-cast-launcher ${isCasting ? "bg-[#1E88FF]/10 border-[#1E88FF]/30 text-white shadow-lg" : ""}`}
+                className={`p-2.5 bg-white/5 border border-white/5 hover:bg-white/10 rounded-full transition-all duration-200 backdrop-blur-md relative google-cast-launcher ${isCasting ? "bg-[#FF7900]/10 border-[#FF7900]/30 text-white shadow-lg" : ""}`}
                 title="Caster sur votre TV"
               >
                 <Cast 
                   size={18} 
-                  className={`transition-colors duration-200 ${isCasting ? "text-[#1E88FF]" : "text-neutral-300 hover:text-white"}`} 
+                  className={`transition-colors duration-200 ${isCasting ? "text-[#FF7900]" : "text-neutral-300 hover:text-white"}`} 
                 />
                 {isCasting && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#1E88FF] rounded-full animate-pulse border border-black" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#FF7900] rounded-full animate-pulse border border-black" />
                 )}
               </button>
             </div>
@@ -987,7 +991,7 @@ export function HlsPlayer({
           >
             <div className="flex flex-col flex-grow">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] uppercase font-bold tracking-widest text-[#1E88FF]">Assistance & Info</span>
+                <span className="text-[10px] uppercase font-bold tracking-widest text-[#FF7900]">Assistance & Info</span>
                 <button onClick={() => setShowInfoPanel(false)} className="text-neutral-400 hover:text-white text-xs font-medium transition-colors">Fermer</button>
               </div>
 
@@ -1010,8 +1014,8 @@ export function HlsPlayer({
               {infoDrawerTab === "program" ? (
                 <div className="space-y-4 flex-grow">
                   <div className="space-y-2">
-                    <span className="inline-flex items-center gap-1.5 text-[9px] uppercase font-black tracking-widest text-[#1E88FF] bg-[#1E88FF]/10 px-2 py-0.5 rounded border border-[#1E88FF]/15">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#1E88FF] animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 text-[9px] uppercase font-black tracking-widest text-[#FF7900] bg-[#FF7900]/10 px-2 py-0.5 rounded border border-[#FF7900]/15">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#FF7900] animate-pulse" />
                       En cours
                     </span>
                     <h4 className="text-xl font-black text-white tracking-tighter leading-none">{programTitle}</h4>
@@ -1077,7 +1081,7 @@ export function HlsPlayer({
             className="absolute top-20 right-6 bg-neutral-950/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4.5 z-40 shadow-2xl space-y-2 font-mono text-[9px] text-neutral-300 w-52 pointer-events-none select-none text-left"
           >
             <div className="flex items-center gap-1.5 border-b border-white/10 pb-1.5 mb-1 text-white">
-              <Activity size={10} className="text-[#1E88FF]" />
+              <Activity size={10} className="text-[#FF7900]" />
               <span className="font-bold uppercase tracking-wider">DIAGNOSTIC DU SIGNAL</span>
             </div>
             <div className="flex justify-between">
@@ -1086,7 +1090,7 @@ export function HlsPlayer({
             </div>
             <div className="flex justify-between">
               <span className="text-neutral-500">Qualité Active :</span>
-              <span className="text-[#1E88FF] font-semibold">
+              <span className="text-[#FF7900] font-semibold">
                 {currentLevel === -1 
                   ? `${levels[0]?.height ? levels[0].height + 'p' : 'Auto'}` 
                   : `${levels.find(l => l.id === currentLevel)?.height || 'Indéterminée'}p`}
@@ -1264,12 +1268,12 @@ export function HlsPlayer({
                 <div>
                   <div className="flex justify-between items-center mb-1">
                     <h4 className="text-[10px] font-bold uppercase text-neutral-400 tracking-widest font-sans flex items-center gap-1 text-left">
-                      <Cast size={11} className="text-[#1E88FF]" />
+                      <Cast size={11} className="text-[#FF7900]" />
                       Sélecteur d'écran
                     </h4>
                     <button 
                       onClick={() => setShowAddDeviceModal(true)}
-                      className="text-[9px] text-[#1E88FF] font-bold uppercase tracking-wider hover:underline flex items-center gap-0.5"
+                      className="text-[9px] text-[#FF7900] font-bold uppercase tracking-wider hover:underline flex items-center gap-0.5"
                     >
                       <Plus size={10} />
                       Ajouter
@@ -1280,9 +1284,9 @@ export function HlsPlayer({
                   {/* Browser Native Casting integration button */}
                   <button
                     onClick={handleNativeCast}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-[#1E88FF]/10 text-[#1E88FF] hover:bg-[#1E88FF]/20 border border-[#1E88FF]/20 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest mb-3"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-[#FF7900]/10 text-[#FF7900] hover:bg-[#FF7900]/20 border border-[#FF7900]/20 rounded-xl transition-all font-black text-[9px] uppercase tracking-widest mb-3"
                   >
-                    <Zap size={11} className="text-[#1E88FF] animate-pulse" />
+                    <Zap size={11} className="text-[#FF7900] animate-pulse" />
                     <span>Recherche Cast Intégrée</span>
                   </button>
 
@@ -1297,7 +1301,7 @@ export function HlsPlayer({
                             onClick={() => handleCastSelect(device.name)}
                             className="flex-grow flex items-center gap-2 min-w-0"
                           >
-                            <div className="p-2 bg-neutral-900 border border-white/5 rounded-lg group-hover:border-[#1E88FF]/30 transition-all text-[#1E88FF] flex-shrink-0">
+                            <div className="p-2 bg-neutral-900 border border-white/5 rounded-lg group-hover:border-[#FF7900]/30 transition-all text-[#FF7900] flex-shrink-0">
                               {device.type === "AirPlay" ? <Monitor size={11} /> : device.type === "Chromecast" ? <Cast size={11} /> : <Tv size={11} />}
                             </div>
                             <div className="flex flex-col min-w-0 text-left">
@@ -1355,7 +1359,7 @@ export function HlsPlayer({
                   </button>
                 </div>
 
-                <div className="bg-[#1E88FF]/5 border border-[#1E88FF]/10 rounded-xl p-3 text-[9px] leading-relaxed text-[#1E88FF] text-left space-y-1">
+                <div className="bg-[#FF7900]/5 border border-[#FF7900]/10 rounded-xl p-3 text-[9px] leading-relaxed text-[#FF7900] text-left space-y-1">
                   <span className="font-bold uppercase tracking-wider block">⚡ Astuce DLNA direct :</span>
                   <span>Sur smartphone/tablette, ouvrez BubbleUPnP, collez ce lien et choisissez votre Smart TV de n'importe quel constructeur (Samsung, Sony, LG) !</span>
                 </div>
@@ -1365,12 +1369,12 @@ export function HlsPlayer({
             {/* TAB 3: Guide step-by-step tutorial */}
             {castSettingsTab === "instructions" && (
               <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-                <h4 className="text-[10px] font-bold uppercase text-[#1E88FF] tracking-widest font-sans text-left">
+                <h4 className="text-[10px] font-bold uppercase text-[#FF7900] tracking-widest font-sans text-left">
                   Caster sur vos Appareils Domestiques
                 </h4>
                 
                 <div className="space-y-3 font-sans text-[10px] text-left">
-                  <div className="space-y-0.5 border-l-2 border-[#1E88FF] pl-2">
+                  <div className="space-y-0.5 border-l-2 border-[#FF7900] pl-2">
                     <span className="font-bold text-neutral-200">1. Chromecast & Android TV :</span>
                     <p className="text-neutral-400 text-[9px] leading-normal">Basculez sur Chrome/Edge, cliquez sur &laquo; Recherche Cast Intégrée &raquo; et sélectionnez votre écran.</p>
                   </div>
@@ -1423,7 +1427,7 @@ export function HlsPlayer({
                     value={newDeviceName}
                     onChange={(e) => setNewDeviceName(e.target.value)}
                     placeholder="ex: Sony Bravia Chambre"
-                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#1E88FF] transition-all"
+                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF7900] transition-all"
                     required
                   />
                 </div>
@@ -1433,7 +1437,7 @@ export function HlsPlayer({
                   <select 
                     value={newDeviceType}
                     onChange={(e) => setNewDeviceType(e.target.value)}
-                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#1E88FF] transition-all"
+                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF7900] transition-all"
                   >
                     <option value="Chromecast">Chromecast / Google Nest</option>
                     <option value="AirPlay">Apple TV / AirPlay</option>

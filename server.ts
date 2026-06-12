@@ -2114,11 +2114,11 @@ app.all(["/player_api.php", "/panel_api.php"], async (req, res) => {
         message: "Logged in successfully",
         auth: 1,
         status: "Active",
-        exp_date: "2099999999",
-        is_trial: "0",
-        active_cons: "0",
-        max_connections: "99",
-        created_at: "1600000000",
+        exp_date: 2099999999,
+        is_trial: 0,
+        active_cons: 0,
+        max_connections: 99,
+        created_at: 1600000000,
         allowed_output_formats: ["m3u8", "ts"]
       },
       server_info: {
@@ -2439,12 +2439,14 @@ app.get("/api/sports.m3u", async (req, res) => {
   try {
     const channels = await getActiveChannelsWithMetadata();
     
-    // Sports-related keywords to match channels
+    // Exhaustive sports-related keywords to match channels for maximum compatibility
     const sportsKeywords = [
       "sport", "bein", "eurosport", "rmc", "dazn", "canal+ sport", "canal plus sport", 
       "canal+ foot", "canal plus foot", "canal+ 360", "canal plus 360", "l'equipe", "lequipe", 
       "automoto", "auto-moto", "golf", "chasse", "pêche", "peche", "moteur", "equidia", 
-      "es1", "olymp", "ufc", "fight", "football", "foot", "espn", "nba", "extreme", "tnt sport"
+      "es1", "olymp", "ufc", "fight", "football", "foot", "espn", "nba", "extreme", "tnt sport",
+      "f1", "formula", "motogp", "gp", "champions", "league", "premier", "rugby", "tennis", "boxe",
+      "wwe", "eleven", "sky sport", "arena", "pga", "prime video", "ligue 1", "ligue1", "la liga"
     ];
     
     const sportsChannels = channels.filter(c => {

@@ -19,7 +19,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
     <div className="space-y-6 px-4 sm:px-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-           <div className="w-1 h-10 bg-brand-500 rounded-full shadow-[0_0_15px_#0ea5e9]" />
+           <div className="w-1 h-10 bg-brand-500 rounded-full shadow-[0_0_15px_#FF7900]" />
            <div className="flex flex-col">
               <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.4em]">Découverte</span>
               <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter">{title}</h2>
@@ -94,7 +94,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               )}
 
               {isSelected && (
-                <div className="absolute top-3 right-3 w-2 h-2 bg-brand-500 rounded-full shadow-[0_0_12px_#0ea5e9] animate-pulse z-30" />
+                <div className="absolute top-3 right-3 w-2 h-2 bg-brand-500 rounded-full shadow-[0_0_12px_#FF7900] animate-pulse z-30" />
               )}
             </motion.div>
           );
