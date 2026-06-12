@@ -13,6 +13,53 @@ export default defineConfig(() => {
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+          runtimeCaching: [
+            {
+              urlPattern: /^https:\/\/raw\.githubusercontent\.com\/.*\/tv-logos\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'tv-logos-cache',
+                expiration: {
+                  maxEntries: 1000,
+                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
+            {
+              urlPattern: /^https:\/\/www\.programme-tv\.net\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'programme-tv-logos-cache',
+                expiration: {
+                  maxEntries: 1000,
+                  maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            },
+            {
+              urlPattern: /\/api\/channels(\?.*)?$/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'api-channels-cache',
+                expiration: {
+                  maxEntries: 5,
+                  maxAgeSeconds: 60 * 60 * 2 // 2 hours
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
+                }
+              }
+            }
+          ]
+        },
         manifest: {
           name: 'TV PRO Explore',
           short_name: 'TV PRO',

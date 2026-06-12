@@ -111,15 +111,15 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
   };
 
   return (
-    <div className="bg-[#0D0D0D] rounded-[2.5rem] border border-white/5 overflow-hidden transition-all duration-300">
+    <div className="bg-[#0D0D0D] rounded-[2.5rem] border border-gray-200 overflow-hidden transition-all duration-300">
       {/* Header */}
-      <div className="p-6 sm:p-8 bg-neutral-950/40 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 sm:p-8 bg-gray-50/40 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-orange-500/10 rounded-2xl flex items-center justify-center border border-orange-500/20 text-orange-500">
             <Plug size={22} className={enabled ? "animate-pulse" : ""} />
           </div>
           <div className="text-left space-y-0.5">
-            <h4 className="text-sm font-black text-white uppercase tracking-widest flex items-center gap-2">
+            <h4 className="text-sm font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
               Xtream Codes API
               {enabled && (
                 <span className="bg-emerald-500/10 text-emerald-500 text-[8px] font-black px-2 py-0.5 rounded-full border border-emerald-500/15 uppercase tracking-widest animate-pulse">
@@ -127,7 +127,7 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
                 </span>
               )}
             </h4>
-            <p className="text-[10px] text-neutral-500 font-bold uppercase tracking-widest">
+            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
               Importez vos propres flux & EPG en direct
             </p>
           </div>
@@ -137,13 +137,13 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
           <div className="flex gap-2">
             <button
               onClick={handleDisconnect}
-              className="px-4 py-2 bg-neutral-900 text-neutral-400 hover:text-white border border-white/5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors cursor-pointer"
+              className="px-4 py-2 bg-gray-100 text-gray-600 hover:text-gray-900 border border-gray-200 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors cursor-pointer"
             >
               Désactiver
             </button>
             <button
               onClick={handleReset}
-              className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/10 hover:bg-red-500 hover:text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
+              className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/10 hover:bg-red-500 hover:text-gray-900 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer"
             >
               Effacer
             </button>
@@ -157,24 +157,24 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
           /* Subscription Dashboard */
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="p-4 bg-neutral-950/40 border border-white/5 rounded-2xl text-left">
-                <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest block mb-1">Abonné</span>
-                <span className="text-xs font-bold text-white uppercase tracking-tight block truncate">{accountInfo.username}</span>
+              <div className="p-4 bg-gray-50/40 border border-gray-200 rounded-2xl text-left">
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">Abonné</span>
+                <span className="text-xs font-bold text-gray-900 uppercase tracking-tight block truncate">{accountInfo.username}</span>
               </div>
               
-              <div className="p-4 bg-neutral-950/40 border border-white/5 rounded-2xl text-left">
-                <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest block mb-1">Expiration</span>
+              <div className="p-4 bg-gray-50/40 border border-gray-200 rounded-2xl text-left">
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">Expiration</span>
                 <span className="text-xs font-bold text-[#FF7900] uppercase tracking-tight block">{accountInfo.expiryDate}</span>
               </div>
               
-              <div className="p-4 bg-neutral-950/40 border border-white/5 rounded-2xl text-left">
-                <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest block mb-1">Statut Client</span>
+              <div className="p-4 bg-gray-50/40 border border-gray-200 rounded-2xl text-left">
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">Statut Client</span>
                 <span className="text-xs font-bold text-emerald-500 uppercase tracking-tight block">{accountInfo.status}</span>
               </div>
               
-              <div className="p-4 bg-neutral-950/40 border border-white/5 rounded-2xl text-left">
-                <span className="text-[8px] font-black text-neutral-500 uppercase tracking-widest block mb-1">Connexions</span>
-                <span className="text-xs font-bold text-white uppercase tracking-tight block">
+              <div className="p-4 bg-gray-50/40 border border-gray-200 rounded-2xl text-left">
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest block mb-1">Connexions</span>
+                <span className="text-xs font-bold text-gray-900 uppercase tracking-tight block">
                   {accountInfo.activeConnections} / {accountInfo.maxConnections}
                 </span>
               </div>
@@ -183,8 +183,8 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
             <div className="p-4 bg-[#FF7900]/5 border border-[#FF7900]/10 rounded-2xl flex items-start gap-4 text-left">
               <ShieldCheck size={18} className="text-[#FF7900] shrink-0 mt-0.5" />
               <div className="space-y-1">
-                <span className="text-[10px] font-black text-white uppercase tracking-widest block">Lecteur Synchrone Xtream</span>
-                <p className="text-[11px] text-neutral-400 font-medium leading-relaxed font-sans">
+                <span className="text-[10px] font-black text-gray-900 uppercase tracking-widest block">Lecteur Synchrone Xtream</span>
+                <p className="text-[11px] text-gray-600 font-medium leading-relaxed font-sans">
                   Le protocole Xtream est entièrement connecté. Les listes thématiques, programmes de streaming .TS et guides TV (EPG) sont chargés de manière isolée et sécurisée.
                 </p>
               </div>
@@ -201,45 +201,45 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
             )}
 
             <div className="space-y-1">
-              <label className="text-[9px] font-black text-neutral-500 uppercase tracking-wider block">Adresse du Serveur</label>
+              <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block">Adresse du Serveur</label>
               <input
                 type="text"
                 placeholder="http://votre-serveur.com:8080"
                 value={server}
                 onChange={e => setServer(e.target.value)}
-                className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-orange-500 font-mono transition-colors"
+                className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-xs text-gray-900 focus:outline-none focus:border-orange-500 font-mono transition-colors"
                 disabled={loading}
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[9px] font-black text-neutral-500 uppercase tracking-wider block">Identifiant</label>
+                <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block">Identifiant</label>
                 <input
                   type="text"
                   placeholder="Username"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-orange-500 font-mono transition-colors"
+                  className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 text-xs text-gray-900 focus:outline-none focus:border-orange-500 font-mono transition-colors"
                   disabled={loading}
                 />
               </div>
 
               <div className="space-y-1 relative">
-                <label className="text-[9px] font-black text-neutral-500 uppercase tracking-wider block">Mot de passe</label>
+                <label className="text-[9px] font-black text-gray-500 uppercase tracking-wider block">Mot de passe</label>
                 <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-3 pr-10 text-xs text-white focus:outline-none focus:border-orange-500 font-mono transition-colors"
+                    className="w-full bg-gray-50 border border-gray-300 rounded-xl px-4 py-3 pr-10 text-xs text-gray-900 focus:outline-none focus:border-orange-500 font-mono transition-colors"
                     disabled={loading}
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -247,10 +247,10 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
               </div>
             </div>
 
-            <div className="p-4 bg-neutral-950/40 rounded-2xl flex items-center justify-between border border-white/5 mt-2">
+            <div className="p-4 bg-gray-50/40 rounded-2xl flex items-center justify-between border border-gray-200 mt-2">
               <div className="text-left space-y-0.5">
-                <span className="text-[10px] font-bold text-white block uppercase tracking-wide">Contournement CORS</span>
-                <p className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider">Recommandé pour hébergement statique (GitHub Pages)</p>
+                <span className="text-[10px] font-bold text-gray-900 block uppercase tracking-wide">Contournement CORS</span>
+                <p className="text-[9px] text-gray-500 font-bold uppercase tracking-wider">Recommandé pour hébergement statique (GitHub Pages)</p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input 
@@ -260,7 +260,7 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
                   className="sr-only peer"
                   disabled={loading}
                 />
-                <div className="w-9 h-5 bg-neutral-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#FF7900] peer-checked:after:bg-white border border-white/5"></div>
+                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-neutral-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#FF7900] peer-checked:after:bg-white border border-gray-200"></div>
               </label>
             </div>
 
@@ -268,7 +268,7 @@ export function XtreamConfigWidget({ onSuccess }: XtreamConfigWidgetProps) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-cyan-600 to-[#FF7900] text-white font-black text-[10px] uppercase tracking-widest py-4 rounded-xl hover:from-cyan-500 hover:to-cyan-500 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
+                className="w-full bg-gradient-to-r from-cyan-600 to-[#FF7900] text-gray-900 font-black text-[10px] uppercase tracking-widest py-4 rounded-xl hover:from-cyan-500 hover:to-cyan-500 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:pointer-events-none"
               >
                 {loading ? (
                   <>

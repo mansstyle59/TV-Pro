@@ -35,13 +35,13 @@ export function AccessCodeGate({ onAuthorized }: AccessCodeGateProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950 p-6">
-      <div className="w-full max-w-sm bg-neutral-900 border border-white/10 p-8 rounded-3xl text-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50 p-6">
+      <div className="w-full max-w-sm bg-gray-100 border border-gray-300 p-8 rounded-3xl text-center">
         <div className="mx-auto w-16 h-16 bg-brand-500/20 rounded-full flex items-center justify-center mb-6">
-          <Lock size={32} className="text-white" />
+          <Lock size={32} className="text-gray-900" />
         </div>
-        <h2 className="text-xl font-black text-white uppercase tracking-tight mb-2">Accès Sécurisé</h2>
-        <p className="text-neutral-400 text-xs mb-6">Veuillez entrer le code d'accès fourni par l'administrateur.</p>
+        <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight mb-2">Accès Sécurisé</h2>
+        <p className="text-gray-600 text-xs mb-6">Veuillez entrer le code d'accès fourni par l'administrateur.</p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -49,7 +49,7 @@ export function AccessCodeGate({ onAuthorized }: AccessCodeGateProps) {
             maxLength={4}
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
-            className="w-full bg-neutral-950 border border-white/10 rounded-xl p-4 text-center text-2xl font-mono text-white tracking-[0.5em] focus:outline-none focus:border-brand-500"
+            className="w-full bg-gray-50 border border-gray-300 rounded-xl p-4 text-center text-2xl font-mono text-gray-900 tracking-[0.5em] focus:outline-none focus:border-brand-500"
             placeholder="0000"
             required
           />

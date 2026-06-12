@@ -22,7 +22,7 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
            <div className="w-1 h-10 bg-brand-500 rounded-full shadow-[0_0_15px_#FF7900]" />
            <div className="flex flex-col">
               <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.4em]">Découverte</span>
-              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter">{title}</h2>
+              <h2 className="text-xl sm:text-2xl font-black text-gray-900 uppercase tracking-tighter">{title}</h2>
            </div>
         </div>
       </div>
@@ -45,10 +45,10 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               }}
               role="button"
               tabIndex={0}
-              className={`cursor-pointer aspect-square relative group bg-neutral-900 border overflow-hidden rounded-xl transition-all flex flex-col items-center justify-center p-3 sm:p-5 hover:scale-110 active:scale-95 duration-500 shadow-xl outline-hidden ${
+              className={`cursor-pointer aspect-square relative group bg-gray-100 border overflow-hidden rounded-xl transition-all flex flex-col items-center justify-center p-3 sm:p-5 hover:scale-110 active:scale-95 duration-500 shadow-xl outline-hidden ${
                 isSelected 
                   ? "border-brand-500 ring-4 ring-brand-500/10 shadow-2xl shadow-brand-500/20" 
-                  : "border-white/5 hover:border-white/20"
+                  : "border-gray-200 hover:border-white/20"
               }`}
             >
               {/* Background Glow on Hover */}
@@ -66,17 +66,17 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
                     e.preventDefault();
                     onShowInfo(channel);
                   }}
-                  className="absolute top-1 left-1 sm:top-2 sm:left-2 z-30 p-1 bg-neutral-950/80 hover:bg-[#FF7900] text-white rounded-lg border border-white/10 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100 shadow-xl"
+                  className="absolute top-1 left-1 sm:top-2 sm:left-2 z-30 p-1 bg-gray-50/80 hover:bg-[#FF7900] text-gray-900 rounded-lg border border-gray-300 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100 shadow-xl"
                   title="Détails techniques du flux"
                 >
-                  <Info size={10} className="sm:w-3 sm:h-3 text-white" />
+                  <Info size={10} className="sm:w-3 sm:h-3 text-gray-900" />
                 </button>
               )}
 
               {/* Hover Badge - Glassmorphic */}
               <div className="absolute inset-x-0 bottom-2 px-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 duration-500 z-20">
-                 <div className="bg-black/80 backdrop-blur-xl py-1 rounded-full text-center border border-white/10 shadow-2xl">
-                    <span className="text-[7px] md:text-[9px] font-black text-white uppercase tracking-tighter truncate block px-2">
+                 <div className="bg-white/80 backdrop-blur-xl py-1 rounded-full text-center border border-gray-300 shadow-2xl">
+                    <span className="text-[7px] md:text-[9px] font-black text-gray-900 uppercase tracking-tighter truncate block px-2">
                        {channel.name}
                     </span>
                  </div>
@@ -85,8 +85,8 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               {/* Quality Label - Refined */}
               {channel.qualityLabel && (
                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-20">
-                    <span className={`text-[6px] sm:text-[8px] font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-2xl border border-white/10 ${
-                      channel.qualityLabel.includes('SD') ? 'bg-orange-500/90 text-white' : 'bg-emerald-500/90 text-white'
+                    <span className={`text-[6px] sm:text-[8px] font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-2xl border border-gray-300 ${
+                      channel.qualityLabel.includes('SD') ? 'bg-orange-500/90 text-gray-900' : 'bg-emerald-500/90 text-gray-900'
                     }`}>
                        {channel.qualityLabel}
                     </span>

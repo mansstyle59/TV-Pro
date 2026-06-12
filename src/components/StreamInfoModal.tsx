@@ -151,7 +151,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
     proxyLagMs < 180 ? "Excellent (< 180ms)" :
     proxyLagMs < 350 ? "Bon (< 350ms)" : "Ralenti (> 350ms)";
 
-  const pingColor = proxyLagMs === null ? "text-neutral-500" :
+  const pingColor = proxyLagMs === null ? "text-gray-500" :
     proxyLagMs < 180 ? "text-emerald-400" :
     proxyLagMs < 350 ? "text-yellow-400" : "text-red-400";
 
@@ -165,7 +165,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/85 backdrop-blur-md"
+            className="absolute inset-0 bg-white/85 backdrop-blur-md"
           />
 
           {/* Modal Container */}
@@ -173,7 +173,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
             initial={{ opacity: 0, scale: 0.9, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
-            className="bg-[#0A0A0A] border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden relative shadow-2xl z-50 text-sans"
+            className="bg-[#0A0A0A] border border-gray-300 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden relative shadow-2xl z-50 text-sans"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Visual Header Decoration */}
@@ -181,9 +181,9 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
             <div className="absolute top-0 left-0 w-32 h-0.5 bg-gradient-to-r from-transparent via-brand-500 to-transparent" />
 
             {/* Header */}
-            <div className="p-6 border-b border-white/5 flex items-center justify-between relative z-10 bg-[#0B0B0B]/80 backdrop-blur-md">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between relative z-10 bg-gray-100/80 backdrop-blur-md">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-neutral-900 border border-white/5 p-1.5 rounded-xl flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 bg-gray-100 border border-gray-200 p-1.5 rounded-xl flex items-center justify-center shrink-0">
                   <ChannelLogo logo={channel.logo} name={channel.name} className="w-full h-full object-contain" />
                 </div>
                 <div>
@@ -191,14 +191,14 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
                     <span className="w-1.5 h-1.5 rounded-full bg-brand-500 animate-ping" />
                     <span className="text-[9px] uppercase font-bold tracking-[0.3em] text-brand-500">Analyse de Signal</span>
                   </div>
-                  <h3 className="text-lg font-black text-white uppercase tracking-tight truncate max-w-sm">
+                  <h3 className="text-lg font-black text-gray-900 uppercase tracking-tight truncate max-w-sm">
                     {channel.name}
                   </h3>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="p-1.5 hover:bg-white/5 text-neutral-400 hover:text-white rounded-xl transition-all border border-transparent hover:border-white/5"
+                className="p-1.5 hover:bg-black/5 text-gray-600 hover:text-gray-900 rounded-xl transition-all border border-transparent hover:border-gray-200"
               >
                 <X size={16} />
               </button>
@@ -210,19 +210,19 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
               {/* Connection Status & Ping bar */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Ping latency widget */}
-                <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
+                <div className="bg-gray-100/50 border border-gray-200 rounded-2xl p-4 flex items-center gap-4 relative overflow-hidden">
                   <div className="w-10 h-10 bg-brand-500/10 border border-brand-500/20 rounded-xl flex items-center justify-center text-brand-500">
                     <Wifi size={18} />
                   </div>
                   <div className="space-y-0.5 flex-1 min-w-0">
-                    <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest block">Temps de Réponse Proxy</span>
+                    <span className="text-[8px] font-bold text-gray-600 uppercase tracking-widest block">Temps de Réponse Proxy</span>
                     {loading ? (
-                      <span className="text-xs font-bold text-neutral-500 animate-pulse block">Calcul du ping...</span>
+                      <span className="text-xs font-bold text-gray-500 animate-pulse block">Calcul du ping...</span>
                     ) : error ? (
                       <span className="text-xs font-bold text-red-500 block">Échec de contact</span>
                     ) : (
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-xl font-black font-mono text-white">{proxyLagMs} <span className="text-[10px] font-bold text-neutral-500">ms</span></span>
+                        <span className="text-xl font-black font-mono text-gray-900">{proxyLagMs} <span className="text-[10px] font-bold text-gray-500">ms</span></span>
                         <span className={`text-[8px] font-black uppercase tracking-wider ${pingColor}`}>
                           · {pingQuality}
                         </span>
@@ -232,19 +232,19 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
                 </div>
 
                 {/* Connection check widget */}
-                <div className="bg-neutral-900/50 border border-white/5 rounded-2xl p-4 flex items-center gap-4">
+                <div className="bg-gray-100/50 border border-gray-200 rounded-2xl p-4 flex items-center gap-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
-                    loading ? "bg-neutral-800/30 border-white/5 text-neutral-500" :
+                    loading ? "bg-gray-200/30 border-gray-200 text-gray-500" :
                     error ? "bg-red-500/10 border-red-500/20 text-red-500 animate-bounce" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
                   }`}>
                     {loading ? <Clock size={18} className="animate-spin" /> : 
                      error ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
                   </div>
                   <div className="space-y-0.5 flex-1">
-                    <span className="text-[8px] font-bold text-neutral-400 uppercase tracking-widest block">Disponibilité du Flux</span>
+                    <span className="text-[8px] font-bold text-gray-600 uppercase tracking-widest block">Disponibilité du Flux</span>
                     <span className="text-xs font-black uppercase tracking-wider block">
                       {loading ? (
-                        <span className="text-neutral-400">Analyse de liaison...</span>
+                        <span className="text-gray-600">Analyse de liaison...</span>
                       ) : error ? (
                         <span className="text-red-500">Flux Indisponible</span>
                       ) : (
@@ -257,7 +257,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
 
               {/* Technical Specifications Grid */}
               <div className="space-y-3">
-                <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-neutral-400 flex items-center gap-2">
+                <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-gray-600 flex items-center gap-2">
                   <Cpu size={12} className="text-brand-500" />
                   Caractéristiques Techniques du Signal
                 </h4>
@@ -275,15 +275,15 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
                   ].map((stat, i) => (
                     <div 
                       key={i} 
-                      className="bg-neutral-900/30 border border-white/5 hover:border-white/10 rounded-xl p-3 flex gap-3 transition-colors group"
+                      className="bg-gray-100/30 border border-gray-200 hover:border-gray-300 rounded-xl p-3 flex gap-3 transition-colors group"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-neutral-950 border border-white/5 flex items-center justify-center text-neutral-500 group-hover:text-brand-500 transition-colors shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 group-hover:text-brand-500 transition-colors shrink-0">
                         <stat.icon size={13} className="transition-transform duration-500 group-hover:rotate-12" />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[7.5px] font-bold text-neutral-500 uppercase tracking-wider block leading-none mb-1">{stat.label}</span>
-                        <span className="text-[11px] font-extrabold text-white uppercase tracking-tight block truncate">
-                          {loading ? <span className="text-neutral-500 animate-pulse">...</span> : stat.value}
+                        <span className="text-[7.5px] font-bold text-gray-500 uppercase tracking-wider block leading-none mb-1">{stat.label}</span>
+                        <span className="text-[11px] font-extrabold text-gray-900 uppercase tracking-tight block truncate">
+                          {loading ? <span className="text-gray-500 animate-pulse">...</span> : stat.value}
                         </span>
                       </div>
                     </div>
@@ -293,14 +293,14 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
 
               {/* Raw HLS Payload Snippet */}
               <div className="space-y-3.5">
-                <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-neutral-400 flex items-center gap-2">
+                <h4 className="text-[10px] uppercase font-bold tracking-[0.2em] text-gray-600 flex items-center gap-2">
                   <FileCode size={13} className="text-brand-500" />
                   M3U8 Manifesto Header (En-tête de playlist hls)
                 </h4>
 
-                <div className="bg-neutral-950 border border-white/5 rounded-xl p-4 font-mono text-[9.5px] leading-relaxed text-neutral-400 relative overflow-hidden select-all shadow-inner">
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 font-mono text-[9.5px] leading-relaxed text-gray-600 relative overflow-hidden select-all shadow-inner">
                   {loading ? (
-                    <div className="py-6 flex flex-col items-center justify-center space-y-2 text-neutral-500">
+                    <div className="py-6 flex flex-col items-center justify-center space-y-2 text-gray-500">
                       <Clock size={16} className="animate-spin" />
                       <span className="text-[8px] font-bold uppercase tracking-widest leading-none">Extraction du manifeste HLS...</span>
                     </div>
@@ -308,7 +308,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
                     <div className="py-6 flex flex-col items-center justify-center space-y-1.5 text-neutral-550 border border-dashed border-red-500/10 rounded-lg">
                       <AlertTriangle size={16} className="text-red-500" />
                       <span className="text-[8px] font-black uppercase text-red-500 tracking-wider">Erreur Manifeste</span>
-                      <span className="text-[8px] text-neutral-500 uppercase font-medium">{error}</span>
+                      <span className="text-[8px] text-gray-500 uppercase font-medium">{error}</span>
                     </div>
                   ) : m3u8Header ? (
                     <pre className="overflow-x-auto text-left whitespace-pre-wrap select-all selection:bg-brand-500/20 text-[#22c55e] max-h-36">
@@ -319,7 +319,7 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[7.5px] font-bold text-neutral-500 uppercase tracking-widest leading-none">Chiffrement d'accès token: vavoo_sig (injecté par proxy)</span>
+                  <span className="text-[7.5px] font-bold text-gray-500 uppercase tracking-widest leading-none">Chiffrement d'accès token: vavoo_sig (injecté par proxy)</span>
                   <span className="text-[7.5px] font-bold text-brand-500 uppercase tracking-widest leading-none">Flux Actif et Sécurisé</span>
                 </div>
               </div>
@@ -327,10 +327,10 @@ export function StreamInfoModal({ channel, onClose }: StreamInfoModalProps) {
             </div>
 
             {/* Footer buttons */}
-            <div className="p-4 bg-neutral-950 border-t border-white/5 flex justify-end gap-2 relative z-10">
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 relative z-10">
               <button 
                 onClick={onClose}
-                className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
+                className="px-4 py-2 bg-black/5 border border-gray-300 hover:bg-black/10 text-gray-900 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
               >
                 Fermer l'analyse
               </button>

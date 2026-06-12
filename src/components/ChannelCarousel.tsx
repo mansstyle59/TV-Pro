@@ -56,8 +56,8 @@ export const ChannelCarousel: React.FC<ChannelCarouselProps> = ({ title, channel
            {/* Minimalist Tab/Line Indicator */}
            <div className="w-1 h-6 bg-brand-500 rounded-full shadow-[0_0_12px_rgba(30,136,255,0.6)]" />
            <div>
-             <h2 className="text-xl md:text-2xl font-black text-white uppercase tracking-tighter leading-none">{title}</h2>
-             <p className="text-[9px] font-black tracking-[0.2em] text-neutral-500 uppercase mt-0.5">
+             <h2 className="text-xl md:text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">{title}</h2>
+             <p className="text-[9px] font-black tracking-[0.2em] text-gray-500 uppercase mt-0.5">
                 {channels.length} Chaînes
              </p>
            </div>
@@ -67,8 +67,8 @@ export const ChannelCarousel: React.FC<ChannelCarouselProps> = ({ title, channel
             <button 
               onClick={scrollLeft}
               disabled={!showLeftArrow}
-              className={`p-1.5 rounded-full border border-white/5 backdrop-blur-xl transition-all ${
-                showLeftArrow ? "bg-neutral-900 text-white hover:bg-neutral-800 hover:scale-110" : "bg-neutral-950 text-neutral-600 cursor-not-allowed"
+              className={`p-1.5 rounded-full border border-gray-200 backdrop-blur-xl transition-all ${
+                showLeftArrow ? "bg-gray-100 text-gray-900 hover:bg-gray-200 hover:scale-110" : "bg-gray-50 text-neutral-600 cursor-not-allowed"
               }`}
             >
               <ChevronLeft size={14} />
@@ -76,8 +76,8 @@ export const ChannelCarousel: React.FC<ChannelCarouselProps> = ({ title, channel
             <button 
               onClick={scrollRight}
               disabled={!showRightArrow}
-              className={`p-1.5 rounded-full border border-white/5 backdrop-blur-xl transition-all ${
-                showRightArrow ? "bg-neutral-900 text-white hover:bg-neutral-800 hover:scale-110" : "bg-neutral-950 text-neutral-600 cursor-not-allowed"
+              className={`p-1.5 rounded-full border border-gray-200 backdrop-blur-xl transition-all ${
+                showRightArrow ? "bg-gray-100 text-gray-900 hover:bg-gray-200 hover:scale-110" : "bg-gray-50 text-neutral-600 cursor-not-allowed"
               }`}
             >
               <ChevronRight size={14} />
@@ -87,7 +87,7 @@ export const ChannelCarousel: React.FC<ChannelCarouselProps> = ({ title, channel
           {onSeeAll && (
             <button 
               onClick={onSeeAll}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-transparent hover:bg-white/5 border border-transparent hover:border-white/5 rounded-lg text-[9px] font-black text-neutral-400 hover:text-white uppercase tracking-widest transition-all"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-transparent hover:bg-black/5 border border-transparent hover:border-gray-200 rounded-lg text-[9px] font-black text-gray-600 hover:text-gray-900 uppercase tracking-widest transition-all"
             >
               Explorer
               <ChevronRight size={12} />

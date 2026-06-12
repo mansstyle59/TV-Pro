@@ -1,28 +1,32 @@
-import React from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Tv, Sparkles, Trophy, Film, Music, Compass, AlertCircle } from "lucide-react";
-import { getLogoForChannel } from "../utils/logoHelper";
+import { getLogosForChannel } from "../utils/logoHelper";
 
 interface ChannelLogoProps {
   logo?: string;
   name: string;
   className?: string;
   iconClassName?: string;
+  containerClassName?: string;
 }
 
 export const ChannelLogo: React.FC<ChannelLogoProps> = ({ 
   logo, 
   name, 
   className = "w-full h-full object-contain rounded-lg", 
-  iconClassName = "w-5 h-5 text-neutral-400" 
+  iconClassName = "w-5 h-5 text-gray-600",
+  containerClassName = "w-10 h-10 shrink-0" 
 }) => {
-  const [error, setError] = React.useState(false);
+  const [error, setError] = useState(false);
+  const [imgIndex, setImgIndex] = useState(0);
+  const [updateKey, setUpdateKey] = useState(0);
 
   // Generate elegant channel initials for fallback (e.g. TF1 -> TF1, France 2 -> FR2)
-  const initials = React.useMemo(() => {
+  const initials = useMemo(() => {
     let clean = name.trim();
     
     // Remove "FR |", "FR:", "HD -", etc.
-    clean = clean.replace(/^(FR\s*[:|\\-]*\s*|FRANCE\s+|FRANCE\s+)/i, "");
+    clean = clean.replace(/^(FR\s*[:|\-]*\s*|FRANCE\s+|FRANCE\s+)/i, "");
     
     // If it's a number/simple text
     if (/^[0-9]+$/.test(clean)) {
@@ -43,7 +47,7 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
   }, [name]);
 
   // Determine a theme based on channel name keywords
-  const theme = React.useMemo(() => {
+  const theme = useMemo(() => {
     const n = name.toLowerCase();
     
     if (n.includes("sport") || n.includes("bein") || n.includes("foot") || n.includes("equipe") || n.includes("dazn") || n.includes("eurosport") || n.includes("combat") || n.includes("golf") || n.includes("fight")) {
@@ -115,17 +119,15 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
     // Default premium look tailored to our blue/cyan branding
     return {
       bg: "from-neutral-900 via-[#0F171E] to-neutral-950",
-      border: "border-[#FF7900]/25",
-      text: "text-white",
+      border: "border-[#3b82f6]/25",
+      text: "text-blue-200",
       glow: "shadow-[0_0_10px_rgba(0,168,225,0.1)]",
       badge: "LIVE TV",
       icon: null
     };
   }, [name]);
 
-  const [updateKey, setUpdateKey] = React.useState(0);
-
-  React.useEffect(() => {
+  useEffect(() => {
     const handleUpdate = () => {
       setUpdateKey(prev => prev + 1);
     };
@@ -138,14 +140,15 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
   }, []);
 
   // Normalize logos to the high-quality tv-logo and fallback logo map
-  const parsedLogo = React.useMemo(() => {
-    return getLogoForChannel(name, logo);
+  const parsedLogos = useMemo(() => {
+    return getLogosForChannel(name, logo);
   }, [name, logo, updateKey]);
 
-  // Reset error state when parsedLogo or name changes
-  React.useEffect(() => {
+  // Reset state when parsedLogos or name changes
+  useEffect(() => {
     setError(false);
-  }, [parsedLogo, name, updateKey]);
+    setImgIndex(0);
+  }, [parsedLogos, name, updateKey]);
 
   // Custom vector icons helper
   function trophyIcon() {
@@ -165,10 +168,10 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
   }
 
   // If there's an error loading or no logo provided, return premium stylized designer vector badge
-  if (error || !parsedLogo || parsedLogo.trim() === "") {
+  if (error || parsedLogos.length === 0 || imgIndex >= parsedLogos.length) {
     return (
       <div 
-        className={`w-10 h-10 flex flex-col items-center justify-center bg-gradient-to-br ${theme.bg} border ${theme.border} ${theme.glow} rounded-xl relative select-none p-1 shrink-0 overflow-hidden group transition-all duration-300 hover:scale-[1.05]`}
+        className={`${containerClassName} flex flex-col items-center justify-center bg-gradient-to-br ${theme.bg} border ${theme.border} ${theme.glow} rounded-xl relative select-none p-1 overflow-hidden group transition-all duration-300 hover:scale-[1.05]`}
         title={name}
       >
         {/* Decorative corner visual accent lines */}
@@ -179,7 +182,7 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
         {theme.icon && theme.icon()}
 
         {/* Glow behind initials */}
-        <div className="absolute inset-0 bg-white/[0.02] mix-blend-overlay pointer-events-none" />
+        <div className="absolute inset-0 bg-black/5 mix-blend-overlay pointer-events-none" />
 
         {/* Main Monogram Text */}
         <span className={`font-black text-[11px] leading-tight text-center tracking-tight uppercase ${theme.text}`}>
@@ -187,24 +190,30 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
         </span>
 
         {/* Small badge style text at bottom */}
-        <span className="absolute bottom-0.5 inset-x-0 text-center text-[5.5px] font-bold tracking-widest text-white/45 uppercase scale-95 origin-center">
+        <span className="absolute bottom-0.5 inset-x-0 text-center text-[7px] font-bold tracking-widest text-gray-400/80 uppercase scale-95 origin-center">
           {theme.badge}
         </span>
       </div>
     );
   }
 
+  const currentLogoSrc = parsedLogos[imgIndex];
+
   return (
-    <div className="w-10 h-10 shrink-0 bg-neutral-900/40 rounded-xl p-1 border border-white/5 flex items-center justify-center relative overflow-hidden group-hover:border-white/10 transition-all duration-300">
+    <div className={`${containerClassName} bg-white rounded-xl p-1 shadow-inner flex items-center justify-center relative overflow-hidden transition-all duration-300 ring-1 ring-black/5`}>
       <img 
-        src={parsedLogo} 
+        src={currentLogoSrc} 
         alt={name}
         loading="lazy"
         className={className}
         referrerPolicy="no-referrer"
         onError={() => {
-          console.warn(`[Logo Fallback] Failed to load logo for channel: ${name}. falling back to initials.`);
-          setError(true);
+          if (imgIndex < parsedLogos.length - 1) {
+            setImgIndex(prev => prev + 1);
+          } else {
+            console.warn(`[Logo Fallback] All urls failed for channel: ${name}. falling back to initials.`);
+            setError(true);
+          }
         }}
       />
     </div>

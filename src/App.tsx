@@ -24,11 +24,13 @@ import {
 import { Channel } from "./types";
 import { HlsPlayer } from "./components/HlsPlayer";
 import { ChannelLogo } from "./components/ChannelLogo";
+import { ChannelEditorModal } from "./components/ChannelEditorModal";
 import { ExtendedEpgPanel } from "./components/ExtendedEpgPanel";
 import { getApiUrl, getAppBaseUrl, isGitHubPages } from "./utils/urlHelper";
 import { getCustomLogos, saveCustomLogo, normalizeName, fallbackLogoMap } from "./utils/logoHelper";
 import { FALLBACK_CHANNELS, getFallbackLcnMap } from "./utils/fallbackChannels";
 import { getFallbackEpgCurrentAndNext } from "./utils/fallbackEpg";
+import { getCustomNames, saveCustomName } from './utils/logoHelper';
 import { 
   getSavedXtreamCredentials, 
   saveXtreamCredentials, 
@@ -39,11 +41,39 @@ import {
   authenticateXtream
 } from "./utils/xtreamClient";
 
+// Helper hook for long press
+function useLongPress(callback: (e: any) => void, ms: number = 600) {
+  const timerRef = useRef<any>(null);
+
+  const start = (e: any) => {
+    timerRef.current = setTimeout(() => {
+      callback(e);
+    }, ms);
+  };
+
+  const stop = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  };
+
+  return {
+    onMouseDown: start,
+    onMouseUp: stop,
+    onMouseLeave: stop,
+    onTouchStart: start,
+    onTouchEnd: stop,
+    onContextMenu: (e: any) => {
+      e.preventDefault();
+      callback(e);
+    }
+  };
+}
+
 interface DisplayChannel extends Channel {
   category: string;
   serverCount: number;
   core: string;
   qualityLabel?: string;
+  rawName?: string;
 }
 
 // LCN ordering priorities map
@@ -246,6 +276,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedChannel, setSelectedChannel] = useState<DisplayChannel | null>(null);
+  const [isNavigating, setIsNavigating] = useState(false);
   const [recentIds, setRecentIds] = useState<number[]>(() => {
     try {
       const saved = localStorage.getItem("recent_channels");
@@ -258,6 +289,9 @@ export default function App() {
 
   const playChannel = (ch: DisplayChannel | null, recordRecent = true) => {
     setSelectedChannel(ch);
+    if (!document.pictureInPictureElement) {
+      setIsNavigating(false);
+    }
     if (ch && recordRecent) {
       setRecentIds(prev => {
         const filtered = prev.filter(id => id !== ch.id);
@@ -271,6 +305,47 @@ export default function App() {
   const [failedChannels, setFailedChannels] = useState<Set<number>>(new Set());
   const [favorites, setFavorites] = useState<number[]>([]);
   const [qualityFilter, setQualityFilter] = useState<"all" | "hd">("all");
+  
+  
+  
+  // --- Long Press Edit Handler ---
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleTouchStart = (ch: DisplayChannel) => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      setChannelToEdit(ch);
+      if (window.navigator?.vibrate) window.navigator.vibrate(50);
+    }, 600);
+  };
+  const handleTouchEnd = () => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+  };
+
+  const handleEditInteraction = (e: React.MouseEvent | React.TouchEvent, ch: DisplayChannel) => {
+    e.preventDefault();
+    setChannelToEdit(ch);
+  };
+
+  
+  // Custom Overrides
+  const [customNames, setCustomNames] = useState<Record<string, string>>({});
+  const [customLogosEvent, setCustomLogosEvent] = useState(0);
+  const [channelToEdit, setChannelToEdit] = useState<DisplayChannel | null>(null);
+
+  useEffect(() => {
+    setCustomNames(getCustomNames());
+    const handleUpdate = () => {
+      setCustomNames(getCustomNames());
+      setCustomLogosEvent(prev => prev + 1);
+    };
+    window.addEventListener('custom_name_updated', handleUpdate);
+    window.addEventListener('custom_logo_updated', handleUpdate);
+    return () => {
+      window.removeEventListener('custom_name_updated', handleUpdate);
+      window.removeEventListener('custom_logo_updated', handleUpdate);
+    };
+  }, []);
   
   // Custom State for the TV Hub drawer
   const [showDrawer, setShowDrawer] = useState(false);
@@ -340,12 +415,17 @@ export default function App() {
     const withCores = channels.map(c => {
       const core = getCoreName(c.name);
       coreCounts[core] = (coreCounts[core] || 0) + 1;
+      
+      const norm = normalizeName(c.name);
+      const customName = customNames[String(c.id)] || customNames[norm];
+      
       return {
         ...c,
-        name: cleanName(c.name),
+        name: customName || cleanName(c.name),
         core,
         category: c.categoryOverride || categorizeChannel(c.name),
-        qualityLabel: getQualityLabel(c.name)
+        qualityLabel: getQualityLabel(c.name),
+        rawName: c.name // store original name for reference if needed
       };
     });
 
@@ -367,10 +447,10 @@ export default function App() {
         return n.includes("hd") || n.includes("fhd") || n.includes("uhd") || n.includes("4k") || n.includes("1080p") || n.includes("2160p");
       })
       .sort((a, b) => getChannelSortWeight(a) - getChannelSortWeight(b));
-  }, [channels, qualityFilter]);
+  }, [channels, qualityFilter, customNames]);
 
   // Remove duplicate server variants for screen selection list
-  const dedupeByCore = (list: DisplayChannel[]) => {
+  const dedupeByCore = React.useCallback((list: DisplayChannel[]) => {
     const groups: Record<string, DisplayChannel[]> = {};
     list.forEach(c => {
       if (!groups[c.core]) groups[c.core] = [];
@@ -401,7 +481,9 @@ export default function App() {
     });
 
     return representatives.sort((a, b) => getChannelSortWeight(a) - getChannelSortWeight(b));
-  };
+  }, [failedChannels]);
+
+  const dedupedCategorisedList = useMemo(() => dedupeByCore(categorisedList), [categorisedList, dedupeByCore]);
 
   // Main channels load method
   const loadChannels = async (forceRefetch = false) => {
@@ -471,7 +553,7 @@ export default function App() {
   /*
   useEffect(() => {
     if (!selectedChannel && categorisedList.length > 0) {
-      const list = dedupeByCore(categorisedList);
+      const list = dedupedCategorisedList;
       if (list.length > 0) {
         // Select first available
         playChannel(list[0], false);
@@ -522,7 +604,7 @@ export default function App() {
 
   // Channel count in category helper for dynamic Drawer badges
   const getCategoryCount = (cat: string): number => {
-    const list = dedupeByCore(categorisedList);
+    const list = dedupedCategorisedList;
     if (cat === "Tous") return list.length;
     if (cat === "Favoris") return list.filter(c => favorites.includes(c.id)).length;
     if (cat === "Récents") return recentIds.length;
@@ -567,7 +649,7 @@ export default function App() {
 
   // Filter channels based on search and selected categories inside drawer
   const filteredChannels = useMemo(() => {
-    let list = dedupeByCore(categorisedList);
+    let list = dedupedCategorisedList;
     
     if (activeCategory === "Favoris") {
       list = list.filter(c => favorites.includes(c.id));
@@ -663,7 +745,7 @@ export default function App() {
             clearTimeout(zappingTimer);
             zappingTimer = setTimeout(() => {
               const channelIndex = parseInt(nextVal, 10) - 1;
-              const fullChannelList = dedupeByCore(categorisedList);
+              const fullChannelList = dedupedCategorisedList;
               if (channelIndex >= 0 && channelIndex < fullChannelList.length) {
                 playChannel(fullChannelList[channelIndex]);
               }
@@ -689,7 +771,7 @@ export default function App() {
 
   // Dynamically collect active categories with channels
   const availableCategories = useMemo(() => {
-    const list = dedupeByCore(categorisedList);
+    const list = dedupedCategorisedList;
     const cats = Array.from(new Set(list.map(c => c.category).filter(Boolean)));
     const base = ["Tous", "Favoris"];
     if (recentIds.length > 0) {
@@ -707,49 +789,53 @@ export default function App() {
   };
 
   return (
-    <div id="root-layout" className="min-h-screen bg-black text-white antialiased overflow-hidden select-none relative font-sans">
+    <div id="root-layout" className="min-h-screen bg-[#09090b] text-gray-50 antialiased overflow-hidden select-none relative font-sans">
       
       {/* Floating Selector Menu Trigger - Elegant visual anchor when not watching */}
-      {!selectedChannel && (
+      {(!selectedChannel || isNavigating) && (
         <button
           id="tv-hub-menu-btn"
           onClick={() => setShowDrawer(true)}
-          className="fixed top-5 left-5 z-[80] flex items-center gap-2.5 px-4.5 py-3 bg-black/60 hover:bg-black/85 backdrop-blur-xl rounded-2xl border border-white/10 hover:border-[#FF7900]/50 text-white font-black text-[10px] uppercase tracking-widest transition-all duration-300 shadow-2xl group hover:scale-[1.03] active:scale-95 animate-fade-in"
+          className="fixed top-5 left-5 z-[80] flex items-center gap-2.5 px-4.5 py-3 bg-[#09090b]/60 hover:bg-[#09090b]/85 backdrop-blur-xl rounded-2xl border border-white/20 hover:border-[#3b82f6]/50 text-gray-50 font-black text-sm uppercase tracking-widest transition-all duration-300 shadow-2xl group hover:scale-[1.03] active:scale-95 animate-fade-in"
         >
-          <Tv size={14} className="text-[#FF7900] group-hover:rotate-12 transition-transform" />
+          <Tv size={14} className="text-[#3b82f6] group-hover:rotate-12 transition-transform" />
           <span>Menu TV</span>
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
         </button>
       )}
 
-      {/* Main Full-page Video Player Area */}
-      <main className="w-full h-screen relative bg-black flex items-center justify-center overflow-hidden">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center gap-4 text-neutral-400 select-none">
-            <div className="relative mb-2">
-              <div className="w-20 h-20 border-4 border-[#FF7900]/10 border-t-[#FF7900] rounded-full animate-spin" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Tv size={20} className="text-[#FF7900] animate-pulse" />
-              </div>
-            </div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FF7900] animate-pulse">
-              Synchronisation des flux
-            </p>
-          </div>
-        ) : selectedChannel ? (
-          <div className="w-full h-full relative font-sans" id="theater-player-container">
+      {/* Main Full-page Video Player Area (Kept in DOM for PiP) */}
+      <div className={`fixed inset-0 w-full h-screen bg-black z-0 flex items-center justify-center overflow-hidden transition-opacity duration-300 ${(!selectedChannel || isNavigating) ? "opacity-0 pointer-events-none" : "opacity-100"}`} id="theater-player-container">
+        {selectedChannel && (
+          <>
             <HlsPlayer
               url={getActiveStreamUrl(selectedChannel)}
               channelName={selectedChannel.name}
               programTitle={selectedChannel.epg?.current?.title}
               programDesc={selectedChannel.epg?.current?.desc}
               programImage={selectedChannel.epg?.current?.image || selectedChannel.epg?.current?.icon}
-              onBack={() => setSelectedChannel(null)}
+              onBack={() => {
+                if (document.pictureInPictureElement) {
+                  setIsNavigating(true);
+                } else {
+                  setSelectedChannel(null);
+                  setIsNavigating(false);
+                }
+              }}
               onMenuTV={() => setShowDrawer(true)}
               onFatalError={handleStreamError}
               isFavorite={favorites.includes(selectedChannel.id)}
               onToggleFavorite={() => toggleFavorite(selectedChannel.id)}
               fullViewport={true}
+              onPiPEnter={() => {
+                setIsNavigating(true);
+              }}
+              onPiPLeave={(isPaused) => {
+                if (isPaused) {
+                  setSelectedChannel(null);
+                }
+                setIsNavigating(false);
+              }}
             />
 
             {/* STB-Style Floating Channel Zapping HUD Overlay */}
@@ -759,34 +845,72 @@ export default function App() {
                   initial={{ opacity: 0, scale: 0.85, y: -20 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.85, y: -20 }}
-                  className="absolute top-12 right-12 z-50 bg-neutral-950/90 border-2 border-[#FF7900]/40 rounded-2xl p-5 shadow-[0_0_40px_rgba(255,121,0,0.25)] flex flex-col items-center gap-1 cursor-none pointer-events-none select-none"
+                  className="absolute top-12 right-12 z-50 bg-[#18181b]/90 border-2 border-[#3b82f6]/40 rounded-2xl p-5 shadow-[0_0_40px_rgba(59,130,246,0.25)] flex flex-col items-center gap-1 cursor-none pointer-events-none select-none"
                 >
-                  <span className="text-[9px] font-black text-neutral-400 tracking-[0.25em] uppercase">ZAPPING DIRECT</span>
-                  <div className="font-mono text-3xl font-black text-[#FF7900] tracking-widest flex items-center gap-1.5 animate-pulse">
+                  <span className="text-xs font-black text-gray-400 tracking-[0.25em] uppercase">ZAPPING DIRECT</span>
+                  <div className="font-mono text-3xl font-black text-[#3b82f6] tracking-widest flex items-center gap-1.5 animate-pulse">
                     <span className="opacity-40 font-semibold">CH</span>
                     <span>{zappingNumber.padStart(3, "0")}</span>
                   </div>
-                  <div className="w-12 h-1 bg-neutral-900 rounded-full mt-2 overflow-hidden">
+                  <div className="w-12 h-1 bg-[#27272a] rounded-full mt-2 overflow-hidden">
                     <motion.div 
                       initial={{ width: 0 }}
                       animate={{ width: "100%" }}
                       transition={{ duration: 1.1, ease: "linear" }}
-                      className="h-full bg-gradient-to-r from-[#FF7900] to-orange-500"
+                      className="h-full bg-gradient-to-r from-[#3b82f6] to-orange-500"
                     />
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
+          </>
+        )}
+      </div>
+
+      {/* Grid Nav Layer */}
+      <main className={`fixed inset-0 w-full h-screen bg-[#09090b] text-gray-50 z-10 overflow-y-auto transition-opacity duration-300 ${(!selectedChannel || isNavigating) ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+        {loading ? (
+          <div className="w-full min-h-full pt-24 pb-20 px-4 sm:px-8 flex flex-col gap-6 max-w-7xl mx-auto text-sans animate-fade-in select-none">
+            {/* Header Skeleton */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-5 gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-10 bg-[#27272a] rounded-full animate-pulse" />
+                <div className="flex flex-col gap-2">
+                  <div className="w-24 h-3 rounded-full bg-[#27272a] animate-pulse" />
+                  <div className="w-48 h-6 rounded-full bg-[#27272a] animate-pulse" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-8 pb-8">
+               {/* 3 Categories Skeleton */}
+               {[1, 2, 3].map(cat => (
+                  <div key={cat} className="flex flex-col gap-3">
+                     <div className="flex items-center justify-between px-1">
+                        <div className="w-32 h-4 rounded bg-[#27272a] animate-pulse ml-3" />
+                     </div>
+                     <div className="flex overflow-x-hidden gap-3 pb-4 px-1">
+                        {[1, 2, 3, 4, 5, 6, 7, 8].map(item => (
+                           <div key={item} className="w-[110px] sm:w-[130px] flex-shrink-0 aspect-square rounded-2xl bg-[#18181b]/50 flex flex-col items-center justify-center relative p-3 animate-pulse border border-white/5">
+                              <div className="w-14 h-14 sm:w-16 sm:h-16 bg-[#27272a]/80 rounded-full" />
+                              <div className="absolute bottom-3 inset-x-3 h-2 bg-[#27272a]/80 rounded" />
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+               ))}
+            </div>
           </div>
         ) : categorisedList.length > 0 ? (
-          <div className="w-full h-full overflow-y-auto pt-24 pb-20 px-4 sm:px-8 flex flex-col gap-6 max-w-7xl mx-auto text-sans animate-fade-in select-none">
+          <div className="w-full min-h-full pt-24 pb-20 px-4 sm:px-8 flex flex-col gap-6 max-w-7xl mx-auto text-sans animate-fade-in select-none">
+
             
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-5 gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-white/10 pb-5 gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-1.5 h-10 bg-[#FF7900] rounded-full shadow-[0_0_15px_#FF7900]" />
+                <div className="w-1.5 h-10 bg-[#3b82f6] rounded-full shadow-[0_0_15px_#3b82f6]" />
                 <div className="flex flex-col text-left">
-                  <span className="text-[9px] font-black text-[#FF7900] uppercase tracking-[0.35em] leading-none mb-1">DENDEN TV</span>
-                  <h1 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tighter leading-none">Chaînes en Direct</h1>
+                  <span className="text-xs font-black text-[#3b82f6] uppercase tracking-[0.35em] leading-none mb-1">DENDEN TV</span>
+                  <h1 className="text-2xl sm:text-3xl font-black text-gray-50 uppercase tracking-tighter leading-none">Chaînes en Direct</h1>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -795,9 +919,9 @@ export default function App() {
                     setDrawerTab("recherche");
                     setShowDrawer(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/60 hover:bg-neutral-900 rounded-xl border border-white/5 hover:border-[#FF7900]/30 text-[10px] uppercase tracking-wider font-extrabold text-neutral-300 hover:text-white transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-[#27272a] rounded-xl border border-white/10 hover:border-[#3b82f6]/30 text-sm uppercase tracking-wider font-extrabold text-gray-400 hover:text-gray-50 transition-all cursor-pointer"
                 >
-                  <Search size={12} className="text-[#FF7900]" />
+                  <Search size={12} className="text-[#3b82f6]" />
                   <span>Recherche</span>
                 </button>
                 <button
@@ -805,57 +929,126 @@ export default function App() {
                     setDrawerTab("settings");
                     setShowDrawer(true);
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-neutral-900/60 hover:bg-neutral-900 rounded-xl border border-white/5 hover:border-[#FF7900]/30 text-[10px] uppercase tracking-wider font-extrabold text-neutral-300 hover:text-white transition-all cursor-pointer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-[#27272a] rounded-xl border border-white/10 hover:border-[#3b82f6]/30 text-sm uppercase tracking-wider font-extrabold text-gray-400 hover:text-gray-50 transition-all cursor-pointer"
                 >
-                  <Settings size={12} className="text-[#FF7900]" />
+                  <Settings size={12} className="text-[#3b82f6]" />
                   <span>Paramètres</span>
                 </button>
               </div>
             </div>
 
-            {/* Square Grid of channel blocks */}
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3 pb-8">
-              {dedupeByCore(categorisedList).map((ch, idx) => {
-                const isFavorite = favorites.includes(ch.id);
-                return (
-                  <motion.button
-                    key={ch.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.15, delay: Math.min(idx * 0.005, 0.12) }}
-                    onClick={() => playChannel(ch)}
-                    className="aspect-square rounded-2xl bg-[#151d2a]/50 hover:bg-[#151d2a]/95 border border-white/5 hover:border-[#FF7900]/40 flex flex-col items-center justify-center relative p-3 transition-all duration-300 group shadow-lg hover:scale-110 active:scale-95 cursor-pointer"
-                    title={ch.name}
-                  >
-                    {/* Heart badge if bookmarked */}
-                    {isFavorite && (
-                      <div className="absolute top-1.5 right-1.5">
-                        <Heart size={8} className="text-red-500 fill-current" />
+            {activeCategory === "Tous" ? (
+              <div className="flex flex-col gap-8 pb-8">
+                {availableCategories.filter(cat => cat !== "Tous" && cat !== "Favoris" && cat !== "Récents").map(cat => {
+                  const items = dedupedCategorisedList.filter(c => c.category === cat);
+                  if (items.length === 0) return null;
+                  
+                  return (
+                    <div key={cat} className="flex flex-col gap-3">
+                      <div className="flex items-center justify-between px-1">
+                        <h2 className="text-sm font-black uppercase tracking-widest text-gray-50 border-l-2 border-[#3b82f6] pl-3">
+                          {cat}
+                        </h2>
+                        <button 
+                          onClick={() => setActiveCategory(cat)}
+                          className="text-sm uppercase font-bold text-[#3b82f6] hover:text-[#cc6000] tracking-wider"
+                        >
+                          Voir tout &rarr;
+                        </button>
                       </div>
-                    )}
+                      <div className="flex overflow-x-auto gap-3 pb-4 scrollbar-none snap-x snap-mandatory px-1">
+                        {items.slice(0, 15).map((ch, idx) => {
+                          const isFavorite = favorites.includes(ch.id);
+                          return (
+                            <motion.button
+                              key={ch.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ duration: 0.15, delay: Math.min(idx * 0.005, 0.12) }}
+                              onClick={() => playChannel(ch)}
+                              onContextMenu={(e) => handleEditInteraction(e, ch)}
+                              onTouchStart={() => handleTouchStart(ch)}
+                              onTouchEnd={handleTouchEnd}
+                              onTouchMove={handleTouchEnd}
+                              className="w-[110px] sm:w-[130px] flex-shrink-0 aspect-[4/3] rounded-2xl bg-[#09090b] hover:bg-[#18181b] border border-white/10 hover:border-[#3b82f6]/50 flex flex-col items-center justify-center relative p-3 transition-all duration-300 group shadow-lg hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] hover:scale-105 active:scale-95 cursor-pointer snap-start"
+                              title={ch.name}
+                            >
+                              {isFavorite && (
+                                <div className="absolute top-1.5 right-1.5 z-10">
+                                  <Heart size={10} className="text-red-500 fill-current" />
+                                </div>
+                              )}
 
-                    <div className="scale-105 group-hover:scale-115 transition-transform duration-300">
-                      <ChannelLogo logo={ch.logo} name={ch.name} />
+                              <div className="scale-105 group-hover:scale-115 transition-transform duration-300 mb-2">
+                                <ChannelLogo logo={ch.logo} name={ch.name} containerClassName="w-14 h-14 sm:w-16 sm:h-16 shrink-0" />
+                              </div>
+
+                              <div className="absolute inset-x-0 bottom-2 px-1">
+                                <p className="text-xs font-black uppercase text-gray-400 group-hover:text-gray-50 truncate tracking-wider leading-none text-center">
+                                  {ch.name}
+                                </p>
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3 sm:gap-4 pb-8">
+                {filteredChannels.length > 0 ? (
+                  filteredChannels.map((ch, idx) => {
+                    const isFavorite = favorites.includes(ch.id);
+                    return (
+                      <motion.button
+                        key={ch.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.15, delay: Math.min(idx * 0.005, 0.12) }}
+                        onClick={() => playChannel(ch)}
+                        onContextMenu={(e) => handleEditInteraction(e, ch)}
+                        onTouchStart={() => handleTouchStart(ch)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchMove={handleTouchEnd}
+                        className="aspect-[4/3] rounded-2xl bg-[#09090b] hover:bg-[#18181b] border border-white/10 hover:border-[#3b82f6]/50 flex flex-col items-center justify-center relative p-3 transition-all duration-300 group shadow-lg hover:shadow-[0_0_20px_rgba(59,130,246,0.2)] hover:scale-105 active:scale-95 cursor-pointer"
+                        title={ch.name}
+                      >
+                        {isFavorite && (
+                          <div className="absolute top-1.5 right-1.5 z-10">
+                            <Heart size={10} className="text-red-500 fill-current" />
+                          </div>
+                        )}
 
-                    <div className="absolute inset-x-0 bottom-1.5 px-1 bg-black/5 rounded-b-2xl">
-                      <p className="text-[6.5px] font-black uppercase text-neutral-400 group-hover:text-white truncate tracking-wider leading-none text-center">
-                        {ch.name}
-                      </p>
-                    </div>
-                  </motion.button>
-                );
-              })}
-            </div>
+                        <div className="scale-105 group-hover:scale-115 transition-transform duration-300 mb-2">
+                          <ChannelLogo logo={ch.logo} name={ch.name} containerClassName="w-14 h-14 sm:w-16 sm:h-16 shrink-0" />
+                        </div>
 
+                        <div className="absolute inset-x-0 bottom-2 px-1">
+                          <p className="text-xs font-black uppercase text-gray-400 group-hover:text-gray-50 truncate tracking-wider leading-none text-center">
+                            {ch.name}
+                          </p>
+                        </div>
+                      </motion.button>
+                    );
+                  })
+                ) : (
+                  <div className="col-span-full py-12 flex flex-col items-center justify-center text-center opacity-70">
+                    <Radio size={36} className="text-gray-500 mb-3" />
+                    <p className="text-sm font-bold uppercase tracking-widest text-[#3b82f6]">Aucune chaîne trouvée</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-center px-6">
             <Tv size={42} className="text-neutral-700 mb-2" />
-            <p className="text-xs font-black uppercase tracking-widest text-[#FF7900]">
+            <p className="text-xs font-black uppercase tracking-widest text-[#3b82f6]">
               Aucune chaîne disponible
             </p>
-            <p className="text-[10.5px] text-neutral-500 max-w-sm">
+            <p className="text-[10.5px] text-gray-500 max-w-sm">
               Configurez vos identifiants Xtream Codes ou réessayez avec de nouveaux serveurs M3U.
             </p>
             <button
@@ -863,12 +1056,13 @@ export default function App() {
                 setDrawerTab("settings");
                 setShowDrawer(true);
               }}
-              className="mt-4 px-4 py-2 bg-neutral-900 border border-white/5 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-neutral-800 text-white transition-all"
+              className="mt-4 px-4 py-2 bg-[#27272a] border border-white/10 text-xs font-bold uppercase tracking-wider rounded-xl hover:bg-white/10 text-gray-50 transition-all"
             >
               Ouvrir les Paramètres
             </button>
           </div>
         )}
+
       </main>
 
       {/* Sliding Obsidian TV Drawer Overlay */}
@@ -880,8 +1074,9 @@ export default function App() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.6 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
               onClick={() => setShowDrawer(false)}
-              className="fixed inset-0 bg-black z-[110] backdrop-blur-sm cursor-pointer"
+              className="fixed inset-0 bg-[#09090b] z-[110] backdrop-blur-sm cursor-pointer"
             />
 
             {/* Floating Obsidian navigation panel */}
@@ -889,16 +1084,16 @@ export default function App() {
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 24, stiffness: 220 }}
-              className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-neutral-950/95 backdrop-blur-3xl z-[120] border-r border-white/5 shadow-2xl flex flex-col h-full overflow-hidden"
+              transition={{ type: "tween", ease: [0.22, 1, 0.36, 1], duration: 0.4 }}
+              className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-[#18181b]/95 backdrop-blur-3xl z-[120] border-r border-white/10 shadow-2xl flex flex-col h-full overflow-hidden"
             >
-              <div className="p-5 pb-4 border-b border-white/[0.04] flex items-center justify-between flex-shrink-0">
+              <div className="p-5 pb-4 border-b border-white/10 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <div>
-                    <h3 className="font-sans font-light text-white text-[15px] tracking-[0.2em] uppercase leading-none">
-                      DENDEN <span className="font-semibold text-[#FF7900]">TV</span>
+                    <h3 className="font-sans font-light text-gray-50 text-[15px] tracking-[0.2em] uppercase leading-none">
+                      DENDEN <span className="font-semibold text-[#3b82f6]">TV</span>
                     </h3>
-                    <p className="text-[7px] font-semibold tracking-[0.15em] text-neutral-500 uppercase mt-1 leading-none">
+                    <p className="text-sm font-semibold tracking-[0.15em] text-gray-500 uppercase mt-1 leading-none">
                       PANEL DE CONTRÔLE
                     </p>
                   </div>
@@ -906,7 +1101,7 @@ export default function App() {
                 
                 <button
                   onClick={() => setShowDrawer(false)}
-                  className="p-1.5 cursor-pointer hover:bg-white/[0.05] rounded-lg transition-all border border-transparent hover:border-white/5 text-neutral-500 hover:text-neutral-200"
+                  className="p-1.5 cursor-pointer hover:bg-white/[0.05] rounded-lg transition-all border border-transparent hover:border-white/10 text-gray-500 hover:text-gray-50"
                   title="Fermer le menu"
                 >
                   <X size={13} />
@@ -914,21 +1109,21 @@ export default function App() {
               </div>
 
               {/* Drawer View Swapper Tabs (Ultra-sleek borderless inline segmented elements) */}
-              <div className="px-5 py-2.5 bg-neutral-950/20 border-b border-white/[0.04] flex items-center justify-between text-[10px] tracking-[0.1em] uppercase font-bold text-neutral-500 flex-shrink-0">
+              <div className="px-5 py-2.5 bg-[#18181b]/20 border-b border-white/10 flex items-center justify-between text-sm tracking-[0.1em] uppercase font-bold text-gray-500 flex-shrink-0">
                 <div className="flex gap-5">
                   <button
                     onClick={() => setDrawerTab("channels")}
                     className={`pb-1 transition-all relative ${
                       drawerTab === "channels" 
-                        ? "text-[#FF7900] font-black" 
-                        : "text-neutral-500 hover:text-neutral-300"
+                        ? "text-[#3b82f6] font-black" 
+                        : "text-gray-500 hover:text-gray-400"
                     }`}
                   >
                     Chaînes
                     {drawerTab === "channels" && (
                       <motion.div 
                         layoutId="activeTabUnderline"
-                        className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#FF7900]" 
+                        className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#3b82f6]" 
                       />
                     )}
                   </button>
@@ -936,20 +1131,20 @@ export default function App() {
                     onClick={() => setDrawerTab("settings")}
                     className={`pb-1 transition-all relative ${
                       drawerTab === "settings" 
-                        ? "text-[#FF7900] font-black" 
-                        : "text-neutral-500 hover:text-neutral-300"
+                        ? "text-[#3b82f6] font-black" 
+                        : "text-gray-500 hover:text-gray-400"
                     }`}
                   >
                     Configuration
                     {drawerTab === "settings" && (
                       <motion.div 
                         layoutId="activeTabUnderline"
-                        className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#FF7900]" 
+                        className="absolute bottom-0 left-0 right-0 h-[1.5px] bg-[#3b82f6]" 
                       />
                     )}
                   </button>
                 </div>
-                <div className="text-[7px] font-mono text-neutral-600 tracking-wider">
+                <div className="text-sm font-mono text-neutral-600 tracking-wider">
                   LIVE CONTROLLER
                 </div>
               </div>
@@ -959,7 +1154,7 @@ export default function App() {
                 <div className="flex-grow flex flex-col overflow-hidden h-full">
                   
                   {/* Slim Horizontal Category Badge Scroller */}
-                  <div className="px-4 py-2 flex gap-1.5 overflow-x-auto scrollbar-none flex-shrink-0 border-b border-white/[0.03] bg-neutral-950/40">
+                  <div className="px-4 py-2 flex gap-1.5 overflow-x-auto scrollbar-none flex-shrink-0 border-b border-white/10 bg-[#18181b]/40">
                     {availableCategories.map((cat) => {
                       const isActive = activeCategory === cat;
                       
@@ -985,15 +1180,15 @@ export default function App() {
                         <button
                           key={cat}
                           onClick={() => setActiveCategory(cat)}
-                          className={`px-3 py-1.5 rounded-full text-[9px] font-medium tracking-wider flex-shrink-0 flex items-center gap-1.5 transition-all duration-255 border ${
+                          className={`px-3 py-1.5 rounded-full text-xs font-medium tracking-wider flex-shrink-0 flex items-center gap-1.5 transition-all duration-255 border ${
                             isActive 
-                              ? "bg-[#FF7900]/10 border-[#FF7900]/40 text-white shadow-[0_0_12px_rgba(255,121,0,0.1)]" 
-                              : "bg-neutral-900/60 text-neutral-400 border-white/[0.04] hover:text-neutral-200 hover:bg-neutral-900/90"
+                              ? "bg-[#3b82f6]/10 border-[#3b82f6]/40 text-gray-50 shadow-[0_0_12px_rgba(59,130,246,0.1)]" 
+                              : "bg-white/5 text-gray-400 border-white/10 hover:text-gray-50 hover:bg-[#27272a]/90"
                           }`}
                         >
-                          <span className="text-[10px]">{details.icon}</span>
-                          <span className="font-bold uppercase text-[7.5px] tracking-[0.05em]">{details.label}</span>
-                          <span className="text-[7px] text-[#FF7900] bg-white/[0.04] px-1 rounded-sm font-mono font-bold">
+                          <span className="text-sm">{details.icon}</span>
+                          <span className="font-bold uppercase text-[11px] tracking-[0.05em]">{details.label}</span>
+                          <span className="text-sm text-[#3b82f6] bg-white/5 px-1 rounded-sm font-mono font-bold">
                             {getCategoryCount(cat)}
                           </span>
                         </button>
@@ -1005,21 +1200,21 @@ export default function App() {
                   <div className="flex-grow flex flex-col h-full overflow-hidden">
                     
                     {/* Modern Refined Search Input & Sorting Controls Area */}
-                    <div className="p-3 border-b border-white/[0.03] space-y-2 flex-shrink-0 bg-neutral-950/20">
+                    <div className="p-3 border-b border-white/10 space-y-2 flex-shrink-0 bg-[#18181b]/20">
                       <div className="relative">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-neutral-500" size={11} strokeWidth={2.5} />
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" size={11} strokeWidth={2.5} />
                         <input
                           id="drawer-search-input"
                           type="text"
                           placeholder="Rechercher une chaîne..."
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full bg-neutral-950/45 border border-white/[0.04] hover:border-white/[0.08] focus:border-[#FF7900]/30 rounded-lg pl-7.5 pr-8 py-1.5 text-[10px] text-white placeholder-neutral-600 focus:outline-none transition-all font-sans font-light"
+                          className="w-full bg-[#27272a]/50 border border-white/5 hover:border-white/10 focus:border-[#3b82f6]/40 focus:bg-[#27272a]/80 shadow-inner rounded-xl pl-8 pr-8 py-2 text-sm text-gray-50 placeholder-neutral-500 focus:outline-none transition-all font-sans"
                         />
                         {searchTerm && (
                           <button
                             onClick={() => setSearchTerm("")}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-50"
                           >
                             <X size={11} />
                           </button>
@@ -1027,36 +1222,36 @@ export default function App() {
                       </div>
 
                       {/* Tactile Segmented Sorting Controls */}
-                      <div className="flex items-center justify-between text-[7.5px] font-black uppercase tracking-wider text-neutral-500 gap-2">
+                      <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-gray-500 gap-2">
                         <div className="flex items-center gap-1.5">
                           <span>Trier par</span>
-                          <div className="flex gap-1 bg-black/45 p-0.5 rounded-md border border-white/[0.03]">
+                          <div className="flex gap-1 bg-[#09090b]/45 p-0.5 rounded-md border border-white/10">
                             <button
                               onClick={() => setSortBy("lcn")}
-                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer ${
+                              className={`px-2 py-0.5 rounded text-sm transition-all cursor-pointer ${
                                 sortBy === "lcn" 
-                                  ? "bg-[#FF7900] text-white font-black" 
-                                  : "text-neutral-500 hover:text-neutral-300"
+                                  ? "bg-[#3b82f6] text-gray-50 font-black" 
+                                  : "text-gray-500 hover:text-gray-400"
                               }`}
                             >
                               IPTV
                             </button>
                             <button
                               onClick={() => setSortBy("name")}
-                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer ${
+                              className={`px-2 py-0.5 rounded text-sm transition-all cursor-pointer ${
                                 sortBy === "name" 
-                                  ? "bg-[#FF7900] text-white font-black" 
-                                  : "text-neutral-500 hover:text-neutral-300"
+                                  ? "bg-[#3b82f6] text-gray-50 font-black" 
+                                  : "text-gray-500 hover:text-gray-400"
                               }`}
                             >
                               Nom (A-Z)
                             </button>
                             <button
                               onClick={() => setSortBy("favs")}
-                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer flex items-center gap-0.5 ${
+                              className={`px-2 py-0.5 rounded text-sm transition-all cursor-pointer flex items-center gap-0.5 ${
                                 sortBy === "favs" 
-                                  ? "bg-[#FF7900] text-white font-black" 
-                                  : "text-neutral-500 hover:text-neutral-300"
+                                  ? "bg-[#3b82f6] text-gray-50 font-black" 
+                                  : "text-gray-500 hover:text-gray-400"
                               }`}
                             >
                               ★ Favoris
@@ -1066,13 +1261,13 @@ export default function App() {
 
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           <span>Affichage</span>
-                          <div className="flex gap-1 bg-black/45 p-0.5 rounded-md border border-white/[0.03]">
+                          <div className="flex gap-1 bg-[#09090b]/45 p-0.5 rounded-md border border-white/10">
                             <button
                               onClick={() => setDrawerChannelView("list")}
-                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer flex items-center gap-1 ${
+                              className={`px-2 py-0.5 rounded text-sm transition-all cursor-pointer flex items-center gap-1 ${
                                 drawerChannelView === "list"
-                                  ? "bg-[#FF7900] text-white font-black"
-                                  : "text-neutral-500 hover:text-neutral-300"
+                                  ? "bg-[#3b82f6] text-gray-50 font-black"
+                                  : "text-gray-500 hover:text-gray-400"
                               }`}
                               title="Vue Liste"
                             >
@@ -1081,10 +1276,10 @@ export default function App() {
                             </button>
                             <button
                               onClick={() => setDrawerChannelView("grid")}
-                              className={`px-2 py-0.5 rounded text-[7px] transition-all cursor-pointer flex items-center gap-1 ${
+                              className={`px-2 py-0.5 rounded text-sm transition-all cursor-pointer flex items-center gap-1 ${
                                 drawerChannelView === "grid"
-                                  ? "bg-[#FF7900] text-white font-black"
-                                  : "text-neutral-500 hover:text-neutral-300"
+                                  ? "bg-[#3b82f6] text-gray-50 font-black"
+                                  : "text-gray-500 hover:text-gray-400"
                               }`}
                               title="Vue Grille (Logos uniquement)"
                             >
@@ -1098,14 +1293,14 @@ export default function App() {
 
                     {/* Recently Watched Quick Launcher Bar if present */}
                     {recentIds.length > 0 && (
-                      <div className="px-3 py-2 border-b border-white/[0.03] bg-neutral-950/30 flex-shrink-0 animate-fade-in">
-                        <p className="text-[7.5px] font-black uppercase text-neutral-500 tracking-wider mb-2 flex items-center gap-1">
-                          <Clock size={9} className="text-[#FF7900]" />
+                      <div className="px-3 py-2 border-b border-white/10 bg-[#18181b]/30 flex-shrink-0 animate-fade-in">
+                        <p className="text-[11px] font-black uppercase text-gray-500 tracking-wider mb-2 flex items-center gap-1">
+                          <Clock size={9} className="text-[#3b82f6]" />
                           Dernières lectures
                         </p>
                         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                           {recentIds
-                            .map(id => dedupeByCore(categorisedList).find(c => c.id === id))
+                            .map(id => dedupedCategorisedList.find(c => c.id === id))
                             .filter((c): c is DisplayChannel => !!c)
                             .slice(0, 8)
                             .map((ch) => {
@@ -1114,21 +1309,25 @@ export default function App() {
                                 <button
                                   key={`recent-quick-${ch.id}`}
                                   onClick={() => playChannel(ch)}
+                              onContextMenu={(e) => handleEditInteraction(e, ch)}
+                              onTouchStart={() => handleTouchStart(ch)}
+                              onTouchEnd={handleTouchEnd}
+                              onTouchMove={handleTouchEnd}
                                   className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-left transition-all ${
                                     isCurrent 
-                                      ? "bg-[#FF7900]/10 border-[#FF7900]/30 text-white shadow-[0_0_8px_rgba(255,121,0,0.15)]" 
-                                      : "bg-neutral-900 border-white/[0.03] hover:border-white/[0.1] text-neutral-300 hover:text-white"
+                                      ? "bg-[#3b82f6]/10 border-[#3b82f6]/30 text-gray-50 shadow-[0_0_8px_rgba(59,130,246,0.15)]" 
+                                      : "bg-[#27272a] border-white/10 hover:border-white/20 text-gray-400 hover:text-gray-50"
                                   }`}
                                   title={`Lancer ${ch.name}`}
                                 >
-                                  <div className="w-4 h-4 rounded-md overflow-hidden bg-neutral-950 flex items-center justify-center p-0.5 border border-white/5 flex-shrink-0">
+                                  <div className="w-4 h-4 rounded-md overflow-hidden bg-[#18181b] flex items-center justify-center p-0.5 border border-white/10 flex-shrink-0">
                                     {ch.logo ? (
                                       <img src={ch.logo} className="object-contain w-full h-full max-h-3" alt="" referrerPolicy="no-referrer" />
                                     ) : (
-                                      <Tv size={8} className="text-[#FF7900]" />
+                                      <Tv size={8} className="text-[#3b82f6]" />
                                     )}
                                   </div>
-                                  <span className="text-[9px] font-semibold truncate max-w-[70px] uppercase tracking-wide">
+                                  <span className="text-xs font-semibold truncate max-w-[70px] uppercase tracking-wide">
                                     {ch.name}
                                   </span>
                                 </button>
@@ -1145,18 +1344,18 @@ export default function App() {
                     >
                       {loading ? (
                         <div className="py-24 text-center flex flex-col items-center justify-center gap-2">
-                          <div className="w-5 h-5 border-[1.5px] border-neutral-800 border-t-[#FF7900] rounded-full animate-spin" />
-                          <p className="text-[7.5px] font-bold uppercase tracking-widest text-neutral-500 mt-1 animate-pulse">
+                          <div className="w-5 h-5 border-[1.5px] border-neutral-800 border-t-[#3b82f6] rounded-full animate-spin" />
+                          <p className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mt-1 animate-pulse">
                             Mise à jour...
                           </p>
                         </div>
                       ) : filteredChannels.length === 0 ? (
                         <div className="py-24 text-center space-y-1 px-4">
                           <Info size={14} className="text-neutral-600 mx-auto" />
-                          <p className="text-[8.5px] uppercase font-black tracking-widest text-[#FF7900]">
+                          <p className="text-xs uppercase font-black tracking-widest text-[#3b82f6]">
                             Aucun flux disponible
                           </p>
-                          <p className="text-[8px] text-neutral-500 leading-normal max-w-xs mx-auto">
+                          <p className="text-xs text-gray-500 leading-normal max-w-xs mx-auto">
                             Ajustez le titre ou changez de catégorie.
                           </p>
                         </div>
@@ -1180,19 +1379,19 @@ export default function App() {
                                   if (window.innerWidth < 768) {
                                     setShowDrawer(false);
                                   }
-                                }}
-                                className={`aspect-square rounded-xl bg-neutral-900/40 hover:bg-neutral-900/80 border flex items-center justify-center relative transition-all duration-150 group shrink-0 ${
+                                }} onContextMenu={(e) => { e.preventDefault(); setChannelToEdit(ch); }}
+                                className={`aspect-[4/3] rounded-xl bg-[#27272a]/20 hover:bg-[#27272a]/60 border flex flex-col items-center justify-center relative transition-all duration-200 group shrink-0 ${
                                   isCurrent 
-                                    ? "bg-white/[0.04] border-[#FF7900] shadow-[0_0_12px_rgba(255,121,0,0.15)]" 
+                                    ? "bg-[#3b82f6]/5 border-[#3b82f6]/50 shadow-[0_0_15px_rgba(59,130,246,0.2)]" 
                                     : isKeyboardFocused
-                                    ? "bg-[#FF7900]/10 border-[#FF7900]/25 shadow-[inset_0_0_8px_rgba(255,121,0,0.1)]"
-                                    : "border-white/[0.04] hover:border-white/[0.12]"
+                                    ? "bg-[#3b82f6]/10 border-[#3b82f6]/30 shadow-[inset_0_0_8px_rgba(59,130,246,0.15)]"
+                                    : "border-white/10 hover:border-[#3b82f6]/40"
                                 }`}
                                 title={ch.name}
                               >
                                 {/* Left active indicator dot */}
                                 {isCurrent && (
-                                  <span className="absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-[#FF7900]" />
+                                  <span className="absolute top-1 left-1.5 w-1.5 h-1.5 rounded-full bg-[#3b82f6]" />
                                 )}
 
                                 {/* Heart indicator if favorite */}
@@ -1208,8 +1407,8 @@ export default function App() {
                                 </div>
 
                                 {/* Custom mini label that slides up on hover */}
-                                <div className="absolute inset-x-0 bottom-0 bg-black/90 py-1 px-1 rounded-b-xl border-t border-white/[0.05] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-                                  <p className="text-[6.5px] font-black uppercase text-center text-white truncate tracking-wider leading-none">
+                                <div className="absolute inset-x-0 bottom-0 bg-[#09090b]/90 py-1 px-1 rounded-b-xl border-t border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                                  <p className="text-sm font-black uppercase text-center text-gray-50 truncate tracking-wider leading-none">
                                     {ch.name}
                                   </p>
                                 </div>
@@ -1239,22 +1438,25 @@ export default function App() {
                                   if (window.innerWidth < 768) {
                                     setShowDrawer(false);
                                   }
-                                }}
-                                className={`flex items-center gap-2 p-2 hover:bg-white/[0.02] border transition-all duration-150 rounded-lg cursor-pointer group relative ${
+                                }} onContextMenu={(e) => handleEditInteraction(e, ch)}
+                                onTouchStart={() => handleTouchStart(ch)}
+                                onTouchEnd={handleTouchEnd}
+                                onTouchMove={handleTouchEnd}
+                                className={`flex items-center gap-3 p-2.5 hover:bg-[#27272a]/40 border transition-all duration-200 rounded-xl cursor-pointer group relative ${
                                   isCurrent 
-                                    ? "bg-white/[0.03] border-white/5" 
+                                    ? "bg-[#3b82f6]/5 border-[#3b82f6]/30 shadow-[0_4px_20px_-5px_rgba(59,130,246,0.15)]" 
                                     : isKeyboardFocused
-                                    ? "bg-[#FF7900]/10 border-[#FF7900]/25 shadow-[inset_0_0_8px_rgba(255,121,0,0.1)]"
-                                    : "border-transparent"
+                                    ? "bg-[#3b82f6]/10 border-[#3b82f6]/20 shadow-[inset_0_0_8px_rgba(59,130,246,0.1)]"
+                                    : "border-transparent hover:border-[#3b82f6]/20"
                                 }`}
                               >
                                 {/* Left active line indicator */}
                                 {isCurrent && (
-                                  <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#FF7900] rounded-r" />
+                                  <div className="absolute left-0 top-2 bottom-2 w-0.5 bg-[#3b82f6] rounded-r" />
                                 )}
 
                                 {/* Stylized STB LCN Rank index */}
-                                <span className="text-[8px] font-mono font-bold text-neutral-600 group-hover:text-[#FF7900] transition-colors w-4.5 text-right flex-shrink-0 select-none">
+                                <span className="text-xs font-mono font-bold text-neutral-600 group-hover:text-[#3b82f6] transition-colors w-4.5 text-right flex-shrink-0 select-none">
                                   {(idx + 1).toString().padStart(2, '0')}
                                 </span>
    
@@ -1264,11 +1466,11 @@ export default function App() {
                                 {/* Center: Title & EPG Details */}
                                 <div className="flex-grow min-w-0 flex flex-col justify-center">
                                   <div className="flex items-center gap-1.5">
-                                    <h4 className={`text-[11.5px] font-semibold uppercase tracking-wide truncate leading-tight ${isCurrent ? "text-[#FF7900]" : "text-neutral-200 group-hover:text-white transition-colors"}`}>
+                                    <h4 className={`text-xs font-bold uppercase tracking-wider truncate leading-tight ${isCurrent ? "text-[#3b82f6]" : "text-neutral-200 group-hover:text-gray-50 transition-colors"}`}>
                                       {ch.name}
                                     </h4>
                                     {ch.qualityLabel && (
-                                      <span className="text-[6px] px-1 py-0.5 bg-neutral-900 text-neutral-500 rounded border border-white/[0.04] uppercase font-mono font-bold leading-none">
+                                      <span className="text-[6px] px-1 py-0.5 bg-[#27272a]/80 text-gray-400 rounded border border-white/20 uppercase font-mono font-bold leading-none">
                                         {ch.qualityLabel}
                                       </span>
                                     )}
@@ -1276,25 +1478,25 @@ export default function App() {
 
                                   {hasEpg ? (
                                     <div className="space-y-0.5 mt-0.5">
-                                      <p className="text-[9px] text-neutral-400 font-light truncate leading-tight">
+                                      <p className="text-xs text-gray-400 font-light truncate leading-tight">
                                         {currentProgram.title}
                                       </p>
                                       <div className="flex items-center gap-2">
                                         {currentProgram.category && (
-                                          <span className="inline-block text-[7px] font-medium uppercase tracking-wider text-neutral-500 leading-none">
+                                          <span className="inline-block text-sm font-medium uppercase tracking-wider text-gray-500 leading-none">
                                             {currentProgram.category}
                                           </span>
                                         )}
                                         
                                         {currentProgram.start && (
-                                          <span className="text-[7px] font-mono text-neutral-600 leading-none">
+                                          <span className="text-sm font-mono text-neutral-600 leading-none">
                                             {new Date(currentProgram.start).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
                                           </span>
                                         )}
                                       </div>
                                       
                                       {/* Minimalist Timeline visual bar */}
-                                      <div className="w-full bg-neutral-900 h-[1.5px] rounded-full overflow-hidden mt-1 max-w-[100px]">
+                                      <div className="w-full bg-[#27272a] h-[1.5px] rounded-full overflow-hidden mt-1 max-w-[100px]">
                                         {(() => {
                                           const start = new Date(currentProgram.start).getTime();
                                           const stop = new Date(currentProgram.stop).getTime();
@@ -1302,7 +1504,7 @@ export default function App() {
                                           const progress = Math.min(100, Math.max(0, ((now - start) / (stop - start)) * 100));
                                           return (
                                             <div 
-                                              className="h-full bg-gradient-to-r from-[#FF7900] to-orange-500 rounded-full" 
+                                              className="h-full bg-gradient-to-r from-[#3b82f6] to-orange-500 rounded-full" 
                                               style={{ width: `${progress}%` }} 
                                             />
                                           );
@@ -1310,7 +1512,7 @@ export default function App() {
                                       </div>
                                     </div>
                                   ) : (
-                                    <p className="text-[7px] font-semibold tracking-wider text-[#FF7900]/30 uppercase mt-0.5">
+                                    <p className="text-sm font-semibold tracking-wider text-[#3b82f6]/30 uppercase mt-0.5">
                                       DIRECT CONTINU
                                     </p>
                                   )}
@@ -1323,11 +1525,11 @@ export default function App() {
                                       e.stopPropagation();
                                       setDetailedEpgChannel(ch);
                                     }}
-                                    className="p-1 px-1.5 rounded bg-white/[0.02] hover:bg-white/[0.08] text-neutral-500 hover:text-[#FF7900] transition-colors border border-white/[0.04] cursor-pointer flex items-center gap-1"
+                                    className="p-1 px-1.5 rounded bg-white/5 hover:bg-white/[0.05] text-gray-500 hover:text-[#3b82f6] transition-colors border border-white/10 cursor-pointer flex items-center gap-1"
                                     title="Détails du programme & Guide TV"
                                   >
-                                    <Info size={9.5} className="text-neutral-500 group-hover:text-[#FF7900] transition-colors" />
-                                    <span className="text-[6.5px] font-bold tracking-wider">EPG</span>
+                                    <Info size={9.5} className="text-gray-500 group-hover:text-[#3b82f6] transition-colors" />
+                                    <span className="text-sm font-bold tracking-wider">EPG</span>
                                   </button>
 
                                   <button
@@ -1335,7 +1537,7 @@ export default function App() {
                                       e.stopPropagation();
                                       toggleFavorite(ch.id);
                                     }}
-                                    className="p-1 px-[7px] rounded text-neutral-500 transition-colors cursor-pointer"
+                                    className="p-1 px-[7px] rounded text-gray-500 transition-colors cursor-pointer"
                                     title={favorites.includes(ch.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
                                   >
                                     <Heart 
@@ -1343,7 +1545,7 @@ export default function App() {
                                       className={
                                         favorites.includes(ch.id) 
                                           ? "text-red-500 fill-current opacity-100" 
-                                          : "opacity-0 group-hover:opacity-100 transition-opacity text-neutral-500 hover:text-white"
+                                          : "opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-50"
                                       } 
                                     />
                                   </button>
@@ -1359,7 +1561,7 @@ export default function App() {
                         <div className="pt-3 pb-1 text-center">
                           <button
                             onClick={() => setVisibleCount(p => Math.min(filteredChannels.length, p + 40))}
-                            className="px-3 py-1.5 bg-neutral-950/40 hover:bg-neutral-900/60 hover:border-white/5 border border-transparent rounded-lg text-[7px] font-black tracking-widest text-neutral-500 hover:text-neutral-300 transition-all cursor-pointer"
+                            className="px-3 py-1.5 bg-[#18181b]/40 hover:bg-white/5 hover:border-white/10 border border-transparent rounded-lg text-sm font-black tracking-widest text-gray-500 hover:text-gray-400 transition-all cursor-pointer"
                           >
                             Afficher plus ({filteredChannels.length - visibleCount} restants)
                           </button>
@@ -1375,31 +1577,31 @@ export default function App() {
                 <div className="flex-grow overflow-y-auto p-6 space-y-6">
                   
                   {/* Quality standard setup filter section */}
-                  <div className="space-y-2 border-b border-white/5 pb-5">
-                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider flex items-center gap-1.5">
-                      <Sliders size={12} className="text-[#FF7900]" />
+                  <div className="space-y-2 border-b border-white/10 pb-5">
+                    <h4 className="text-sm font-black uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                      <Sliders size={12} className="text-[#3b82f6]" />
                       Qualité d'affichage
                     </h4>
-                    <p className="text-[9.5px] text-neutral-500 leading-normal">
+                    <p className="text-xs border-zinc-700/50 hover:bg-zinc-800 text-gray-500 leading-normal">
                       Filtrez l'affichage des flux en fonction de la définition vidéo détectée.
                     </p>
                     <div className="grid grid-cols-2 gap-3 mt-3">
                       <button
                         onClick={() => setQualityFilter("all")}
-                        className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
+                        className={`py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
                           qualityFilter === "all" 
                             ? "bg-white text-black border-white" 
-                            : "bg-neutral-900 text-neutral-400 border-white/5 hover:border-neutral-700"
+                            : "bg-[#27272a] text-gray-400 border-white/10 hover:border-neutral-700"
                         }`}
                       >
                         Tous les flux
                       </button>
                       <button
                         onClick={() => setQualityFilter("hd")}
-                        className={`py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${
+                        className={`py-2 rounded-xl text-xs font-black uppercase tracking-widest border transition-all ${
                           qualityFilter === "hd" 
-                            ? "bg-[#FF7900] text-white border-[#FF7900]" 
-                            : "bg-neutral-900 text-neutral-400 border-white/5 hover:border-neutral-700"
+                            ? "bg-[#3b82f6] text-gray-50 border-[#3b82f6]" 
+                            : "bg-[#27272a] text-gray-400 border-white/10 hover:border-neutral-700"
                         }`}
                       >
                         HD Premium Uniquement
@@ -1408,17 +1610,17 @@ export default function App() {
                   </div>
 
                   {/* Personal API endpoint overrides */}
-                  <div className="space-y-3 border-b border-white/5 pb-5">
-                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider flex items-center gap-1.5">
-                      <Plug size={12} className="text-[#FF7900]" />
+                  <div className="space-y-3 border-b border-white/10 pb-5">
+                    <h4 className="text-sm font-black uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                      <Plug size={12} className="text-[#3b82f6]" />
                       Point de terminaison (API)
                     </h4>
-                    <span className="text-[8.5px] font-mono text-neutral-600 block leading-tight">
+                    <span className="text-xs font-mono text-neutral-600 block leading-tight">
                       Actuel : {getAppBaseUrl()}
                     </span>
                     {isGitHubPages() && (
-                      <div className="p-3 rounded-lg bg-[#FF7900]/5 border border-[#FF7900]/20 text-[9px] text-neutral-300 leading-relaxed space-y-1.5 font-sans">
-                        <p className="font-bold flex items-center gap-1.5 text-[#FF7900]">
+                      <div className="p-3 rounded-lg bg-[#3b82f6]/5 border border-[#3b82f6]/20 text-xs text-gray-400 leading-relaxed space-y-1.5 font-sans">
+                        <p className="font-bold flex items-center gap-1.5 text-[#3b82f6]">
                           <Info size={12} /> Hébergement Statique Capturé !
                         </p>
                         <p>
@@ -1434,7 +1636,7 @@ export default function App() {
                       placeholder="https://votre-serveur.run.app"
                       value={customBackendUrl}
                       onChange={(e) => setCustomBackendUrl(e.target.value)}
-                      className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FF7900] font-mono"
+                      className="w-full bg-[#18181b] border border-white/20 rounded-xl px-4 py-2.5 text-xs text-gray-50 focus:outline-none focus:border-[#3b82f6] font-mono"
                     />
                     <div className="flex gap-2">
                       <button
@@ -1447,7 +1649,7 @@ export default function App() {
                           }
                           loadChannels(true);
                         }}
-                        className="flex-1 py-2 bg-neutral-900 hover:bg-neutral-800 text-white font-bold text-[9px] uppercase tracking-widest rounded-lg border border-white/5 transition-all text-center"
+                        className="flex-1 py-2 bg-[#27272a] hover:bg-white/10 text-gray-50 font-bold text-xs uppercase tracking-widest rounded-lg border border-white/10 transition-all text-center"
                       >
                         Valider
                       </button>
@@ -1457,7 +1659,7 @@ export default function App() {
                           setCustomBackendUrl("");
                           loadChannels(true);
                         }}
-                        className="px-4 py-2 bg-transparent hover:text-white text-neutral-500 font-bold text-[9px] uppercase tracking-widest transition-all text-center"
+                        className="px-4 py-2 bg-transparent hover:text-gray-50 text-gray-500 font-bold text-xs uppercase tracking-widest transition-all text-center"
                       >
                         Réinitialiser
                       </button>
@@ -1465,18 +1667,18 @@ export default function App() {
                   </div>
 
                   {/* Logo Customizer Override Section */}
-                  <div className="space-y-3 border-b border-white/5 pb-5">
-                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider flex items-center gap-1.5">
-                      <Sparkles size={12} className="text-[#FF7900]" />
+                  <div className="space-y-3 border-b border-white/10 pb-5">
+                    <h4 className="text-sm font-black uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                      <Sparkles size={12} className="text-[#3b82f6]" />
                       Logos de chaînes personnalisés
                     </h4>
-                    <p className="text-[9.5px] text-neutral-500 leading-normal">
+                    <p className="text-xs border-zinc-700/50 hover:bg-zinc-800 text-gray-500 leading-normal">
                       Associez un logo officiel ou de secours à n'importe quelle chaîne si son logo par défaut est manquant.
                     </p>
                     
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">
+                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
                           Sélectionner la chaîne
                         </label>
                         <select
@@ -1488,7 +1690,7 @@ export default function App() {
                             setCustomLogoUrlInput(savedLogos[norm] || "");
                             setLogoSettingsMessage("");
                           }}
-                          className="w-full bg-neutral-950 border border-white/10 rounded-xl px-3 py-2 text-xs text-neutral-300 focus:outline-none focus:border-[#FF7900] font-sans"
+                          className="w-full bg-[#18181b] border border-white/20 rounded-xl px-3 py-2 text-xs text-gray-400 focus:outline-none focus:border-[#3b82f6] font-sans"
                         >
                           <option value="">-- Choisir une chaîne --</option>
                           {Array.from(new Set(channels.map(c => c.name))).sort().map(name => (
@@ -1504,7 +1706,7 @@ export default function App() {
                           className="space-y-3"
                         >
                           <div>
-                            <label className="block text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">
+                            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
                               URL du Logo officiel ou personnalisé
                             </label>
                             <input
@@ -1512,7 +1714,7 @@ export default function App() {
                               placeholder="https://example.com/logo.png"
                               value={customLogoUrlInput}
                               onChange={(e) => setCustomLogoUrlInput(e.target.value)}
-                              className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FF7900] font-mono"
+                              className="w-full bg-[#18181b] border border-white/20 rounded-xl px-4 py-2.5 text-xs text-gray-50 focus:outline-none focus:border-[#3b82f6] font-mono"
                             />
                           </div>
 
@@ -1521,19 +1723,19 @@ export default function App() {
                             const suggested = fallbackLogoMap[norm];
                             if (suggested && customLogoUrlInput !== suggested) {
                               return (
-                                <div className="p-3 rounded-xl bg-neutral-950/60 border border-[#FF7900]/20 space-y-2">
+                                <div className="p-3 rounded-xl bg-[#18181b]/60 border border-[#3b82f6]/20 space-y-2">
                                   <div className="flex items-center justify-between">
-                                    <span className="text-[9px] font-bold text-neutral-300 flex items-center gap-1">
-                                      <Sparkles size={11} className="text-[#FF7900]" />
+                                    <span className="text-xs font-bold text-gray-400 flex items-center gap-1">
+                                      <Sparkles size={11} className="text-[#3b82f6]" />
                                       Logo officiel du dépôt GitHub détecté !
                                     </span>
                                   </div>
                                   <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 p-1.5 bg-black rounded-lg border border-white/5 flex items-center justify-center">
+                                    <div className="w-10 h-10 p-1.5 bg-[#09090b] rounded-lg border border-white/10 flex items-center justify-center">
                                       <img src={suggested} alt="Preview" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                                     </div>
                                     <div className="flex-1">
-                                      <p className="text-[8px] font-mono text-neutral-400 truncate max-w-[200px]">
+                                      <p className="text-xs font-mono text-gray-400 truncate max-w-[200px]">
                                         {suggested.split("/").pop()}
                                       </p>
                                       <button
@@ -1542,7 +1744,7 @@ export default function App() {
                                           setCustomLogoUrlInput(suggested);
                                           setLogoSettingsMessage("✓ Logo officiel chargé. Cliquez sur Enregistrer.");
                                         }}
-                                        className="mt-1 text-[8px] text-[#FF7900] hover:underline font-black uppercase tracking-widest cursor-pointer block"
+                                        className="mt-1 text-xs text-[#3b82f6] hover:underline font-black uppercase tracking-widest cursor-pointer block"
                                       >
                                         Appliquer ce logo
                                       </button>
@@ -1555,7 +1757,7 @@ export default function App() {
                           })()}
 
                           {logoSettingsMessage && (
-                            <p className="text-[9px] font-semibold text-[#FF7900] transition-all">
+                            <p className="text-xs font-semibold text-[#3b82f6] transition-all">
                               {logoSettingsMessage}
                             </p>
                           )}
@@ -1567,7 +1769,7 @@ export default function App() {
                                 saveCustomLogo(selectedLogoChannelName, customLogoUrlInput);
                                 setLogoSettingsMessage("✓ Logo enregistré avec succès !");
                               }}
-                              className="flex-1 py-1.5 bg-[#FF7900] text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-orange-600 transition-all text-center"
+                              className="flex-1 py-1.5 bg-[#3b82f6] text-gray-50 font-black text-xs uppercase tracking-widest rounded-lg hover:bg-orange-600 transition-all text-center"
                             >
                               Enregistrer
                             </button>
@@ -1578,7 +1780,7 @@ export default function App() {
                                 setCustomLogoUrlInput("");
                                 setLogoSettingsMessage("✓ Réinitialisé");
                               }}
-                              className="px-4 py-1.5 bg-neutral-900 text-neutral-400 hover:text-white font-bold text-[9px] uppercase tracking-widest rounded-lg border border-white/5 transition-all text-center"
+                              className="px-4 py-1.5 bg-[#27272a] text-gray-400 hover:text-gray-50 font-bold text-xs uppercase tracking-widest rounded-lg border border-white/10 transition-all text-center"
                             >
                               Réinitialiser
                             </button>
@@ -1589,19 +1791,19 @@ export default function App() {
                   </div>
 
                   {/* Live export of customized playlist */}
-                  <div className="space-y-3 border-b border-white/5 pb-5">
-                    <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider flex items-center gap-1.5">
-                      <FileDown size={12} className="text-[#FF7900]" />
+                  <div className="space-y-3 border-b border-white/10 pb-5">
+                    <h4 className="text-sm font-black uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                      <FileDown size={12} className="text-[#3b82f6]" />
                       Exporter vos chaînes
                     </h4>
-                    <p className="text-[9.5px] text-neutral-500 leading-relaxed">
+                    <p className="text-xs border-zinc-700/50 hover:bg-zinc-800 text-gray-500 leading-relaxed">
                       Téléchargez un fichier de playlist M3U dynamique compatible avec VLC, Kodi, Enigma2, Smarters ou d'autres formats multimédias externes.
                     </p>
                     <button
                       onClick={handleDownloadM3U}
-                      className="w-full py-2.5 bg-neutral-900 border border-white/5 hover:border-[#FF7900]/30 hover:bg-neutral-800 rounded-xl text-neutral-300 hover:text-white font-black text-[9px] uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                      className="w-full py-2.5 bg-[#27272a] border border-white/10 hover:border-[#3b82f6]/30 hover:bg-white/10 rounded-xl text-gray-400 hover:text-gray-50 font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                     >
-                      <FileDown size={12} className="text-[#FF7900]" />
+                      <FileDown size={12} className="text-[#3b82f6]" />
                       Télécharger la playlist .M3U
                     </button>
                   </div>
@@ -1609,19 +1811,19 @@ export default function App() {
                   {/* Personal Xtream Codes client integrator config */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-[10px] font-black uppercase text-neutral-400 tracking-wider flex items-center gap-1.5">
-                        <Radio size={12} className="text-[#FF7900]" />
+                      <h4 className="text-sm font-black uppercase text-gray-400 tracking-wider flex items-center gap-1.5">
+                        <Radio size={12} className="text-[#3b82f6]" />
                         Intégrateur Xtream Codes
                       </h4>
                       {xtreamInput.enabled && (
-                        <span className="px-2 py-0.5 rounded text-[7px] font-black bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 uppercase tracking-widest animate-pulse">
+                        <span className="px-2 py-0.5 rounded text-sm font-black bg-emerald-500/15 border border-emerald-500/30 text-emerald-500 uppercase tracking-widest animate-pulse">
                           ACTIF
                         </span>
                       )}
                     </div>
                     <form onSubmit={handleSaveXtream} className="space-y-3">
                       <div>
-                        <label className="block text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">
+                        <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
                           Adresse du Serveur Xtream
                         </label>
                         <input
@@ -1629,12 +1831,12 @@ export default function App() {
                           placeholder="http://iptv-provider.com:8080"
                           value={xtreamInput.server}
                           onChange={(e) => setXtreamInput(p => ({ ...p, server: e.target.value }))}
-                          className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FF7900] font-sans"
+                          className="w-full bg-[#18181b] border border-white/20 rounded-xl px-4 py-2.5 text-xs text-gray-50 focus:outline-none focus:border-[#3b82f6] font-sans"
                         />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">
+                          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
                             Nom d'utilisateur
                           </label>
                           <input
@@ -1642,11 +1844,11 @@ export default function App() {
                             placeholder="username"
                             value={xtreamInput.username}
                             onChange={(e) => setXtreamInput(p => ({ ...p, username: e.target.value }))}
-                            className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FF7900] font-sans"
+                            className="w-full bg-[#18181b] border border-white/20 rounded-xl px-4 py-2.5 text-xs text-gray-50 focus:outline-none focus:border-[#3b82f6] font-sans"
                           />
                         </div>
                         <div>
-                          <label className="block text-[8px] font-black text-neutral-500 uppercase tracking-widest mb-1">
+                          <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-1">
                             Mot de passe
                           </label>
                           <input
@@ -1654,7 +1856,7 @@ export default function App() {
                             placeholder="password"
                             value={xtreamInput.password}
                             onChange={(e) => setXtreamInput(p => ({ ...p, password: e.target.value }))}
-                            className="w-full bg-neutral-950 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#FF7900] font-sans"
+                            className="w-full bg-[#18181b] border border-white/20 rounded-xl px-4 py-2.5 text-xs text-gray-50 focus:outline-none focus:border-[#3b82f6] font-sans"
                           />
                         </div>
                       </div>
@@ -1665,15 +1867,15 @@ export default function App() {
                           id="cors_proxy"
                           checked={xtreamInput.useCorsProxy}
                           onChange={(e) => setXtreamInput(p => ({ ...p, useCorsProxy: e.target.checked }))}
-                          className="rounded border-white/10 bg-neutral-950 text-[#FF7900] focus:ring-[#FF7900] w-3.5 h-3.5 cursor-pointer"
+                          className="rounded border-white/20 bg-[#18181b] text-[#3b82f6] focus:ring-[#3b82f6] w-3.5 h-3.5 cursor-pointer"
                         />
-                        <label htmlFor="cors_proxy" className="text-[9px] font-bold text-neutral-500 cursor-pointer hover:text-neutral-400">
+                        <label htmlFor="cors_proxy" className="text-xs font-bold text-gray-500 cursor-pointer hover:text-gray-400">
                           Activer le contournement CORS local (Proxy)
                         </label>
                       </div>
 
                       {xtreamStatus && (
-                        <div className="p-3 bg-neutral-900 border border-white/5 rounded-xl text-[8.5px] text-neutral-400 font-medium leading-relaxed">
+                        <div className="p-3 bg-[#27272a] border border-white/10 rounded-xl text-xs text-gray-400 font-medium leading-relaxed">
                           ⚡ Statut : {xtreamStatus}
                         </div>
                       )}
@@ -1681,7 +1883,7 @@ export default function App() {
                       <div className="flex gap-2.5 pt-2">
                         <button
                           type="submit"
-                          className="flex-1 py-3 bg-[#FF7900] text-white font-black text-[9px] uppercase tracking-widest rounded-xl hover:bg-orange-600 transition-all text-center shadow-lg"
+                          className="flex-1 py-3 bg-[#3b82f6] text-gray-50 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-orange-600 transition-all text-center shadow-lg"
                         >
                           Enregistrer & Connecter
                         </button>
@@ -1689,7 +1891,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={handleDisableXtream}
-                            className="px-4 py-3 bg-red-950/40 hover:bg-red-950/80 text-red-500 border border-red-500/25 font-black text-[9px] uppercase tracking-widest rounded-xl transition-all"
+                            className="px-4 py-3 bg-red-950/40 hover:bg-red-950/80 text-red-500 border border-red-500/25 font-black text-xs uppercase tracking-widest rounded-xl transition-all"
                           >
                             Désactiver
                           </button>
@@ -1702,14 +1904,22 @@ export default function App() {
               )}
 
               {/* Drawer Sticky Footer with Premium tag */}
-              <div className="p-5 border-t border-white/5 bg-neutral-900/30 flex items-center justify-between text-[8px] font-mono text-neutral-500 flex-shrink-0">
+              <div className="p-5 border-t border-white/10 bg-[#27272a]/30 flex items-center justify-between text-xs font-mono text-gray-500 flex-shrink-0">
                 <span>DENDENTV PRO v3.4.1</span>
-                <span className="text-[#FF7900] font-bold uppercase tracking-widest">
+                <span className="text-[#3b82f6] font-bold uppercase tracking-widest">
                   ABONNÉ PREMIUM
                 </span>
               </div>
 
-              {/* Extended EPG Details Overlay Panel */}
+              {channelToEdit && (
+              <ChannelEditorModal 
+                channel={channelToEdit}
+                onClose={() => setChannelToEdit(null)}
+                onSaved={() => { setChannelToEdit(null); setCustomLogosEvent(prev => prev + 1); }}
+              />
+            )}
+
+            {/* Extended EPG Details Overlay Panel */}
               <AnimatePresence>
                 {detailedEpgChannel && (
                   <ExtendedEpgPanel

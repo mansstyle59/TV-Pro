@@ -166,7 +166,7 @@ export function Integrations() {
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <header className="mb-2">
-        <h2 className="text-2xl font-black uppercase tracking-tighter text-white mb-2">
+        <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900 mb-2">
           Installation <span className="text-[#FF7900]">Rapide</span>
         </h2>
         <p className="text-sm font-medium text-[#A0A0A0]">
@@ -182,25 +182,25 @@ export function Integrations() {
             <span className="w-1.5 h-1.5 rounded-full bg-[#FF7900] animate-pulse" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-[#FF7900]">Triée par Catégories & Logos Inclus</span>
           </div>
-          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white">
+          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-gray-900">
             Lien Rapide de Téléchargement M3U
           </h3>
           <p className="text-sm text-gray-300 leading-relaxed font-semibold font-sans">
-            Téléchargez instantanément votre playlist <code className="text-[#FF7900] font-mono bg-black/60 px-1 py-0.5 rounded border border-white/5 font-semibold text-xs">playlist.m3u</code> contenant l'ensemble de vos chaînes <strong className="text-white">classées par catégories</strong>, avec <strong className="text-white">tous les logos</strong> configurés et rattachés pour vos lecteurs IPTV (VLC, Kodi, TiviMate, etc.).
+            Téléchargez instantanément votre playlist <code className="text-[#FF7900] font-mono bg-white/60 px-1 py-0.5 rounded border border-gray-200 font-semibold text-xs">playlist.m3u</code> contenant l'ensemble de vos chaînes <strong className="text-gray-900">classées par catégories</strong>, avec <strong className="text-gray-900">tous les logos</strong> configurés et rattachés pour vos lecteurs IPTV (VLC, Kodi, TiviMate, etc.).
           </p>
         </div>
         <div className="z-10 flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
           <a
             href={m3uLink}
             download="playlist.m3u"
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-[#FF7900] to-[#cc6000] text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-[#FF7900]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-[#FF7900] to-[#cc6000] text-gray-900 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-[#FF7900]/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
             <Download size={18} strokeWidth={3} />
             Télécharger (.m3u)
           </a>
           <button
             onClick={() => copyToClipboard(m3uLink, "direct_m3u_top")}
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-[#1E1E1E] hover:bg-[#2A2A2A] text-white rounded-xl text-xs font-black uppercase tracking-wider border border-white/5 transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-[#1E1E1E] hover:bg-[#2A2A2A] text-gray-900 rounded-xl text-xs font-black uppercase tracking-wider border border-gray-200 transition-all cursor-pointer"
           >
             {copiedApp === "direct_m3u_top" ? (
               <>
@@ -225,25 +225,25 @@ export function Integrations() {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">Spécial Chaînes de Sports</span>
           </div>
-          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-white">
+          <h3 className="text-xl md:text-2xl font-black uppercase tracking-tight text-gray-900">
             Playlist M3U Spéciale Sports
           </h3>
           <p className="text-sm text-gray-300 leading-relaxed font-semibold">
-            Générez une playlist <code className="text-emerald-400 font-mono bg-black/60 px-1 py-0.5 rounded border border-white/5 font-semibold text-xs">sports.m3u</code> contenant uniquement les chaînes de sport et d'événements (beIN Sports, Eurosport, RMC Sport, Canal+ Sport, L'Équipe, Automoto, etc.). Idéale pour les décodeurs, Smart TV et lecteurs IPTV externes !
+            Générez une playlist <code className="text-emerald-400 font-mono bg-white/60 px-1 py-0.5 rounded border border-gray-200 font-semibold text-xs">sports.m3u</code> contenant uniquement les chaînes de sport et d'événements (beIN Sports, Eurosport, RMC Sport, Canal+ Sport, L'Équipe, Automoto, etc.). Idéale pour les décodeurs, Smart TV et lecteurs IPTV externes !
           </p>
         </div>
         <div className="z-10 flex flex-col sm:flex-row gap-3 w-full md:w-auto shrink-0">
           <a
             href={sportsM3uLink}
             download="sports.m3u"
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-emerald-500 to-teal-600 text-gray-900 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
           >
             <Download size={18} strokeWidth={3} />
             Télécharger (.m3u)
           </a>
           <button
             onClick={() => copyToClipboard(sportsM3uLink, "sports_m3u_top")}
-            className="flex items-center justify-center gap-2 px-6 py-4 bg-[#142319] hover:bg-[#1a3224] text-white rounded-xl text-xs font-black uppercase tracking-wider border border-emerald-500/15 transition-all cursor-pointer"
+            className="flex items-center justify-center gap-2 px-6 py-4 bg-[#142319] hover:bg-[#1a3224] text-gray-900 rounded-xl text-xs font-black uppercase tracking-wider border border-emerald-500/15 transition-all cursor-pointer"
           >
             {copiedApp === "sports_m3u_top" ? (
               <>
@@ -264,7 +264,7 @@ export function Integrations() {
         {apps.map((app, idx) => (
           <motion.div 
             key={idx}
-            className="bg-[#151515] rounded-xl p-6 border border-white/5 relative overflow-hidden group flex flex-col justify-between"
+            className="bg-[#151515] rounded-xl p-6 border border-gray-200 relative overflow-hidden group flex flex-col justify-between"
             whileHover={{ y: -5 }}
           >
             <div>
@@ -273,7 +273,7 @@ export function Integrations() {
                   <app.icon size={24} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-black uppercase tracking-tight text-white mb-1">{app.name}</h3>
+                  <h3 className="text-lg font-black uppercase tracking-tight text-gray-900 mb-1">{app.name}</h3>
                 </div>
               </div>
               <p className="text-sm text-gray-400 mb-6 font-medium leading-relaxed min-h-[40px]">
@@ -284,7 +284,7 @@ export function Integrations() {
             {app.isXtream ? (
               <div className="space-y-4 min-w-0">
                 <div className="space-y-2">
-                  <div className={`bg-[#0B0B0B] p-3 rounded-lg flex flex-col gap-2 border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
+                  <div className={`bg-gray-100 p-3 rounded-lg flex flex-col gap-2 border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="text-[10px] font-bold text-[#FF7900] uppercase tracking-wider block mb-1">Hôte épuré (recommandé sans https)</span>
@@ -294,7 +294,7 @@ export function Integrations() {
                       </div>
                       <button 
                         onClick={() => copyToClipboard(host.replace(/^https?:\/\//, ""), "xtream_host_clean")} 
-                        className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === "xtream_host_clean" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                        className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === "xtream_host_clean" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-black/10 text-gray-900'}`} 
                         title="Copier l'hôte épuré"
                       >
                         {copiedApp === "xtream_host_clean" ? <Check size={16} /> : <Copy size={16} />}
@@ -302,7 +302,7 @@ export function Integrations() {
                     </div>
                   </div>
 
-                  <div className={`bg-[#0B0B0B] p-3 rounded-lg flex flex-col gap-2 border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
+                  <div className={`bg-gray-100 p-3 rounded-lg flex flex-col gap-2 border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="text-[10px] font-bold text-[#FF7900] uppercase tracking-wider block mb-1">URL Complète (avec https://)</span>
@@ -312,7 +312,7 @@ export function Integrations() {
                       </div>
                       <button 
                         onClick={() => copyToClipboard(host, "xtream_host")} 
-                        className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === "xtream_host" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                        className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === "xtream_host" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-black/10 text-gray-900'}`} 
                         title="Copier l'URL complète"
                       >
                         {copiedApp === "xtream_host" ? <Check size={16} /> : <Copy size={16} />}
@@ -321,13 +321,13 @@ export function Integrations() {
                   </div>
 
                   {/* Row for shortened Host */}
-                  <div className={`bg-[#0B0B0B] p-3 rounded-lg flex flex-col gap-2 border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
+                  <div className={`bg-gray-100 p-3 rounded-lg flex flex-col gap-2 border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0 flex-1">
                         <span className="text-[10px] font-bold text-[#FF7900] uppercase tracking-wider block mb-1">Hôte Raccourci (pour télécommande)</span>
                         <div className="flex items-center gap-2 mt-1">
                           {shorteningXtream ? (
-                            <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
                               <RefreshCw size={12} className="animate-spin text-[#FF7900]" /> Génération...
                             </span>
                           ) : shortXtreamUrl ? (
@@ -338,7 +338,7 @@ export function Integrations() {
                             <button
                               type="button"
                               onClick={() => generateShortUrl(host, setShortXtreamUrl, setShorteningXtream)}
-                              className="text-[9px] bg-neutral-900 hover:bg-[#FF7900]/10 hover:border-[#FF7900]/30 border border-white/10 px-2.5 py-1.5 rounded-lg text-white font-black uppercase tracking-wider transition-all pointer-events-auto cursor-pointer"
+                              className="text-[9px] bg-gray-100 hover:bg-[#FF7900]/10 hover:border-[#FF7900]/30 border border-gray-300 px-2.5 py-1.5 rounded-lg text-gray-900 font-black uppercase tracking-wider transition-all pointer-events-auto cursor-pointer"
                             >
                               Rétrécir l'adresse
                             </button>
@@ -348,7 +348,7 @@ export function Integrations() {
                       {shortXtreamUrl && (
                         <button 
                           onClick={() => copyToClipboard(shortXtreamUrl.replace(/^https?:\/\//, ""), "xtream_short_clean")} 
-                          className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === "xtream_short_clean" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                          className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === "xtream_short_clean" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-black/10 text-gray-900'}`} 
                           title="Copier l'hôte raccourci"
                         >
                           {copiedApp === "xtream_short_clean" ? <Check size={16} /> : <Copy size={16} />}
@@ -358,28 +358,28 @@ export function Integrations() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
-                    <div className={`bg-[#0B0B0B] p-3 rounded-lg flex justify-between items-center border border-[#2A2A2A] ${app.borderHover} transition-colors`}>
+                    <div className={`bg-gray-100 p-3 rounded-lg flex justify-between items-center border border-[#2A2A2A] ${app.borderHover} transition-colors`}>
                       <div className="min-w-0">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Username</span>
                         <span className="text-xs font-mono text-gray-200 font-semibold truncate">user</span>
                       </div>
                       <button 
                         onClick={() => copyToClipboard("user", "xtream_user")} 
-                        className={`p-1.5 rounded-md transition-colors ${copiedApp === "xtream_user" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                        className={`p-1.5 rounded-md transition-colors ${copiedApp === "xtream_user" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-black/10 text-gray-900'}`} 
                         title="Copier l'utilisateur"
                       >
                         {copiedApp === "xtream_user" ? <Check size={14} /> : <Copy size={14} />}
                       </button>
                     </div>
 
-                    <div className={`bg-[#0B0B0B] p-3 rounded-lg flex justify-between items-center border border-[#2A2A2A] ${app.borderHover} transition-colors`}>
+                    <div className={`bg-gray-100 p-3 rounded-lg flex justify-between items-center border border-[#2A2A2A] ${app.borderHover} transition-colors`}>
                       <div className="min-w-0">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Password</span>
                         <span className="text-xs font-mono text-gray-200 font-semibold truncate">pass</span>
                       </div>
                       <button 
                         onClick={() => copyToClipboard("pass", "xtream_pass")} 
-                        className={`p-1.5 rounded-md transition-colors ${copiedApp === "xtream_pass" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                        className={`p-1.5 rounded-md transition-colors ${copiedApp === "xtream_pass" ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-black/10 text-gray-900'}`} 
                         title="Copier le mot de passe"
                       >
                         {copiedApp === "xtream_pass" ? <Check size={14} /> : <Copy size={14} />}
@@ -390,19 +390,19 @@ export function Integrations() {
 
                 <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-200 leading-normal font-medium">
                   <span className="text-amber-500 font-bold uppercase block mb-1">⚠️ ERREUR FRÉQUENTE :</span>
-                  L'adresse de votre serveur est très longue. Veillez à bien copier ou saisir l'adresse <strong className="text-white text-xs underline font-bold">complète</strong> (commençant par <code className="font-mono bg-amber-500/20 px-1 py-0.5 rounded text-white text-[10px]">ais-pre-</code>). Ne recopiez pas uniquement la fin visible !
+                  L'adresse de votre serveur est très longue. Veillez à bien copier ou saisir l'adresse <strong className="text-gray-900 text-xs underline font-bold">complète</strong> (commençant par <code className="font-mono bg-amber-500/20 px-1 py-0.5 rounded text-gray-900 text-[10px]">ais-pre-</code>). Ne recopiez pas uniquement la fin visible !
                 </div>
               </div>
             ) : (
               <div className="space-y-2 min-w-0">
-                <div className={`bg-[#0B0B0B] p-3 rounded-lg flex items-center justify-between border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
+                <div className={`bg-gray-100 p-3 rounded-lg flex items-center justify-between border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
                   <span className="text-xs font-mono text-gray-300 truncate mr-4 min-w-0">
                     {app.extraCopyText ? "M3U: " : ""}{app.copyText.replace(/^https?:\/\//, "")}
                   </span>
                   <div className="flex gap-2 flex-shrink-0">
                     <button 
                       onClick={() => copyToClipboard(app.copyText, app.name)} 
-                      className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === app.name ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                      className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === app.name ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-black/10 text-gray-900'}`} 
                       title="Copier le M3U"
                     >
                       {copiedApp === app.name ? <Check size={16} /> : <Copy size={16} />}
@@ -411,7 +411,7 @@ export function Integrations() {
                       <a 
                         href={app.actionLink} 
                         download={app.download ? true : undefined}
-                        className={`p-2 hover:bg-white/10 rounded-md transition-colors ${app.color} flex-shrink-0`}
+                        className={`p-2 hover:bg-black/10 rounded-md transition-colors ${app.color} flex-shrink-0`}
                         title={app.actionText}
                       >
                         <app.actionIcon size={16} />
@@ -421,14 +421,14 @@ export function Integrations() {
                 </div>
 
                 {app.extraCopyText && (
-                  <div className={`bg-[#0B0B0B] p-3 rounded-lg flex items-center justify-between border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
+                  <div className={`bg-gray-100 p-3 rounded-lg flex items-center justify-between border border-[#2A2A2A] ${app.borderHover} transition-colors min-w-0`}>
                     <span className="text-xs font-mono text-gray-300 truncate mr-4 min-w-0">
                       EPG: {app.extraCopyText.replace(/^https?:\/\//, "")}
                     </span>
                     <div className="flex gap-2 flex-shrink-0">
                       <button 
                         onClick={() => copyToClipboard(app.extraCopyText, app.extraCopyKey || app.name + "_extra")} 
-                        className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === (app.extraCopyKey || app.name + "_extra") ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-white/10 text-white'}`} 
+                        className={`p-2 rounded-md transition-colors flex-shrink-0 ${copiedApp === (app.extraCopyKey || app.name + "_extra") ? 'bg-emerald-500/20 text-emerald-400' : 'hover:bg-black/10 text-gray-900'}`} 
                         title="Copier l'EPG XMLTV"
                       >
                         {copiedApp === (app.extraCopyKey || app.name + "_extra") ? <Check size={16} /> : <Copy size={16} />}
@@ -452,26 +452,26 @@ export function Integrations() {
               <Tv size={20} />
             </div>
             <div>
-              <h3 className="text-lg font-black uppercase tracking-tight text-white">
+              <h3 className="text-lg font-black uppercase tracking-tight text-gray-900">
                 Raccourcisseur d'URL pour Smart TV & Box IPTV
               </h3>
-              <p className="text-xs text-neutral-400 font-bold uppercase tracking-wider mt-0.5">
+              <p className="text-xs text-gray-600 font-bold uppercase tracking-wider mt-0.5">
                 Saisie facile à la télécommande (Smarters, TiviMate, Apple TV...)
               </p>
             </div>
           </div>
           
           <p className="text-sm text-gray-300 leading-relaxed font-semibold">
-            Taper de longues adresses sur votre téléviseur est laborieux. Générez ci-dessous un lien <span className="text-[#FF7900] underline font-bold">le plus court possible</span> (ex: <code className="font-mono bg-black/40 px-1 py-0.5 rounded border border-white/5 text-[#FF7900]">is.gd/abc</code>) pour l'entrer en quelques clics !
+            Taper de longues adresses sur votre téléviseur est laborieux. Générez ci-dessous un lien <span className="text-[#FF7900] underline font-bold">le plus court possible</span> (ex: <code className="font-mono bg-white/40 px-1 py-0.5 rounded border border-gray-200 text-[#FF7900]">is.gd/abc</code>) pour l'entrer en quelques clics !
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
             {/* M3U Link Slot */}
-            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-white/5 space-y-3 flex flex-col justify-between">
+            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-gray-200 space-y-3 flex flex-col justify-between">
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest block">Format M3U</span>
-                <span className="text-xs font-bold text-white block">Playlist de chaînes</span>
-                <p className="text-[11px] text-neutral-500 font-medium">Pour charger toutes vos catégories de chaînes.</p>
+                <span className="text-xs font-bold text-gray-900 block">Playlist de chaînes</span>
+                <p className="text-[11px] text-gray-500 font-medium">Pour charger toutes vos catégories de chaînes.</p>
               </div>
               
               <div className="space-y-2 pt-2">
@@ -489,7 +489,7 @@ export function Integrations() {
                   <button
                     onClick={() => generateShortUrl(m3uLink, setShortM3uUrl, setShorteningM3u)}
                     disabled={shorteningM3u}
-                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-900 border border-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="w-full py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {shorteningM3u ? (
                       <>
@@ -504,11 +504,11 @@ export function Integrations() {
             </div>
 
             {/* EPG XMLTV Slot */}
-            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-white/5 space-y-3 flex flex-col justify-between">
+            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-gray-200 space-y-3 flex flex-col justify-between">
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest block">Format XMLTV</span>
-                <span className="text-xs font-bold text-white block">Guide des programmes (EPG)</span>
-                <p className="text-[11px] text-neutral-500 font-medium">Pour afficher le programme TV en direct.</p>
+                <span className="text-xs font-bold text-gray-900 block">Guide des programmes (EPG)</span>
+                <p className="text-[11px] text-gray-500 font-medium">Pour afficher le programme TV en direct.</p>
               </div>
               
               <div className="space-y-2 pt-2">
@@ -526,7 +526,7 @@ export function Integrations() {
                   <button
                     onClick={() => generateShortUrl(xmltvLink, setShortXmltvUrl, setShorteningXmltv)}
                     disabled={shorteningXmltv}
-                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-900 border border-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="w-full py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {shorteningXmltv ? (
                       <>
@@ -541,11 +541,11 @@ export function Integrations() {
             </div>
 
             {/* Xtream Host Slot */}
-            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-white/5 space-y-3 flex flex-col justify-between">
+            <div className="p-4 bg-[#0A0A0A] rounded-xl border border-gray-200 space-y-3 flex flex-col justify-between">
               <div className="space-y-1">
                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest block">API Xtream Codes</span>
-                <span className="text-xs font-bold text-white block">Hôte de connexion du serveur</span>
-                <p className="text-[11px] text-neutral-500 font-medium">Pour vous connecter avec "user" et "pass".</p>
+                <span className="text-xs font-bold text-gray-900 block">Hôte de connexion du serveur</span>
+                <p className="text-[11px] text-gray-500 font-medium">Pour vous connecter avec "user" et "pass".</p>
               </div>
               
               <div className="space-y-2 pt-2">
@@ -563,7 +563,7 @@ export function Integrations() {
                   <button
                     onClick={() => generateShortUrl(host, setShortXtreamUrl, setShorteningXtream)}
                     disabled={shorteningXtream}
-                    className="w-full py-2.5 bg-neutral-950 hover:bg-neutral-900 border border-white/10 text-white rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    className="w-full py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-300 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
                   >
                     {shorteningXtream ? (
                       <>
@@ -590,16 +590,16 @@ export function Integrations() {
             <Rocket size={20} />
           </div>
           <div className="min-w-0 flex-1 w-full">
-            <h3 className="text-white font-bold mb-2">URLs universelles</h3>
+            <h3 className="text-gray-900 font-bold mb-2">URLs universelles</h3>
             <p className="text-sm text-gray-400 mb-2">Vous n'utilisez pas ces logiciels ? Voici les liens standards :</p>
             <ul className="text-sm space-y-4 mt-4 text-gray-300">
               <li className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-                <span className="sm:min-w-[125px] font-semibold text-white flex-shrink-0 text-xs sm:text-sm">M3U Globale:</span>
-                <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-white/5 w-full max-w-lg justify-between min-w-0">
+                <span className="sm:min-w-[125px] font-semibold text-gray-900 flex-shrink-0 text-xs sm:text-sm">M3U Globale:</span>
+                <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-gray-200 w-full max-w-lg justify-between min-w-0">
                   <code className="font-mono text-xs text-gray-300 truncate pr-2 select-all">{m3uLink}</code>
                   <button 
                     onClick={() => copyToClipboard(m3uLink, "m3u_universal")}
-                    className="text-gray-400 hover:text-white transition-colors flex-shrink-0 p-1"
+                    className="text-gray-400 hover:text-gray-900 transition-colors flex-shrink-0 p-1"
                     title="Copier le lien"
                   >
                     {copiedApp === "m3u_universal" ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
@@ -607,7 +607,7 @@ export function Integrations() {
                 </div>
               </li>
               <li className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-                <span className="sm:min-w-[125px] font-semibold text-white flex-shrink-0 text-xs sm:text-sm">M3U Sports:</span>
+                <span className="sm:min-w-[125px] font-semibold text-gray-900 flex-shrink-0 text-xs sm:text-sm">M3U Sports:</span>
                 <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-emerald-500/10 w-full max-w-lg justify-between min-w-0">
                   <code className="font-mono text-xs text-emerald-400 truncate pr-2 select-all font-semibold">{sportsM3uLink}</code>
                   <button 
@@ -620,12 +620,12 @@ export function Integrations() {
                 </div>
               </li>
               <li className="flex flex-col sm:flex-row sm:items-center gap-2 min-w-0">
-                <span className="sm:min-w-[125px] font-semibold text-white flex-shrink-0 text-xs sm:text-sm">XMLTV EPG:</span>
-                <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-white/5 w-full max-w-lg justify-between min-w-0">
+                <span className="sm:min-w-[125px] font-semibold text-gray-900 flex-shrink-0 text-xs sm:text-sm">XMLTV EPG:</span>
+                <div className="flex items-center gap-2 bg-black/50 px-3 py-1.5 rounded-lg border border-gray-200 w-full max-w-lg justify-between min-w-0">
                   <code className="font-mono text-xs text-gray-300 truncate pr-2 select-all">{xmltvLink}</code>
                   <button 
                     onClick={() => copyToClipboard(xmltvLink, "xmltv_universal")}
-                    className="text-gray-400 hover:text-white transition-colors flex-shrink-0 p-1"
+                    className="text-gray-400 hover:text-gray-900 transition-colors flex-shrink-0 p-1"
                     title="Copier le lien"
                   >
                     {copiedApp === "xmltv_universal" ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}

@@ -173,21 +173,11 @@ async function fetchAppChannels(force = false): Promise<Channel[]> {
   const channels: Channel[] = await response.json();
   allCachedChannels = channels; // Store raw unfiltered list for admin discovery
 
-  // Filter for French and Belgian channels default, and specifically include Trace/OCS
-  const filteredChannels = channels.filter(c => 
-    c && (
-      (c.country && /^(france|belgium|belgique)$/i.test(c.country)) || 
-      /trace|ocs/i.test(c.name)
-    )
-  );
-  
-  // Sort alphabetically by name
-  filteredChannels.sort((a, b) => a.name.localeCompare(b.name, "fr", { sensitivity: "base" }));
-
-  cachedChannels = filteredChannels;
+  // Simply return all channels without filtering by country
+  cachedChannels = channels;
   lastFetchTime = now;
-  console.log(`Cache updated. Found ${filteredChannels.length} channels (Total Vavoo: ${channels.length}).`);
-  return filteredChannels;
+  console.log(`Cache updated. Found ${channels.length} channels (Total Vavoo).`);
+  return channels;
 }
 
 // ... existing EPG/Logo interfaces ...
@@ -1448,8 +1438,12 @@ async function fetchWithRedirects(initialUrl: string, maxRedirects = 5, timeoutM
       "Connection": "keep-alive"
     };
 
-    // Always pass the signature for any Vavoo or redirected media server urls
-    if (sig) {
+    // Only pass the signature for vavoo domain to avoid 502 bad gateway errors on CDN endpoints
+    if (sig && currentUrl.includes("vavoo.to")) {
+      headers["X-VAVOO-CLIENT"] = "2.6";
+      headers["X-VAVOO-DEVICE"] = "berry";
+      headers["Accept"] = "*/*";
+      headers["Referer"] = "https://www.vavoo.to/";
       headers["X-VAVOO-AUTH"] = sig;
       headers["X-VAVOO-SIGNATURE"] = sig;
     }
@@ -1459,28 +1453,6 @@ async function fetchWithRedirects(initialUrl: string, maxRedirects = 5, timeoutM
       headers,
       signal: AbortSignal.timeout(timeoutMs)
     });
-    
-    // If the response failed with errors (like 502, 503, 504, 403, etc.) and we used signature headers,
-    // retry with a basic header configuration (excluding signature headers) to maximize compatibility
-    if ((response.status >= 400 && response.status !== 401 && response.status !== 404) && sig) {
-      console.warn(`URL ${currentUrl} failed with status ${response.status} using signature. Retrying without signature headers...`);
-      const fallbackHeaders: Record<string, string> = {
-        "User-Agent": "VAVOO/2.6",
-        "X-VAVOO-CLIENT": "2.6"
-      };
-      try {
-        const fbResponse = await fetch(currentUrl, {
-          redirect: "manual",
-          headers: fallbackHeaders,
-          signal: AbortSignal.timeout(timeoutMs)
-        });
-        if (fbResponse.ok || (fbResponse.status >= 301 && fbResponse.status <= 308)) {
-          response = fbResponse;
-        }
-      } catch (fbErr) {
-        console.error(`Fallback fetch failed for ${currentUrl}:`, fbErr);
-      }
-    }
     
     if (response.status === 301 || response.status === 302 || response.status === 303 || response.status === 307 || response.status === 308) {
       const location = response.headers.get("location");
@@ -1677,14 +1649,14 @@ app.get("/api/stream-ts", async (req, res) => {
       const sig = await getVavooSignature();
       const headers: Record<string, string> = {
         "User-Agent": "VAVOO/2.6",
-        "X-VAVOO-CLIENT": "2.6",
-        "X-VAVOO-DEVICE": "berry",
-        "Referer": "https://www.vavoo.to/",
-        "Accept": "*/*",
         "Connection": "keep-alive"
       };
 
-      if (sig) {
+      if (sig && signedUrl.includes("vavoo.to")) {
+        headers["X-VAVOO-CLIENT"] = "2.6";
+        headers["X-VAVOO-DEVICE"] = "berry";
+        headers["Referer"] = "https://www.vavoo.to/";
+        headers["Accept"] = "*/*";
         headers["X-VAVOO-AUTH"] = sig;
         headers["X-VAVOO-SIGNATURE"] = sig;
       }
@@ -1700,27 +1672,6 @@ app.get("/api/stream-ts", async (req, res) => {
       if (response.status === 301 || response.status === 302 || response.status === 303 || response.status === 307 || response.status === 308) {
         const redirectResult = await fetchWithRedirects(signedUrl, 5, 25000);
         response = redirectResult.response;
-      }
-
-      // If the response failed with errors (like 502, 503, 504, 403, etc.) and we used signature headers,
-      // retry with a basic header configuration (excluding signature headers) to maximize compatibility
-      if ((response.status >= 400 && response.status !== 401 && response.status !== 404) && sig) {
-        console.warn(`Segment URL ${signedUrl} failed with status ${response.status} using signature. Retrying without signature headers...`);
-        const fallbackHeaders: Record<string, string> = {
-          "User-Agent": "VAVOO/2.6",
-          "X-VAVOO-CLIENT": "2.6"
-        };
-        try {
-          const fbResponse = await fetch(signedUrl, {
-            headers: fallbackHeaders,
-            signal: AbortSignal.timeout(30000)
-          });
-          if (fbResponse.ok) {
-            response = fbResponse;
-          }
-        } catch (fbErr) {
-          console.error(`Fallback segment fetch failed for ${signedUrl}:`, fbErr);
-        }
       }
 
       if (response.ok) {
@@ -1750,25 +1701,26 @@ app.get("/api/stream-ts", async (req, res) => {
         res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
 
         if (response.body) {
-          Readable.fromWeb(response.body as any).pipe(res);
+          const stream = Readable.fromWeb(response.body as any);
+          stream.on("error", (err) => {
+            console.error(`Stream reading error for ${signedUrl}:`, err.message);
+            if (!res.headersSent) res.status(502).end();
+          });
+          res.on("error", (err) => {
+            console.error(`Response writing error for ${signedUrl}:`, err.message);
+            stream.destroy();
+          });
+          stream.pipe(res);
         } else {
           res.end();
         }
         return;
       }
 
-      console.error(`Proxy stream segment failed for ${signedUrl}. Status: ${response.status} (attempt ${attempt}/${maxAttempts})`);
+      console.error(`Proxy stream segment failed for ${signedUrl}. Status: ${response.status}`);
       
-      cachedSignature = null;
-      sigFetchTime = 0;
-
-      if (attempt < maxAttempts) {
-        console.log("Forcing refreshing of guest signature and retrying stream segment query...");
-        await forceFetchVavooSignature().catch(() => {});
-        attempt++;
-        continue;
-      }
-
+      // If a segment fails with 404, 502, 503, it means it has expired off the live edge.
+      // Do not waste time refreshing signature for expired segments. Return immediately so player moves on.
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Headers", "*");
       res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
@@ -1776,17 +1728,7 @@ app.get("/api/stream-ts", async (req, res) => {
       return;
 
     } catch (err: any) {
-      console.error(`Error proxying stream segment for ${targetUrl} (attempt ${attempt}/${maxAttempts}):`, err);
-
-      cachedSignature = null;
-      sigFetchTime = 0;
-
-      if (attempt < maxAttempts) {
-        console.log("Network error, forcing signature refresh and retrying stream segment query...");
-        await forceFetchVavooSignature().catch(() => {});
-        attempt++;
-        continue;
-      }
+      console.error(`Error proxying stream segment for ${targetUrl}:`, err.message);
 
       res.setHeader("Access-Control-Allow-Origin", "*");
       res.setHeader("Access-Control-Allow-Headers", "*");

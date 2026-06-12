@@ -269,9 +269,9 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
   }, [events, followedEvents]);
 
   return (
-    <div className="bg-[#050505] min-h-screen text-white pb-32">
+    <div className="bg-white min-h-screen text-gray-900 pb-32">
       {/* Premium Hero Banner with Adaptive Accents */}
-      <div className="relative pt-24 pb-12 px-6 md:px-12 border-b border-white/5 overflow-hidden">
+      <div className="relative pt-24 pb-12 px-6 md:px-12 border-b border-gray-200 overflow-hidden">
         <div className="absolute inset-0">
           <img 
             src="https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&q=80&w=2000" 
@@ -289,39 +289,39 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
           <div className="space-y-3">
             <div className="flex items-center gap-3">
               <div className="bg-gradient-to-tr from-[#FF7900] to-[#cc6000] p-2.5 rounded-2xl shadow-lg shadow-[#FF7900]/20">
-                <Trophy size={26} className="text-white animate-pulse" />
+                <Trophy size={26} className="text-gray-900 animate-pulse" />
               </div>
               <div>
                 <span className="text-[10px] font-black tracking-[0.25em] text-[#FF7900] uppercase block">NexTv Premium</span>
-                <h1 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter text-white font-display">
+                <h1 className="text-4xl md:text-5xl font-extrabold uppercase tracking-tighter text-gray-900 font-display">
                   Portail Sports
                 </h1>
               </div>
             </div>
-            <p className="text-neutral-400 max-w-xl text-base leading-relaxed font-medium">
+            <p className="text-gray-600 max-w-xl text-base leading-relaxed font-medium">
               Le meilleur de vos compétitions en direct : accédez à vos flux TV sportifs en 1 clic et suivez l'agenda des grands tournois de l'année 2026.
             </p>
           </div>
 
           {/* Core Navigation Sub-tabs */}
-          <div className="bg-neutral-900/80 p-1.5 rounded-2xl border border-white/5 flex gap-1 relative z-10 backdrop-blur-xl shrink-0">
+          <div className="bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200 flex gap-1 relative z-10 backdrop-blur-xl shrink-0">
             <button
               onClick={() => setSportsSubTab("live")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 ${
                 sportsSubTab === "live"
-                  ? "bg-[#FF7900] text-white shadow-lg shadow-[#FF7900]/25"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  ? "bg-[#FF7900] text-gray-900 shadow-lg shadow-[#FF7900]/25"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-black/5"
               }`}
             >
-              <Radio size={14} className={sportsSubTab === "live" ? "animate-pulse text-white" : "text-neutral-500"} />
+              <Radio size={14} className={sportsSubTab === "live" ? "animate-pulse text-gray-900" : "text-gray-500"} />
               En Direct ({activeSportsChannels.length})
             </button>
             <button
               onClick={() => setSportsSubTab("calendar")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 ${
                 sportsSubTab === "calendar"
-                  ? "bg-[#FF7900] text-white shadow-lg shadow-[#FF7900]/25"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  ? "bg-[#FF7900] text-gray-900 shadow-lg shadow-[#FF7900]/25"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-black/5"
               }`}
             >
               <CalendarDays size={14} />
@@ -331,14 +331,14 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
               onClick={() => setSportsSubTab("watchlist")}
               className={`flex items-center gap-2 px-5 py-3 rounded-xl font-bold uppercase tracking-wider text-[11px] transition-all duration-300 relative ${
                 sportsSubTab === "watchlist"
-                  ? "bg-[#FF7900] text-white shadow-lg shadow-[#FF7900]/25"
-                  : "text-neutral-400 hover:text-white hover:bg-white/5"
+                  ? "bg-[#FF7900] text-gray-900 shadow-lg shadow-[#FF7900]/25"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-black/5"
               }`}
             >
               <Bell size={14} />
               Suivis
               {watchlistEvents.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white font-extrabold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-neutral-950">
+                <span className="absolute -top-1 -right-1 bg-red-500 text-gray-900 font-extrabold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border-2 border-neutral-950">
                   {watchlistEvents.length}
                 </span>
               )}
@@ -361,7 +361,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
               className="space-y-8"
             >
               {/* Filter controls */}
-              <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-neutral-900/40 p-5 rounded-3xl border border-white/5 backdrop-blur-md">
+              <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-gray-100/40 p-5 rounded-3xl border border-gray-200 backdrop-blur-md">
                 {/* Search in Sport channels */}
                 <div className="relative w-full md:w-80">
                   <input 
@@ -369,9 +369,9 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                     value={liveSearchQuery}
                     onChange={(e) => setLiveSearchQuery(e.target.value)}
                     placeholder="Filtrer vos chaînes sportives..."
-                    className="w-full bg-[#0F0F0F] border border-white/10 hover:border-white/20 focus:border-[#FF7900] focus:bg-[#121212] rounded-2xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-neutral-500 text-sm text-white"
+                    className="w-full bg-[#0F0F0F] border border-gray-300 hover:border-white/20 focus:border-[#FF7900] focus:bg-[#121212] rounded-2xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-gray-500 text-sm text-gray-900"
                   />
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
                 </div>
 
                 {/* Micro logo quick filter */}
@@ -383,7 +383,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                       className={`px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all border ${
                         liveNetworkFilter === network 
                           ? "bg-[#FF7900]/15 border-[#FF7900]/30 text-[#FF7900]" 
-                          : "bg-transparent border-transparent text-neutral-400 hover:text-white hover:bg-white/5"
+                          : "bg-transparent border-transparent text-gray-600 hover:text-gray-900 hover:bg-black/5"
                       }`}
                     >
                       {network}
@@ -401,7 +401,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                       <div
                         key={channel.id}
                         onClick={() => onPlayChannel(channel)}
-                        className="group relative bg-[#0e0e0e] hover:bg-[#121212] border border-white/5 hover:border-[#FF7900]/40 rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl"
+                        className="group relative bg-gray-50 hover:bg-[#121212] border border-gray-200 hover:border-[#FF7900]/40 rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl"
                       >
                         {/* Glow effect on hover */}
                         <div className="absolute top-0 right-0 w-24 h-24 bg-[#FF7900]/5 rounded-full blur-xl pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -409,7 +409,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                         <div className="space-y-4">
                           {/* Channel Logo & Badging info */}
                           <div className="flex items-start justify-between">
-                            <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-white/5 flex items-center justify-center p-1.5 group-hover:scale-105 transition-transform duration-300 relative overflow-hidden shrink-0">
+                            <div className="w-14 h-14 rounded-2xl bg-gray-100 border border-gray-200 flex items-center justify-center p-1.5 group-hover:scale-105 transition-transform duration-300 relative overflow-hidden shrink-0">
                               <ChannelLogo 
                                 logo={channel.logo} 
                                 name={channel.name} 
@@ -419,7 +419,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
 
                             <div className="flex flex-col items-end gap-1 shrink-0">
                               {channel.qualityLabel && (
-                                <span className="bg-neutral-900 text-neutral-400 px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest uppercase border border-white/5 shadow">
+                                <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[8px] font-black tracking-widest uppercase border border-gray-200 shadow">
                                   {channel.qualityLabel}
                                 </span>
                               )}
@@ -431,17 +431,17 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
 
                           {/* Channel Name */}
                           <div>
-                            <h3 className="font-extrabold text-neutral-100 group-hover:text-white text-sm line-clamp-1 leading-tight tracking-tight">
+                            <h3 className="font-extrabold text-neutral-100 group-hover:text-gray-900 text-sm line-clamp-1 leading-tight tracking-tight">
                               {channel.name}
                             </h3>
-                            <span className="text-[10px] text-neutral-500 uppercase tracking-widest font-black block mt-0.5">
+                            <span className="text-[10px] text-gray-500 uppercase tracking-widest font-black block mt-0.5">
                               {channel.category || "Sports"}
                             </span>
                           </div>
 
                           {/* Live EPG Information */}
                           {epgActive ? (
-                            <div className="bg-[#050505] p-3 rounded-xl border border-white/5 space-y-1.5">
+                            <div className="bg-white p-3 rounded-xl border border-gray-200 space-y-1.5">
                               <span className="text-[9px] uppercase font-black text-[#FF7900] tracking-widest flex items-center gap-1.5">
                                 <Activity size={10} /> En Cours
                               </span>
@@ -449,13 +449,13 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                                 {channel.epg?.current?.title}
                               </p>
                               {/* Micro Timeline Indicator */}
-                              <div className="h-1 bg-neutral-900 rounded-full overflow-hidden">
+                              <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
                                 <div className="h-full bg-gradient-to-r from-[#FF7900] to-cyan-500 w-2/3 rounded-full" />
                               </div>
                             </div>
                           ) : (
-                            <div className="bg-[#050505]/40 p-2.5 rounded-xl border border-[#151515] text-center">
-                              <span className="text-[9px] text-neutral-500 uppercase tracking-wider font-semibold block">
+                            <div className="bg-white/40 p-2.5 rounded-xl border border-[#151515] text-center">
+                              <span className="text-[9px] text-gray-500 uppercase tracking-wider font-semibold block">
                                 Flux Live Actif ⚡
                               </span>
                             </div>
@@ -463,11 +463,11 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                         </div>
 
                         {/* Watch button inside card */}
-                        <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-neutral-400 group-hover:text-white text-xs">
+                        <div className="mt-4 pt-3 border-t border-gray-200 flex items-center justify-between text-gray-600 group-hover:text-gray-900 text-xs">
                           <span className="font-semibold text-[10px] uppercase tracking-widest group-hover:text-[#FF7900] transition-colors">
                             Lancer le flux
                           </span>
-                          <div className="w-7 h-7 rounded-lg bg-neutral-900 group-hover:bg-[#FF7900] group-hover:text-white flex items-center justify-center transition-all duration-300 border border-white/5">
+                          <div className="w-7 h-7 rounded-lg bg-gray-100 group-hover:bg-[#FF7900] group-hover:text-gray-900 flex items-center justify-center transition-all duration-300 border border-gray-200">
                             <Play size={12} fill="currentColor" strokeWidth={0} />
                           </div>
                         </div>
@@ -476,17 +476,17 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                   })}
                 </div>
               ) : (
-                <div className="py-24 flex flex-col items-center justify-center text-center border border-dashed border-white/5 rounded-3xl bg-neutral-900/10">
-                  <div className="w-20 h-20 bg-neutral-900 border border-white/10 rounded-2xl flex items-center justify-center mb-6 text-neutral-500">
+                <div className="py-24 flex flex-col items-center justify-center text-center border border-dashed border-gray-200 rounded-3xl bg-gray-100/10">
+                  <div className="w-20 h-20 bg-gray-100 border border-gray-300 rounded-2xl flex items-center justify-center mb-6 text-gray-500">
                     <Radio size={32} />
                   </div>
-                  <h3 className="text-xl font-black text-white mb-2">Aucune chaîne trouvée</h3>
-                  <p className="text-neutral-400 text-sm max-w-sm">
+                  <h3 className="text-xl font-black text-gray-900 mb-2">Aucune chaîne trouvée</h3>
+                  <p className="text-gray-600 text-sm max-w-sm">
                     Aucune chaîne sportive ne correspond à vos filtres de recherche. Veuillez modifier vos filtres.
                   </p>
                   <button 
                     onClick={() => { setLiveSearchQuery(""); setLiveNetworkFilter("Tous"); }}
-                    className="mt-6 px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold text-xs uppercase tracking-widest transition-all"
+                    className="mt-6 px-5 py-2.5 bg-black/10 hover:bg-white/20 rounded-xl text-gray-900 font-bold text-xs uppercase tracking-widest transition-all"
                   >
                     Réinitialiser les filtres
                   </button>
@@ -506,7 +506,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
               className="space-y-8"
             >
               {/* Dynamic Filter Header */}
-              <div className="flex flex-col lg:flex-row gap-6 justify-between lg:items-center bg-neutral-900/30 p-5 rounded-3xl border border-white/5 backdrop-blur-md">
+              <div className="flex flex-col lg:flex-row gap-6 justify-between lg:items-center bg-gray-100/30 p-5 rounded-3xl border border-gray-200 backdrop-blur-md">
                 {/* Search query */}
                 <div className="relative w-full lg:w-80 shrink-0">
                   <input 
@@ -514,14 +514,14 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                     value={eventSearchQuery}
                     onChange={(e) => setEventSearchQuery(e.target.value)}
                     placeholder="Equipe, pays, diffuseur..."
-                    className="w-full bg-[#0F0F0F] border border-white/10 hover:border-white/20 focus:border-[#FF7900] focus:bg-[#121212] rounded-2xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-neutral-500 text-sm text-white"
+                    className="w-full bg-[#0F0F0F] border border-gray-300 hover:border-white/20 focus:border-[#FF7900] focus:bg-[#121212] rounded-2xl py-3 pl-10 pr-4 outline-none transition-all placeholder:text-gray-500 text-sm text-gray-900"
                   />
-                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" size={16} />
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
                 </div>
 
                 {/* Sports Horizontal Rail */}
                 <div className="overflow-x-auto no-scrollbar pb-1 w-full flex gap-1.5">
-                  <span className="flex items-center gap-1.5 text-[10px] font-black text-neutral-500 uppercase tracking-widest mr-2 select-none border-r border-white/10 pr-4">
+                  <span className="flex items-center gap-1.5 text-[10px] font-black text-gray-500 uppercase tracking-widest mr-2 select-none border-r border-gray-300 pr-4">
                     <Filter size={12} /> Sports
                   </span>
                   {sports.filter(s => events.some(e => e.sport === s) || s === "Tous").map(s => (
@@ -530,8 +530,8 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                       onClick={() => setSelectedSport(s)}
                       className={`px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${
                         selectedSport === s 
-                          ? "bg-[#FF7900] text-white shadow-md shadow-[#FF7900]/10"
-                          : "bg-transparent text-neutral-400 hover:text-white hover:bg-white/5"
+                          ? "bg-[#FF7900] text-gray-900 shadow-md shadow-[#FF7900]/10"
+                          : "bg-transparent text-gray-600 hover:text-gray-900 hover:bg-black/5"
                       }`}
                     >
                       {s}
@@ -550,7 +550,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                       className={`px-5 py-3 rounded-2xl font-bold uppercase tracking-widest text-[10px] whitespace-nowrap transition-all duration-200 ${
                         !eventSearchQuery && activeMonth === m
                           ? "bg-white text-black shadow-lg shadow-white/10 scale-102"
-                          : "bg-[#0E0E0E] text-neutral-400 hover:text-white border border-white/5"
+                          : "bg-[#0E0E0E] text-gray-600 hover:text-gray-900 border border-gray-200"
                       }`}
                     >
                       {m}
@@ -570,7 +570,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                       <div
                         key={event.id}
                         onClick={() => handlePlayBroadcaster(event.broadcaster)}
-                        className="group relative flex flex-col bg-[#0e0e0e] border border-white/5 hover:border-[#FF7900]/40 rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 shadow-2xl h-[330px]"
+                        className="group relative flex flex-col bg-gray-50 border border-gray-200 hover:border-[#FF7900]/40 rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 shadow-2xl h-[330px]"
                       >
                         {/* Event Photo with gradients */}
                         <div className="absolute inset-0 w-full h-full overflow-hidden">
@@ -587,7 +587,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                         <div className="relative z-10 flex flex-col h-full justify-between p-5">
                           {/* Top row: Sport Tag & Notifications Flag */}
                           <div className="flex justify-between items-start gap-4">
-                            <span className="bg-white/10 backdrop-blur-xl px-2.5 py-1.5 rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest text-white shadow-xl">
+                            <span className="bg-black/10 backdrop-blur-xl px-2.5 py-1.5 rounded-xl border border-gray-300 text-[9px] font-black uppercase tracking-widest text-gray-900 shadow-xl">
                               {event.sport}
                             </span>
 
@@ -595,8 +595,8 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                               onClick={(e) => toggleFollow(event.id, e)}
                               className={`w-9 h-9 rounded-xl flex items-center justify-center backdrop-blur-md border transition-all ${
                                 isFollowed 
-                                  ? 'bg-[#FF7900] text-white border-[#FF7900] shadow-lg shadow-[#FF7900]/25' 
-                                  : 'bg-black/45 border-white/10 text-white hover:bg-black/80 hover:scale-105'
+                                  ? 'bg-[#FF7900] text-gray-900 border-[#FF7900] shadow-lg shadow-[#FF7900]/25' 
+                                  : 'bg-white/45 border-gray-300 text-gray-900 hover:bg-white/80 hover:scale-105'
                               }`}
                               title="Suivre cet événement"
                             >
@@ -612,18 +612,18 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                             </div>
 
                             {/* Title */}
-                            <h3 className="font-extrabold text-white text-lg leading-tight tracking-tight line-clamp-2 drop-shadow-md group-hover:text-amber-400 transition-colors">
+                            <h3 className="font-extrabold text-gray-900 text-lg leading-tight tracking-tight line-clamp-2 drop-shadow-md group-hover:text-amber-400 transition-colors">
                               {event.name}
                             </h3>
 
                             {/* Location tag */}
-                            <div className="flex items-center gap-1.5 text-neutral-400 text-[10px] font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-1.5 text-gray-600 text-[10px] font-bold uppercase tracking-wider">
                               <MapPin size={11} className="text-[#FF7900]" />
                               <span className="truncate">{event.location}</span>
                             </div>
 
                             {/* Match Play Badging & Channel Finder Sync */}
-                            <div className="pt-2 border-t border-white/5 flex items-center justify-between">
+                            <div className="pt-2 border-t border-gray-200 flex items-center justify-between">
                               {matchedChan ? (
                                 <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-1.5 rounded-xl">
                                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping shrink-0" />
@@ -632,14 +632,14 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                                   </span>
                                 </div>
                               ) : (
-                                <div className="bg-white/5 border border-white/10 text-neutral-300 px-2.5 py-1.5 rounded-xl">
+                                <div className="bg-black/5 border border-gray-300 text-gray-700 px-2.5 py-1.5 rounded-xl">
                                   <span className="text-[10px] font-black uppercase tracking-wide">
                                     Disponible sur {event.broadcaster}
                                   </span>
                                 </div>
                               )}
 
-                              <div className="w-8 h-8 rounded-full bg-[#FF7900] text-white flex items-center justify-center group-hover:scale-105 transition-all shadow-md">
+                              <div className="w-8 h-8 rounded-full bg-[#FF7900] text-gray-900 flex items-center justify-center group-hover:scale-105 transition-all shadow-md">
                                 <Play size={10} fill="currentColor" strokeWidth={0} />
                               </div>
                             </div>
@@ -650,17 +650,17 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                   })}
                 </div>
               ) : (
-                <div className="py-24 flex flex-col items-center justify-center text-center border border-dashed border-white/5 rounded-3xl bg-neutral-900/10">
-                  <div className="w-20 h-20 bg-neutral-900 border border-white/10 rounded-2xl flex items-center justify-center mb-6 text-neutral-500">
+                <div className="py-24 flex flex-col items-center justify-center text-center border border-dashed border-gray-200 rounded-3xl bg-gray-100/10">
+                  <div className="w-20 h-20 bg-gray-100 border border-gray-300 rounded-2xl flex items-center justify-center mb-6 text-gray-500">
                     <CalendarDays size={32} />
                   </div>
-                  <h3 className="text-xl font-black text-white mb-2">Aucun événement</h3>
-                  <p className="text-neutral-400 text-sm max-w-sm">
+                  <h3 className="text-xl font-black text-gray-900 mb-2">Aucun événement</h3>
+                  <p className="text-gray-600 text-sm max-w-sm">
                     Il n'y a aucun événement majeur prévu pour {activeMonth} dans ce sport.
                   </p>
                   <button 
                     onClick={() => { setEventSearchQuery(""); setSelectedSport("Tous"); setActiveMonth("Juin"); }}
-                    className="mt-6 px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white font-bold text-xs uppercase tracking-widest transition-all"
+                    className="mt-6 px-5 py-2.5 bg-black/10 hover:bg-white/20 rounded-xl text-gray-900 font-bold text-xs uppercase tracking-widest transition-all"
                   >
                     Réinitialiser les filtres
                   </button>
@@ -679,10 +679,10 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
               transition={{ duration: 0.2 }}
               className="space-y-6"
             >
-              <div className="bg-neutral-900/20 p-6 rounded-3xl border border-white/5 space-y-2">
+              <div className="bg-gray-100/20 p-6 rounded-3xl border border-gray-200 space-y-2">
                 <span className="text-[10px] font-black text-[#FF7900] uppercase tracking-[0.2em] block">Mes Alertes Compétitions</span>
                 <h2 className="text-2xl font-black uppercase tracking-tight">Vos Événements Suivis</h2>
-                <p className="text-neutral-500 text-sm">
+                <p className="text-gray-500 text-sm">
                   Retrouvez ici tous les grands événements sportifs que vous avez marqués pour recevoir des alertes de diffusion de match.
                 </p>
               </div>
@@ -695,7 +695,7 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                       <div
                         key={event.id}
                         onClick={() => handlePlayBroadcaster(event.broadcaster)}
-                        className="group relative flex flex-col bg-[#0e0e0e] border border-white/5 hover:border-[#FF7900]/40 rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 shadow-2xl h-[310px]"
+                        className="group relative flex flex-col bg-gray-50 border border-gray-200 hover:border-[#FF7900]/40 rounded-3xl overflow-hidden cursor-pointer transition-all duration-300 shadow-2xl h-[310px]"
                       >
                         <div className="absolute inset-0 w-full h-full overflow-hidden">
                           <img 
@@ -709,12 +709,12 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
 
                         <div className="relative z-10 flex flex-col h-full justify-between p-5">
                           <div className="flex justify-between items-start gap-4">
-                            <span className="bg-white/10 backdrop-blur-xl px-2.5 py-1.5 rounded-xl border border-white/10 text-[9px] font-black uppercase tracking-widest text-white">
+                            <span className="bg-black/10 backdrop-blur-xl px-2.5 py-1.5 rounded-xl border border-gray-300 text-[9px] font-black uppercase tracking-widest text-gray-900">
                               {event.sport}
                             </span>
                             <button 
                               onClick={(e) => toggleFollow(event.id, e)}
-                              className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#FF7900] text-white border border-[#FF7900] shadow-lg shadow-[#FF7900]/25"
+                              className="w-9 h-9 rounded-xl flex items-center justify-center bg-[#FF7900] text-gray-900 border border-[#FF7900] shadow-lg shadow-[#FF7900]/25"
                             >
                               <BellRing size={14} />
                             </button>
@@ -724,20 +724,20 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                             <div className="flex items-center gap-1.5 text-[#FF7900] font-black uppercase tracking-widest text-[9px]">
                               <Calendar size={11} /> {event.date}
                             </div>
-                            <h3 className="font-extrabold text-white text-base leading-tight tracking-tight line-clamp-2">
+                            <h3 className="font-extrabold text-gray-900 text-base leading-tight tracking-tight line-clamp-2">
                               {event.name}
                             </h3>
-                            <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                            <div className="flex items-center justify-between border-t border-gray-200 pt-2">
                               {matchedChan ? (
                                 <span className="text-[10.5px] font-bold text-emerald-400">
                                   🔴 En Direct sur {matchedChan.name}
                                 </span>
                               ) : (
-                                <span className="text-[11px] text-neutral-400">
+                                <span className="text-[11px] text-gray-600">
                                   Disponible sur {event.broadcaster}
                                 </span>
                               )}
-                              <div className="w-7 h-7 bg-[#FF7900] text-white rounded-full flex items-center justify-center">
+                              <div className="w-7 h-7 bg-[#FF7900] text-gray-900 rounded-full flex items-center justify-center">
                                 <Play size={10} fill="currentColor" strokeWidth={0} />
                               </div>
                             </div>
@@ -748,15 +748,15 @@ export function SportsCenter({ channels, onPlayChannel }: SportsCenterProps) {
                   })}
                 </div>
               ) : (
-                <div className="py-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-white/5 rounded-[2rem] bg-neutral-900/15 p-6">
+                <div className="py-20 flex flex-col items-center justify-center text-center border-2 border-dashed border-gray-200 rounded-[2rem] bg-gray-100/15 p-6">
                   <Bell size={40} className="text-neutral-600 mb-4 animate-bounce" />
-                  <p className="text-base font-extrabold text-white uppercase tracking-tight">Aucun événement suivi</p>
-                  <p className="text-neutral-500 text-xs max-w-sm mt-1">
+                  <p className="text-base font-extrabold text-gray-900 uppercase tracking-tight">Aucun événement suivi</p>
+                  <p className="text-gray-500 text-xs max-w-sm mt-1">
                     Parcourez le calendrier des grands matchs et cliquez sur la cloche pour suivre vos compétitions favorites.
                   </p>
                   <button 
                     onClick={() => setSportsSubTab("calendar")}
-                    className="mt-6 px-4 py-2 bg-[#FF7900] hover:bg-[#cc6000] rounded-xl text-white font-bold text-xs uppercase tracking-widest transition-all shadow-md shadow-[#FF7900]/10"
+                    className="mt-6 px-4 py-2 bg-[#FF7900] hover:bg-[#cc6000] rounded-xl text-gray-900 font-bold text-xs uppercase tracking-widest transition-all shadow-md shadow-[#FF7900]/10"
                   >
                     Explorer le Calendrier
                   </button>

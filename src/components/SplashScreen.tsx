@@ -16,7 +16,7 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.4, ease: "easeInOut" }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B0B0B]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-gray-100"
         >
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -46,7 +46,7 @@ export function SplashScreen({ onComplete }: { onComplete: () => void }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ delay: 0.2, duration: 0.4 }}
-              className="text-white font-black text-xl tracking-widest uppercase"
+              className="text-gray-900 font-black text-xl tracking-widest uppercase"
             >
               LIVE TV
             </motion.p>
