@@ -441,7 +441,13 @@ export default function App() {
   // Swapping active stream urls
   const getActiveStreamUrl = (channel: Channel): string => {
     if (channel.streamUrl) {
-      return channel.streamUrl;
+      if (channel.streamUrl.startsWith("/") || channel.streamUrl.includes(window.location.hostname)) {
+        return channel.streamUrl;
+      }
+      if (channel.streamUrl.toLowerCase().includes(".ts") && !channel.streamUrl.toLowerCase().includes(".m3u8")) {
+        return getApiUrl(`/api/stream-ts?url=${encodeURIComponent(channel.streamUrl)}`);
+      }
+      return getApiUrl(`/api/stream-playlist?url=${encodeURIComponent(channel.streamUrl)}`);
     }
     return getApiUrl(`/api/stream/${channel.id}/index.m3u8${channel.p ? `?p=${channel.p}` : ""}`);
   };

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Copy, Download, Plug, ExternalLink, PlaySquare, MonitorPlay, Tv, Rocket, Check, RefreshCw } from "lucide-react";
-import { getAppBaseUrl } from "../utils/urlHelper";
+import { getAppBaseUrl, getApiUrl } from "../utils/urlHelper";
 
 export function Integrations() {
   const [copiedApp, setCopiedApp] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export function Integrations() {
   const generateShortUrl = async (url: string, setShortUrl: (u: string) => void, setLoading: (l: boolean) => void) => {
     setLoading(true);
     try {
-      const resp = await fetch(`/api/shorten?url=${encodeURIComponent(url)}`);
+      const resp = await fetch(getApiUrl(`/api/shorten?url=${encodeURIComponent(url)}`));
       if (resp.ok) {
         const data = await resp.json();
         if (data && data.shortUrl) {

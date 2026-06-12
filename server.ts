@@ -1515,8 +1515,9 @@ async function handlePlaylistProxy(targetUrl: string, req: express.Request, res:
   const maxAttempts = 2;
 
   // Build the absolute backend API server URL (crucial for remote clients like GitHub Pages or Smart TVs)
-  const scheme = req.headers["x-forwarded-proto"] || req.protocol;
-  const host = req.headers["x-forwarded-host"] || req.get("host");
+  const host = req.headers["x-forwarded-host"] || req.get("host") || "";
+  const isLocal = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("0.0.0.0");
+  const scheme = isLocal ? (req.headers["x-forwarded-proto"] || req.protocol) : "https";
   const baseApiUrl = `${scheme}://${host}`;
 
   while (attempt <= maxAttempts) {
@@ -1884,7 +1885,10 @@ app.get("/stream/tv/:id", async (req, res) => {
   const paramId = req.params.id;
   const channelId = paramId.replace(".json", "").replace("vavoo_", "");
   try {
-    const streamUrlPath = `${req.protocol}://${req.get('host')}/api/stream/${channelId}/index.m3u8`;
+    const host = req.get('host') || "";
+    const isLocal = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("0.0.0.0");
+    const scheme = isLocal ? req.protocol : "https";
+    const streamUrlPath = `${scheme}://${host}/api/stream/${channelId}/index.m3u8`;
     res.json({ streams: [{ title: "Live", url: streamUrlPath }] });
   } catch (err) {
     res.json({ streams: [] });
