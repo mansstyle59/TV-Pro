@@ -23,7 +23,7 @@ export const ChannelLogo: React.FC<ChannelLogoProps> = ({
 
   // Generate elegant channel initials for fallback (e.g. TF1 -> TF1, France 2 -> FR2)
   const initials = useMemo(() => {
-    let clean = name.trim();
+    let clean = (name || "").trim();
     
     // Remove "FR |", "FR:", "HD -", etc.
     clean = clean.replace(/^(FR\s*[:|\-]*\s*|FRANCE\s+|FRANCE\s+)/i, "");

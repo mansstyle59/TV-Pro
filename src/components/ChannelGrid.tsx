@@ -27,15 +27,15 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
         </div>
       </div>
       
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
         {channels.map((channel, index) => {
           const isSelected = selectedChannelId === channel.id;
           return (
             <motion.div
               key={channel.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.01 }}
+              initial={{ opacity: 0, scale: 0.95, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ delay: Math.min(0.2, index * 0.012), ease: "easeOut" }}
               onClick={() => onChannelSelect(channel)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -45,19 +45,26 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
               }}
               role="button"
               tabIndex={0}
-              className={`cursor-pointer aspect-square relative group bg-gray-100 border overflow-hidden rounded-xl transition-all flex flex-col items-center justify-center p-3 sm:p-5 hover:scale-110 active:scale-95 duration-500 shadow-xl outline-hidden ${
+              className={`cursor-pointer aspect-[4/5] relative group bg-white hover:bg-white border overflow-hidden rounded-2xl transition-all flex flex-col items-center justify-between p-3 hover:scale-105 active:scale-95 duration-300 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.06)] outline-none select-none ${
                 isSelected 
-                  ? "border-brand-500 ring-4 ring-brand-500/10 shadow-2xl shadow-brand-500/20" 
-                  : "border-gray-200 hover:border-white/20"
+                  ? "border-[#FF7900] ring-2 ring-[#FF7900]/15 shadow-[0_16px_32px_-12px_rgba(255,121,0,0.22)]" 
+                  : "border-gray-200/70 hover:border-gray-300 hover:shadow-[0_18px_36px_-12px_rgba(255,121,0,0.12)]"
               }`}
             >
-              {/* Background Glow on Hover */}
-              <div className="absolute inset-0 bg-linear-to-br from-brand-500/0 to-brand-500/0 group-hover:from-brand-500/5 group-hover:to-brand-500/10 transition-all duration-700" />
+              {/* Subtle visual gradient background on hover */}
+              <div className="absolute inset-0 bg-gradient-to-b from-[#FF7900]/0 to-[#FF7900]/0 group-hover:from-transparent group-hover:to-[#FF7900]/[0.025] transition-all duration-300 pointer-events-none" />
               
-              <div className="w-full h-full relative z-10 flex items-center justify-center transition-transform duration-500 group-hover:scale-110">
-                 <ChannelLogo logo={channel.logo} name={channel.name} className="w-full h-full object-contain filter group-hover:brightness-125 transition-all duration-300 drop-shadow-lg" />
-              </div>
-              
+              {/* Quality Label Badge */}
+              {channel.qualityLabel && (
+                 <div className="absolute top-1.5 right-1.5 z-20 scale-90 sm:scale-100">
+                    <span className={`text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded-md shadow-sm border border-black/5 ${
+                      channel.qualityLabel.includes('SD') ? 'bg-orange-500 text-white' : 'bg-emerald-600 text-white'
+                    }`}>
+                       {channel.qualityLabel}
+                    </span>
+                 </div>
+              )}
+
               {/* Technical Info Button 'i' */}
               {onShowInfo && (
                 <button
@@ -66,35 +73,33 @@ export const ChannelGrid: React.FC<ChannelGridProps> = ({ title, channels, onCha
                     e.preventDefault();
                     onShowInfo(channel);
                   }}
-                  className="absolute top-1 left-1 sm:top-2 sm:left-2 z-30 p-1 bg-gray-50/80 hover:bg-[#FF7900] text-gray-900 rounded-lg border border-gray-300 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-75 group-hover:scale-100 shadow-xl"
+                  className="absolute top-1.5 left-1.5 z-30 p-1 bg-white/95 hover:bg-[#FF7900] hover:text-white text-gray-800 rounded-lg border border-gray-200 backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110 shadow-sm cursor-pointer"
                   title="Détails techniques du flux"
                 >
-                  <Info size={10} className="sm:w-3 sm:h-3 text-gray-900" />
+                  <Info size={11} />
                 </button>
               )}
 
-              {/* Hover Badge - Glassmorphic */}
-              <div className="absolute inset-x-0 bottom-2 px-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0 duration-500 z-20">
-                 <div className="bg-white/80 backdrop-blur-xl py-1 rounded-full text-center border border-gray-300 shadow-2xl">
-                    <span className="text-[7px] md:text-[9px] font-black text-gray-900 uppercase tracking-tighter truncate block px-2">
-                       {channel.name}
-                    </span>
-                 </div>
+              {/* Centered spacious Logo wrapper */}
+              <div className="w-full flex-1 flex items-center justify-center p-2 transition-transform duration-300 group-hover:scale-105">
+                 <ChannelLogo 
+                   logo={channel.logo} 
+                   name={channel.name} 
+                   className="w-full h-full object-contain filter group-hover:brightness-105" 
+                   containerClassName="w-16 h-16 sm:w-20 sm:h-20 max-w-full max-h-full bg-transparent p-0 ring-0 shadow-none border-0"
+                 />
               </div>
 
-              {/* Quality Label - Refined */}
-              {channel.qualityLabel && (
-                 <div className="absolute top-1 right-1 sm:top-2 sm:right-2 z-20">
-                    <span className={`text-[6px] sm:text-[8px] font-black px-1.5 sm:px-2 py-0.5 rounded-md shadow-2xl border border-gray-300 ${
-                      channel.qualityLabel.includes('SD') ? 'bg-orange-500/90 text-gray-900' : 'bg-emerald-500/90 text-gray-900'
-                    }`}>
-                       {channel.qualityLabel}
-                    </span>
-                 </div>
-              )}
+              {/* Fixed Bottom Label Area */}
+              <div className="w-full text-center mt-1 sm:mt-2 pt-1 sm:pt-1.5 border-t border-gray-100/70 shrink-0">
+                 <span className="text-[9px] sm:text-[10.5px] font-extrabold text-gray-800 uppercase tracking-tighter truncate block px-0.5 group-hover:text-[#FF7900] transition-colors duration-200">
+                    {channel.name}
+                 </span>
+              </div>
 
+              {/* Pulse Active Dot */}
               {isSelected && (
-                <div className="absolute top-3 right-3 w-2 h-2 bg-brand-500 rounded-full shadow-[0_0_12px_#FF7900] animate-pulse z-30" />
+                <div className="absolute top-2.5 right-2 sm:right-2.5 w-1.5 h-1.5 bg-[#FF7900] rounded-full shadow-[0_0_8px_#FF7900] animate-pulse z-30" />
               )}
             </motion.div>
           );

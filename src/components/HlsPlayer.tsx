@@ -15,6 +15,7 @@ import {
   Tv, 
   AlertCircle, 
   Lock,
+  Unlock,
   RefreshCw, 
   Volume2, 
   VolumeX, 
@@ -42,8 +43,14 @@ import {
   Smartphone,
   Zap,
   Sliders,
-  Activity
+  Activity,
+  Calendar,
+  CalendarDays
 } from "lucide-react";
+import { ChannelLogo } from "./ChannelLogo";
+import { EpgProgramme } from "../types";
+import { generateFallbackEpg } from "../utils/fallbackEpg";
+import { formatEpgTime, getEpgProgress } from "../utils/epgUtils";
 
 interface HlsPlayerProps {
   url: string;
@@ -59,6 +66,7 @@ interface HlsPlayerProps {
   fullViewport?: boolean;
   onPiPLeave?: (isClosedAndPaused: boolean) => void;
   onPiPEnter?: () => void;
+  channelLogo?: string;
 }
 
 export function HlsPlayer({ 
@@ -74,7 +82,8 @@ export function HlsPlayer({
   onToggleFavorite,
   fullViewport = false,
   onPiPLeave,
-  onPiPEnter
+  onPiPEnter,
+  channelLogo
 }: HlsPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -87,7 +96,87 @@ export function HlsPlayer({
   const [isMuted, setIsMuted] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [lastActivity, setLastActivity] = useState(Date.now());
-  
+  const [isLocked, setIsLocked] = useState(false);
+
+  // Integrated EPG states
+  const [showEpgOverlay, setShowEpgOverlay] = useState(false);
+  const [epgProgrammes, setEpgProgrammes] = useState<EpgProgramme[]>([]);
+  const [selectedEpgProg, setSelectedEpgProg] = useState<EpgProgramme | null>(null);
+  const [epgLoading, setEpgLoading] = useState(false);
+
+  // Load EPG inside player
+  useEffect(() => {
+    if (!channelName) return;
+    
+    let isMounted = true;
+    const fetchPlayerEpg = async (isSilent = false) => {
+      if (!isSilent) setEpgLoading(true);
+      try {
+        const resp = await fetch(`/api/epg/${encodeURIComponent(channelName)}`);
+        if (!resp.ok) throw new Error("API Offline");
+        const data = await resp.json();
+        
+        if (isMounted) {
+          if (data.success && Array.isArray(data.programmes) && data.programmes.length > 0) {
+            setEpgProgrammes(data.programmes);
+            // set current active show as selected
+            const now = Date.now();
+            const active = data.programmes.find((p: any) => {
+              const s = new Date(p.start).getTime();
+              const e = new Date(p.stop).getTime();
+              return now >= s && now <= e;
+            });
+            setSelectedEpgProg(active || data.programmes[0] || null);
+          } else {
+            const fallback = generateFallbackEpg(channelName);
+            setEpgProgrammes(fallback);
+            const now = Date.now();
+            const active = fallback.find(p => {
+              const s = new Date(p.start).getTime();
+              const e = new Date(p.stop).getTime();
+              return now >= s && now <= e;
+            });
+            setSelectedEpgProg(active || fallback[0] || null);
+          }
+        }
+      } catch (err) {
+        console.warn("Player EPG fetch fallback:", err);
+        if (isMounted) {
+          const fallback = generateFallbackEpg(channelName);
+          setEpgProgrammes(fallback);
+          const now = Date.now();
+          const active = fallback.find(p => {
+            const s = new Date(p.start).getTime();
+            const e = new Date(p.stop).getTime();
+            return now >= s && now <= e;
+          });
+          setSelectedEpgProg(active || fallback[0] || null);
+        }
+      } finally {
+        if (isMounted) setEpgLoading(false);
+      }
+    };
+
+    fetchPlayerEpg();
+    
+    // Refresh every 45s silently to keep timings aligned
+    const timer = setInterval(() => {
+      fetchPlayerEpg(true);
+    }, 45000);
+
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [channelName]);
+
+  // YouTube / Premium VOD seek & layout states
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [playPulse, setPlayPulse] = useState<{ show: boolean; type: "play" | "pause" } | null>(null);
+
+
   // Custom Settings
   const [levels, setLevels] = useState<{ id: number; height: number; bitrate: number }[]>([]);
   const [premiumBufferBoost, setPremiumBufferBoost] = useState<boolean>(() => {
@@ -755,18 +844,80 @@ export function HlsPlayer({
     return () => clearTimeout(timeout);
   };
 
+  // Human Time Formatter (YouTube VOD style)
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds) || !isFinite(seconds)) return "00:00";
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    
+    if (h > 0) {
+      return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+    }
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // Scroll to adjust volume (YouTube premium desktop experience)
+  const handleWheel = (e: React.WheelEvent) => {
+    if (isLocked) return;
+    e.stopPropagation();
+    const delta = e.deltaY;
+    const adjustment = delta > 0 ? -0.05 : 0.05;
+    const newVol = Math.max(0.0, Math.min(1.0, volume + adjustment));
+    handleVolumeChange(newVol);
+    flashHUD(`Volume ${Math.round(newVol * 100)}%`);
+  };
+
+  // Video progress bar click to seek (For both VOD and live buffering duration)
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const timeline = timelineRef.current;
+    const video = videoRef.current;
+    if (!timeline || !video) return;
+
+    const rect = timeline.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickRatio = Math.max(0, Math.min(1, clickX / rect.width));
+
+    const isLive = duration === 0 || duration === Infinity || !isFinite(duration);
+
+    if (!isLive) {
+      const targetTime = clickRatio * duration;
+      video.currentTime = targetTime;
+      setCurrentTime(targetTime);
+      flashHUD(formatTime(targetTime));
+    } else {
+      const buffered = video.buffered;
+      if (buffered && buffered.length > 0) {
+        const start = buffered.start(0);
+        const end = buffered.end(buffered.length - 1);
+        const range = end - start;
+        const targetTime = start + clickRatio * range;
+        video.currentTime = targetTime;
+        flashHUD(`Direct: -${Math.round(end - targetTime)}s`);
+      }
+    }
+  };
+
   const togglePlay = () => {
     const video = videoRef.current;
     if (video) {
       if (video.paused) {
         video.play().catch(() => {});
+        setPlayPulse({ show: true, type: "play" });
         flashHUD("Lecture");
       } else {
         video.pause();
+        setPlayPulse({ show: true, type: "pause" });
         flashHUD("Pause");
       }
       setIsPlaying(!video.paused);
       handleMouseMove();
+
+      // Translucent ripple feedback fadeout (600ms)
+      setTimeout(() => {
+        setPlayPulse(null);
+      }, 600);
     }
   };
 
@@ -881,6 +1032,8 @@ export function HlsPlayer({
 
   const handleVideoTouch = (e: React.MouseEvent<HTMLVideoElement>) => {
     e.stopPropagation();
+    handleMouseMove();
+    if (isLocked) return;
     const video = videoRef.current;
     if (!video) return;
 
@@ -911,6 +1064,7 @@ export function HlsPlayer({
   };
 
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isLocked) return;
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     const rect = containerRef.current?.getBoundingClientRect();
@@ -930,6 +1084,7 @@ export function HlsPlayer({
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (isLocked) return;
     const drag = dragStartRef.current;
     if (!drag.type || e.touches.length !== 1) return;
     const touch = e.touches[0];
@@ -1044,20 +1199,46 @@ export function HlsPlayer({
     }
   };
 
+  // Sync playback rate to video element
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackRate;
+    }
+  }, [playbackRate]);
+
+  const isLive = duration === 0 || duration === Infinity || !isFinite(duration);
+  const progressPercent = isLive ? liveTiming.percent : (duration > 0 ? (currentTime / duration) * 100 : 0);
+
+  // Find currently running EPG program to feed our modern minimalist EPG info block
+  const activeProgramme = epgProgrammes.find(p => {
+    const now = Date.now();
+    const s = new Date(p.start).getTime();
+    const e = new Date(p.stop).getTime();
+    return now >= s && now <= e;
+  }) || (selectedEpgProg || (programTitle && programTitle !== "Émission en direct" ? { title: programTitle, desc: programDesc, start: new Date(Date.now() - 1800000).toISOString(), stop: new Date(Date.now() + 1800000).toISOString(), category: "Direct", image: programImage } : null));
+
   return (
     <div 
       ref={containerRef}
       onMouseMove={handleMouseMove}
+      onWheel={handleWheel}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       className={`relative w-full bg-black overflow-hidden group touch-none select-none transition-all duration-500 ${
         fullViewport ? "h-full" : "aspect-video shadow-[0_32px_64px_-16px_rgba(0,0,0,1)] border border-white/10"
       } ${isFullscreen ? "h-screen w-screen" : (fullViewport ? "" : "rounded-xl sm:rounded-2xl")}`}
+      style={{
+        cursor: showControls ? "default" : "none"
+      }}
     >
       <video
         ref={videoRef}
         onClick={handleVideoTouch}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          toggleFullscreen();
+        }}
         className="w-full h-full cursor-pointer transition-opacity duration-700"
         style={{ 
           objectFit: objectFit, 
@@ -1070,6 +1251,8 @@ export function HlsPlayer({
         onPlaying={() => { setIsPlaying(true); setLoading(false); }}
         onCanPlay={() => setLoading(false)}
         onLoadedData={() => setLoading(false)}
+        onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+        onDurationChange={(e) => setDuration(e.currentTarget.duration)}
         playsInline
         x-webkit-airplay="allow"
         preload="auto"
@@ -1205,6 +1388,25 @@ export function HlsPlayer({
         </div>
       )}
 
+      {/* Centered Circular Translucent Play/Pause Action Ripple Overlay */}
+      <AnimatePresence>
+        {playPulse && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.6 }}
+            animate={{ opacity: [0, 1, 1, 0], scale: [0.6, 1.2, 1.2, 1.6] }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 bg-black/65 backdrop-blur-[4px] rounded-full border border-white/25 flex items-center justify-center pointer-events-none z-30 shadow-2xl shadow-black/80"
+          >
+            {playPulse.type === "play" ? (
+              <Play fill="#fff" className="text-white ml-1.5" size={30} />
+            ) : (
+              <Pause fill="#fff" className="text-white" size={30} />
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* HUD Message Overlay for generic actions (Play, Pause, Mute) */}
       <AnimatePresence>
         {hudMessage && (
@@ -1219,129 +1421,7 @@ export function HlsPlayer({
         )}
       </AnimatePresence>
 
-      {/* Top Bar Controls */}
-      <AnimatePresence>
-        {showControls && (
-          <motion.div 
-            initial={{ opacity: 0, y: -25 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -25 }}
-            className="absolute top-0 inset-x-0 p-4 pt-6 md:p-6 md:pt-8 bg-gradient-to-b from-black/90 via-black/40 to-transparent z-40 flex items-start justify-between"
-          >
-            <div className="flex items-center gap-3 md:gap-4 max-w-[70%]">
-               {onBack && (
-                 <button 
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     onBack();
-                   }}
-                   className="flex items-center gap-1.5 px-3 py-1.5 md:px-3.5 md:py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-gray-50 border border-white/10 hover:border-white/20 rounded-full transition-all duration-200 backdrop-blur-md text-sm font-black uppercase tracking-wider active:scale-95 select-none"
-                   title="Quitter le lecteur"
-                 >
-                   <ChevronLeft size={14} className="text-gray-400" />
-                   <span className="hidden sm:inline">Quitter</span>
-                 </button>
-               )}
 
-               {onMenuTV && (
-                 <button 
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     onMenuTV();
-                   }}
-                   className="flex items-center gap-2 px-3.5 py-1.5 md:px-4 md:py-2 bg-gradient-to-r from-neutral-900/95 to-black/95 border border-[#3b82f6]/40 hover:border-[#3b82f6]/80 text-gray-50 font-black text-sm uppercase tracking-widest rounded-full transition-all duration-300 shadow-xl shadow-[#3b82f6]/5 hover:shadow-[#3b82f6]/15 hover:scale-[1.03] active:scale-95 select-none backdrop-blur-md group"
-                   title="Menu TV (Liste des chaînes)"
-                 >
-                   <Tv size={13} className="text-[#3b82f6] group-hover:rotate-12 transition-transform duration-300" />
-                   <span>Menu TV</span>
-                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_#10b981]" />
-                 </button>
-               )}
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm md:text-lg font-bold text-gray-50 tracking-tight leading-none">{channelName}</h3>
-                <div className="flex items-center gap-1 bg-red-500 px-1.5 py-0.5 rounded-[4px] shadow-lg shadow-red-500/20">
-                  <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
-                  <span className="text-sm font-black uppercase tracking-widest text-gray-50">Live</span>
-                </div>
-              </div>
-              {programTitle && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setInfoDrawerTab("program");
-                    setShowInfoPanel(!showInfoPanel);
-                  }}
-                  className="text-sm text-gray-50/50 hover:text-gray-50 flex items-center gap-1 transition-colors mt-1 text-left font-medium uppercase tracking-tight"
-                >
-                  <span>{programTitle}</span>
-                  <Info size={10} className="text-gray-50/30" />
-                </button>
-              )}
-            </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Intelligent Stream Refresh/Reconnect Button */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setReloadKey(prev => prev + 1);
-                  flashHUD("Reconnexion au flux...");
-                }} 
-                className="p-2.5 bg-white/5 border border-white/10 hover:bg-[#18181b] text-gray-400 hover:text-[#3b82f6] rounded-full transition-all duration-200 backdrop-blur-md active:scale-95"
-                title="Actualiser / Reconnecter le flux en direct"
-              >
-                <RefreshCw size={18} className={loading ? "animate-spin text-[#3b82f6]" : "text-gray-400 hover:text-[#3b82f6]"} />
-              </button>
-
-              {/* Information & Shortcuts Panel Trigger */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setInfoDrawerTab("program");
-                  setShowInfoPanel(!showInfoPanel);
-                }} 
-                className={`p-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full transition-all duration-200 backdrop-blur-md ${showInfoPanel ? "bg-white/10 border-white/25" : ""}`}
-                title="Détails de l'émission et Raccourcis"
-              >
-                <HelpCircle size={18} className="text-gray-400 hover:text-gray-50" />
-              </button>
-
-              {onToggleFavorite && (
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleFavorite();
-                    flashHUD(isFavorite ? "Supprimé des favoris" : "Ajouté aux favoris");
-                  }} 
-                  className="p-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full transition-all duration-200 backdrop-blur-md group/fav"
-                >
-                  <Heart 
-                    size={18} 
-                    fill={isFavorite ? "currentColor" : "none"} 
-                    className={`transition-transform duration-200 ${isFavorite ? "text-gray-50 scale-110" : "text-gray-400 group-hover/fav:scale-105"}`} 
-                  />
-                </button>
-              )}
-              
-              <button 
-                onClick={handleNativeCast}
-                className={`p-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-full transition-all duration-200 backdrop-blur-md relative google-cast-launcher ${isCasting ? "bg-[#3b82f6]/10 border-[#3b82f6]/30 text-gray-50 shadow-lg" : ""}`}
-                title="Caster sur votre TV"
-              >
-                <Cast 
-                  size={18} 
-                  className={`transition-colors duration-200 ${isCasting ? "text-[#3b82f6]" : "text-gray-400 hover:text-gray-50"}`} 
-                />
-                {isCasting && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#3b82f6] rounded-full animate-pulse border border-black" />
-                )}
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Info & Program Details Sidebar */}
       <AnimatePresence>
@@ -1435,52 +1515,84 @@ export function HlsPlayer({
         )}
       </AnimatePresence>
 
-      {/* Real-time Transmission Diagnostic Overlay HUD */}
+      {/* Real-time Transmission Diagnostic Overlay HUD - Stats for Nerds */}
       <AnimatePresence>
         {showStats && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, x: 20 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute top-20 right-6 bg-[#27272a]/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-4.5 z-40 shadow-2xl space-y-2 font-mono text-xs text-gray-400 w-52 pointer-events-none select-none text-left"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-24 left-6 bg-black/85 backdrop-blur-md border border-white/15 rounded-lg p-4 z-40 shadow-2xl font-mono text-[11px] text-gray-300 w-72 pointer-events-auto select-text text-left border-l-4 border-l-red-600"
           >
-            <div className="flex items-center gap-1.5 border-b border-white/10 pb-1.5 mb-1 text-gray-50">
-              <Activity size={10} className="text-[#3b82f6]" />
-              <span className="font-bold uppercase tracking-wider">DIAGNOSTIC DU SIGNAL</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Flux Codec :</span>
-              <span className="text-gray-50 font-semibold truncate max-w-[100px]">{streamStats.codec}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Qualité Active :</span>
-              <span className="text-[#3b82f6] font-semibold">
-                {currentLevel === -1 
-                  ? `${levels[0]?.height ? levels[0].height + 'p' : 'Auto'}` 
-                  : `${levels.find(l => l.id === currentLevel)?.height || 'Indéterminée'}p`}
+            <div className="flex items-center justify-between border-b border-white/10 pb-1.5 mb-2">
+              <span className="font-extrabold text-white tracking-wider text-[10px] uppercase flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse" />
+                Stats for Nerds
               </span>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowStats(false);
+                  flashHUD("Stats fermées");
+                }}
+                className="text-gray-400 hover:text-white transition-colors uppercase font-bold text-[9px] px-1.5 py-0.5 bg-white/10 hover:bg-white/20 rounded cursor-pointer"
+              >
+                Fermer
+              </button>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Débit estimé :</span>
-              <span className="text-emerald-400 font-semibold">
-                {streamStats.bitrate ? `${(streamStats.bitrate / 1000000).toFixed(2)} Mbps` : "Auto-adaptation"}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Buffer Mémoire :</span>
-              <span className="text-amber-400 font-semibold">{streamStats.buffer}s</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Fluidité FPS :</span>
-              <span className="text-gray-50 font-semibold">{streamStats.fps} i/s</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Pertes images :</span>
-              <span className="text-red-400 font-semibold">{streamStats.droppedFrames}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Délai Latence :</span>
-              <span className="text-gray-400">{streamStats.latency}s</span>
+            
+            <div className="space-y-1.5 leading-snug">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Stream Host:</span>
+                <span className="text-[#0fa] truncate max-w-[150px]" title={url}>{url ? new URL(url).hostname : "Inconnu"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Video Quality:</span>
+                <span className="text-white">
+                  {currentLevel === -1 
+                    ? `${levels[0]?.height ? levels[0].height + 'p (Auto)' : 'Auto'}` 
+                    : `${levels.find(l => l.id === currentLevel)?.height || 'Indéterminée'}p`}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Connection Speed:</span>
+                <span className="text-[#3b82f6]">
+                  {streamStats.bitrate ? `${(streamStats.bitrate / 1000000).toFixed(2)} Mbps` : "En calcul..."}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Buffer Health:</span>
+                <span className="text-amber-400 flex items-center gap-1.5">
+                  <span>{streamStats.buffer}s</span>
+                  {/* Mini visual buffer bar */}
+                  <span className="inline-block w-12 h-1.5 bg-white/15 rounded-full overflow-hidden font-sans">
+                    <span 
+                      className="block h-full bg-amber-400 rounded-full" 
+                      style={{ width: `${Math.min(100, (streamStats.buffer / 25) * 100)}%` }}
+                    />
+                  </span>
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Active Codecs:</span>
+                <span className="text-white truncate max-w-[130px]">{streamStats.codec}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Display FPS:</span>
+                <span className="text-white">{streamStats.fps} frames/sec</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Dropped Frames:</span>
+                <span className="text-red-400">{streamStats.droppedFrames}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Latency Delay:</span>
+                <span className="text-gray-400 font-semibold">{streamStats.latency}s</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Playback Rate:</span>
+                <span className="text-[#0fa]">{playbackRate}x</span>
+              </div>
             </div>
           </motion.div>
         )}
@@ -1506,16 +1618,35 @@ export function HlsPlayer({
         )}
       </AnimatePresence>
 
-      {/* Settings Panel (Resolution Selector and Crop Aspect Ratio) */}
+      {/* Settings Panel (Resolution Selector, Playback Rate, Contrast and Crop Aspect Ratio) */}
       <AnimatePresence>
         {showSettings && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="absolute bottom-20 right-4 md:right-8 w-72 bg-[#0f1724]/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 z-50 shadow-2xl space-y-4 max-h-[80vh] overflow-y-auto scrollbar-thin"
+            className="absolute bottom-20 right-4 md:right-8 w-72 bg-neutral-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 z-50 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto scrollbar-thin select-none"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Playback speed selector (YouTube Style) */}
+            <div>
+              <h4 className="text-[11px] font-black uppercase text-gray-400 mb-2 tracking-widest font-sans text-left">Vitesse de lecture</h4>
+              <div className="grid grid-cols-4 gap-1 p-1 bg-white/5 rounded-xl border border-white/10">
+                {[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((rate) => (
+                  <button
+                    key={rate}
+                    onClick={() => {
+                      setPlaybackRate(rate);
+                      flashHUD(`Vitesse: ${rate === 1.0 ? "Normale" : rate + "x"}`);
+                    }}
+                    className={`text-[10px] font-black py-1.5 rounded-lg transition-all cursor-pointer ${playbackRate === rate ? "bg-red-600 text-gray-50 border border-red-500/30 shadow" : "text-gray-400 hover:text-gray-50 hover:bg-white/5"}`}
+                  >
+                    {rate === 1.0 ? "Normal" : `${rate}x`}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <h4 className="text-sm font-bold uppercase text-gray-400 mb-2 tracking-widest font-sans text-left">Optimisation Premium</h4>
               <button
@@ -1891,155 +2022,334 @@ export function HlsPlayer({
              initial={{ opacity: 0 }}
              animate={{ opacity: 1 }}
              exit={{ opacity: 0 }}
-             className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none"
+             className="absolute inset-0 flex items-center justify-center z-30 pointer-events-none bg-black/20 backdrop-blur-sm"
            >
-             <div className="w-14 h-14 rounded-full border-4 border-white/10 border-t-red-600 animate-spin" />
-             <span className="absolute mt-24 text-sm font-black text-gray-50/50 uppercase tracking-widest drop-shadow-md">Chargement</span>
+             <div className="w-14 h-14 rounded-full border-4 border-white/10 border-t-[#00a8e1] animate-spin" />
+             <span className="absolute mt-24 text-sm font-bold text-white/60 uppercase tracking-widest drop-shadow-md">Denden<span className="text-[#00a8e1]">TV</span></span>
            </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Control Overlay Strip on Bottom */}
+      {/* Floating Lock Safety overlay when screen is locked */}
       <AnimatePresence>
-        {showControls && (
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 15 }}
-            className="absolute bottom-0 inset-x-0 p-4 md:p-6 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-40"
-            onClick={(e) => e.stopPropagation()}
+        {isLocked && showControls && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsLocked(false);
+              flashHUD("Contrôles Déverrouillés 🔓");
+            }}
+            className="absolute bottom-6 left-6 z-50 p-3.5 bg-red-600 hover:bg-[#00a8e1] hover:scale-110 text-white rounded-full border-2 border-white/20 active:scale-95 transition-all shadow-[0_8px_24px_-4px_rgba(239,68,68,0.6)] cursor-pointer"
+            title="Déverrouiller l'écran"
           >
-            {/* Premium Seamless Timeline */}
-            <div className="w-full relative px-2 sm:px-4 mb-2 group/timeline">
-              <div className="w-full h-[3px] group-hover/timeline:h-[5px] bg-white/20 relative cursor-pointer transition-all duration-200 shadow-inner overflow-visible">
-                <div 
-                  className="absolute top-0 bottom-0 left-0 bg-white/40 origin-left transition-all duration-300"
-                  style={{ width: `${Math.min(100, liveTiming.percent + 5)}%` }} // simulated buffer
-                />
-                <div 
-                  className="absolute top-0 bottom-0 left-0 bg-[#e2001a] origin-left transition-all duration-300 shadow-[0_0_10px_rgba(226,0,26,0.8)]" 
-                  style={{ width: `${liveTiming.percent}%` }}
-                />
-                <div 
-                  className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full opacity-0 group-hover/timeline:opacity-100 transition-opacity duration-200 shadow-[0_0_10px_rgba(0,0,0,0.5)] scale-75 group-hover/timeline:scale-100" 
-                  style={{ left: `${liveTiming.percent}%`, transform: "translate(-50%, -50%)" }}
-                />
-              </div>
-            </div>
+            <Lock size={20} className="text-white animate-pulse" />
+          </motion.button>
+        )}
+      </AnimatePresence>
 
-            <div className="flex items-center justify-between font-sans px-2 sm:px-4 pb-2 mt-4">
-            {/* Play, Mute & Fast-Seek controls */}
-            <div className="flex items-center gap-5 sm:gap-6">
-              <div className="flex items-center gap-5 select-none">
-                {/* Play / Pause Toggle */}
-                <button 
-                  onClick={togglePlay} 
-                  className="text-white hover:text-[#3b82f6] transition-colors duration-200 flex items-center justify-center filter drop-shadow-md active:scale-95"
-                  title={isPlaying ? "Pause (Espace)" : "Lecture (Espace)"}
-                >
-                  {isPlaying ? <Pause fill="currentColor" size={26} /> : <Play fill="currentColor" size={26} />}
-                </button>
-
-                {/* Skip back 10s */}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); skip(-10); flashHUD("-10s"); }}
-                  className="text-white/80 hover:text-white transition-all duration-150 p-1 filter drop-shadow-md active:scale-95"
-                  title="Reculer de 10 seconds"
-                >
-                  <RotateCcw size={20} />
-                </button>
-
-                {/* Skip forward 10s */}
-                <button 
-                  onClick={(e) => { e.stopPropagation(); skip(10); flashHUD("+10s"); }}
-                  className="text-white/80 hover:text-white transition-all duration-150 p-1 filter drop-shadow-md active:scale-95"
-                  title="Avancer de 10 seconds"
-                >
-                  <RotateCw size={20} />
-                </button>
-              </div>
-              
-              <div className="flex items-center gap-2 group/vol">
-                <button onClick={toggleMute} className="text-white/80 hover:text-white transition-colors duration-200 filter drop-shadow-md active:scale-95">
-                   {isMuted || volume === 0 ? <VolumeX size={23} /> : <Volume2 size={23} />}
-                </button>
-                <div className="w-0 group-hover/vol:w-20 transition-all duration-300 overflow-hidden flex items-center h-full">
-                  <input 
-                    type="range" 
-                    min="0" max="1" step="0.01" 
-                    value={volume}
-                    onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                    className="w-20 cursor-pointer accent-white h-[3px] bg-white/20 rounded-full appearance-none ml-2 shadow-inner"
-                  />
+      {/* Control Overlay (Top bar, bottom bar, center buttons) */}
+      <AnimatePresence>
+        {showControls && !isLocked && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-40 bg-black/40 flex flex-col justify-between"
+            onClick={(e) => {
+              // Click on dark background toggles play
+              e.stopPropagation();
+              togglePlay();
+            }}
+          >
+            {/* Header top bar */}
+            <div 
+              className="w-full p-4 md:p-6 bg-gradient-to-b from-black/95 via-black/45 to-transparent flex items-center justify-between pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center gap-3">
+                {onBack && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onBack(); }}
+                    className="p-2 hover:bg-white/10 rounded-full text-white active:scale-90 transition-all cursor-pointer flex items-center justify-center mr-1"
+                    title="Retour"
+                  >
+                    <ChevronLeft size={24} />
+                  </button>
+                )}
+                <div className="flex flex-col text-left">
+                  <span className="text-white font-black text-sm sm:text-base leading-tight tracking-tight flex items-center gap-2">
+                    {channelName}
+                  </span>
+                  {activeProgramme && activeProgramme.title && (
+                    <span className="text-gray-300 text-[11px] sm:text-xs font-semibold line-clamp-1 truncate max-w-[200px] sm:max-w-md">
+                      {activeProgramme.title}
+                    </span>
+                  )}
                 </div>
               </div>
-              
-              <div className="hidden sm:flex items-center gap-2 text-sm font-bold text-gray-50/60 select-none tracking-tight">
-                 <span>{liveTiming.startStr}</span>
-                 <span className="text-gray-50/20">/</span>
-                 <span className="text-gray-50/30">{liveTiming.endStr}</span>
-              </div>
-            </div>
 
-            {/* Utility Tools */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              {onMenuTV && (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Embedded quick actions */}
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    onMenuTV();
+                    setReloadKey(prev => prev + 1);
+                    flashHUD("Reconnexion au flux...");
                   }}
-                  className="text-[#3b82f6] hover:text-white transition-all duration-200 p-1 filter drop-shadow-md active:scale-95"
-                  title="Menu TV (Liste des chaînes)"
+                  className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/90 transition-all cursor-pointer"
+                  title="Actualiser le flux"
                 >
-                  <Tv size={21} />
+                  <RefreshCw size={18} className={loading ? "animate-spin text-[#00a8e1]" : ""} />
                 </button>
-              )}
 
-              <button 
-                onClick={() => {
-                  setShowCastMenu(!showCastMenu);
-                  setShowSettings(false);
-                }}
-                className={`transition-all duration-200 p-1 filter drop-shadow-md active:scale-95 ${showCastMenu || isCasting ? "text-white scale-110" : "text-white/80 hover:text-white"}`}
-                title="Caster sur TV"
-              >
-                <Cast size={21} />
-              </button>
-
-              <button 
-                onClick={() => {
-                  setShowSettings(!showSettings);
-                  setShowCastMenu(false);
-                }} 
-                className={`transition-all duration-200 p-1 filter drop-shadow-md active:scale-95 ${showSettings ? "text-white scale-110" : "text-white/80 hover:text-white"}`}
-                title="Paramètres de diffusion"
-              >
-                <Settings size={21} />
-              </button>
-              
-              {isPiPSupported && (
-                <button 
-                  onClick={togglePiP} 
-                  className="text-white/80 hover:text-white active:scale-95 transition-all duration-200 p-1 filter drop-shadow-md hidden sm:block"
-                  title="Picture-in-Picture (PiP)"
-                >
-                  <PictureInPicture size={21} />
-                </button>
-              )}
-              
-              <button 
-                onClick={toggleFullscreen} 
-                title="Plein écran"
-                className="text-white/80 hover:text-white active:scale-95 transition-all duration-200 p-1 filter drop-shadow-md"
-              >
-                 {isFullscreen ? <Minimize size={21} /> : <Maximize size={21} />}
-              </button>
+                {onToggleFavorite && (
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleFavorite();
+                      flashHUD(isFavorite ? "Supprimé des favoris" : "Ajouté aux favoris");
+                    }} 
+                    className="p-1.5 sm:p-2 rounded-full hover:bg-white/10 text-white/90 transition-all cursor-pointer"
+                    title="Favoris"
+                  >
+                    <Heart 
+                      size={18} 
+                      fill={isFavorite ? "currentColor" : "none"} 
+                      className={`transition-transform duration-200 ${isFavorite ? "text-gray-50 scale-110" : "text-white/85 hover:text-[#00a8e1]"}`} 
+                    />
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+
+            {/* Middle Spacer Area / Host of Petit Bloc Infos EPG */}
+            <div className="flex-grow flex items-end p-4 md:p-6" onClick={(e) => e.stopPropagation()}>
+              {/* Petit Bloc avec Infos EPG - Minimalistic Floating Card */}
+              {activeProgramme && (
+                <motion.div 
+                   initial={{ opacity: 0, y: 12 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   className="bg-[#0e1622]/95 border border-[#00a8e1]/20 p-3.5 rounded-2xl backdrop-blur-xl text-left text-sans shadow-2xl select-none max-w-[280px] sm:max-w-md flex items-center gap-3 border-l-4 border-l-[#00a8e1]"
+                >
+                  {activeProgramme.image ? (
+                    <img 
+                      src={activeProgramme.image} 
+                      alt="" 
+                      referrerPolicy="no-referrer" 
+                      className="w-12 h-12 object-cover rounded-xl border border-white/5 shadow shrink-0 hidden sm:block" 
+                    />
+                  ) : (
+                    <div className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center shrink-0 hidden sm:block">
+                      <CalendarDays size={18} className="text-[#00a8e1]" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[9px] font-black uppercase text-[#00a8e1] tracking-wider">
+                        {activeProgramme.category || "Direct continu"}
+                      </span>
+                      <span className="w-1 h-3 bg-red-600 rounded-full animate-pulse" />
+                    </div>
+                    <h4 className="text-xs sm:text-xs font-extrabold text-white tracking-tight truncate mt-0.5" title={activeProgramme.title}>
+                      {activeProgramme.title}
+                    </h4>
+                    <div className="flex items-center justify-between text-[9px] font-mono text-gray-400 font-bold mt-0.5">
+                      <span>{formatEpgTime(activeProgramme.start)} — {formatEpgTime(activeProgramme.stop)}</span>
+                    </div>
+
+                    {/* Program Time Elapse Progress Bar */}
+                    {(() => {
+                      const now = Date.now();
+                      const s = new Date(activeProgramme.start).getTime();
+                      const e = new Date(activeProgramme.stop).getTime();
+                      if (now >= s && now <= e) {
+                        const pct = getEpgProgress(activeProgramme.start, activeProgramme.stop);
+                        return (
+                          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden mt-1.5">
+                            <div className="h-full bg-[#00a8e1] rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </motion.div>
+              )}
+            </div>
+
+            {/* Bottom Controls Strip */}
+            <div 
+              className="w-full p-4 md:p-6 bg-gradient-to-t from-black/95 via-black/45 to-transparent pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Elegant Horizontal Seeker Container */}
+              <div className="w-full flex items-center gap-3 px-2 sm:px-4 mb-2 select-none">
+                {/* Elapsed Time on the Left */}
+                <span className="text-[11px] sm:text-xs font-bold text-white font-mono tracking-wider drop-shadow-sm shrink-0 min-w-[40px] text-right">
+                  {isLive ? liveTiming.startStr : formatTime(currentTime)}
+                </span>
+
+                {/* Seeker / Timeline Track */}
+                <div 
+                  ref={timelineRef}
+                  onClick={handleTimelineClick}
+                  className="flex-grow relative h-6 group/timeline cursor-pointer flex items-center"
+                >
+                  <div className="w-full h-[4px] group-hover/timeline:h-[6px] bg-white/20 relative transition-all duration-200 shadow-inner rounded-full overflow-visible">
+                    {/* Buffer Depth Bar */}
+                    <div 
+                      className="absolute top-0 bottom-0 left-0 bg-white/30 rounded-full transition-all duration-150"
+                      style={{ width: `${isLive ? Math.min(100, liveTiming.percent + 5) : (duration > 0 ? ((currentTime + streamStats.buffer) / duration) * 100 : 0)}%` }}
+                    />
+                    {/* Glowing Blue Progress Line */}
+                    <div 
+                      className="absolute top-0 bottom-0 left-0 bg-[#00a8e1] rounded-full transition-all duration-700 ease-out shadow-[0_0_10px_rgba(0,168,225,0.8)]" 
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                    {/* Glowing Handle */}
+                    <div 
+                      className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-[#00a8e1] border-2 border-white rounded-full opacity-100 sm:opacity-0 group-hover/timeline:opacity-100 transition-opacity duration-150 shadow-[0_0_8px_rgba(0,168,225,0.8)] hover:scale-125" 
+                      style={{ left: `${progressPercent}%`, transform: "translate(-50%, -50%)" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Total Duration on the Right */}
+                <span className="text-[11px] sm:text-xs font-bold text-white/80 font-mono tracking-wider drop-shadow-sm shrink-0 min-w-[40px] text-left">
+                  {isLive ? liveTiming.endStr : formatTime(duration)}
+                </span>
+              </div>
+
+              {/* Secondary Controls Bar */}
+              <div className="flex items-center justify-between font-sans px-2 sm:px-4 pb-1">
+                {/* Left Group */}
+                <div className="flex items-center gap-4 sm:gap-5">
+                  {/* Clean bottom-bar Play/Pause button */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); togglePlay(); }}
+                    className="text-white hover:text-[#00a8e1] transition-colors p-1.5 cursor-pointer active:scale-90"
+                    title="Lecture/Pause"
+                  >
+                    {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                  </button>
+
+                  {/* Skip and back buttons directly in bottom bar */}
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); skip(-10); flashHUD("-10s"); }}
+                    className="text-white/80 hover:text-[#00a8e1] transition-colors p-1 cursor-pointer active:scale-95 hidden sm:block"
+                    title="Reculer de 10s"
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); skip(10); flashHUD("+10s"); }}
+                    className="text-white/80 hover:text-[#00a8e1] transition-colors p-1 cursor-pointer active:scale-95 hidden sm:block"
+                    title="Avancer de 10s"
+                  >
+                    <RotateCw size={16} />
+                  </button>
+
+                  <div className="flex items-center gap-2 group/vol">
+                    <button onClick={toggleMute} className="text-white/85 hover:text-[#00a8e1] transition-colors duration-200 filter drop-shadow-md active:scale-95 cursor-pointer">
+                       {isMuted || volume === 0 ? <VolumeX size={19} /> : <Volume2 size={19} />}
+                    </button>
+                    <div className="w-0 group-hover/vol:w-20 transition-all duration-300 overflow-hidden flex items-center h-full">
+                      <input 
+                        type="range" 
+                        min="0" max="1" step="0.01" 
+                        value={volume}
+                        onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+                        className="w-20 cursor-pointer accent-[#00a8e1] h-[3.5px] bg-white/20 rounded-full appearance-none ml-2 shadow-inner"
+                      />
+                    </div>
+                  </div>
+
+                  {isLive && (
+                    <span className="flex items-center gap-1 bg-[#00a8e1]/10 border border-[#00a8e1]/35 text-[#00a8e1] text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md shadow-sm">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00a8e1] animate-pulse" />
+                      Direct
+                    </span>
+                  )}
+                </div>
+
+                {/* Right Group */}
+                <div className="flex items-center gap-3 sm:gap-4">
+                  {onMenuTV && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onMenuTV();
+                      }}
+                      className="text-white/85 hover:text-[#00a8e1] transition-all duration-200 p-1 active:scale-95 cursor-pointer"
+                      title="Menu TV (Chaînes)"
+                    >
+                      <Tv size={20} />
+                    </button>
+                  )}
+
+                  {/* EPG Slide-over trigger */}
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowEpgOverlay(!showEpgOverlay);
+                      setShowSettings(false);
+                      setShowCastMenu(false);
+                      flashHUD(showEpgOverlay ? "EPG masqué" : "Ouverture du guide");
+                    }}
+                    className={`transition-all duration-200 p-1 active:scale-95 cursor-pointer ${showEpgOverlay ? "text-[#00a8e1] scale-110" : "text-white/85 hover:text-white"}`}
+                    title="Guide TV (EPG)"
+                  >
+                    <Calendar size={20} />
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      setShowCastMenu(!showCastMenu);
+                      setShowSettings(false);
+                    }}
+                    className={`transition-all duration-200 p-1 active:scale-95 cursor-pointer ${showCastMenu || isCasting ? "text-[#00a8e1] scale-110" : "text-white/85 hover:text-white"}`}
+                    title="Caster le flux"
+                  >
+                    <Cast size={20} />
+                  </button>
+
+                  <button 
+                    onClick={() => {
+                      setShowSettings(!showSettings);
+                      setShowCastMenu(false);
+                    }} 
+                    className={`transition-all duration-200 p-1 active:scale-95 cursor-pointer ${showSettings ? "text-[#00a8e1] scale-110" : "text-white/85 hover:text-white hover:scale-105"}`}
+                    title="Réglages d'image"
+                  >
+                    <Settings size={19} />
+                  </button>
+                  
+                  {isPiPSupported && (
+                    <button 
+                      onClick={togglePiP} 
+                      className="text-white/85 hover:text-[#00a8e1] active:scale-95 transition-all duration-200 p-1 hidden sm:block cursor-pointer"
+                      title="PiP (Picture-in-Picture)"
+                    >
+                      <PictureInPicture size={20} />
+                    </button>
+                  )}
+                  
+                  <button 
+                    onClick={toggleFullscreen} 
+                    title="Plein écran"
+                    className="text-white/85 hover:text-[#00a8e1] active:scale-95 transition-all duration-200 p-1 cursor-pointer"
+                  >
+                     {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Mixed Content Blocked overlay indicator */}
       {isMixedContentBlocked && !error && (
@@ -2162,6 +2472,197 @@ export function HlsPlayer({
                </button>
              </div>
            </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Integrated EPG Slide-over Overlay */}
+      <AnimatePresence>
+        {showEpgOverlay && (
+          <motion.div 
+            initial={{ x: "100%", opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: "100%", opacity: 0 }}
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="absolute right-0 top-0 bottom-0 w-[350px] max-w-full bg-black/90 backdrop-blur-2xl border-l border-white/10 z-[100] flex flex-col shadow-2xl overflow-hidden font-sans text-white text-left select-none pointer-events-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-white/10 flex items-center justify-between shrink-0 bg-gradient-to-b from-black/50 to-transparent">
+              <div className="flex items-center gap-3">
+                <ChannelLogo logo={channelLogo} name={channelName} />
+                <div className="flex flex-col">
+                  <span className="text-sm font-black text-white uppercase tracking-wider leading-tight">
+                    {channelName}
+                  </span>
+                  <span className="text-[10px] text-[#00a8e1] font-bold uppercase tracking-widest flex items-center gap-1">
+                    <CalendarDays size={10} />
+                    GUIDE EPG INTÉGRÉ
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowEpgOverlay(false)}
+                className="p-1 px-2.5 rounded bg-white/10 hover:bg-red-600 hover:text-white text-gray-300 font-bold text-xs transition-colors cursor-pointer animate-fade-in"
+                title="Fermer le guide"
+              >
+                Fermer
+              </button>
+            </div>
+
+            {/* Main Content Areas: Details panel + scrollable vertical schedule list */}
+            <div className="flex-grow flex flex-col overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 select-text">
+              {/* Detailed Program Panel */}
+              {selectedEpgProg && (
+                <div className="p-4 border-b border-white/10 bg-white/[0.03] space-y-3 shrink-0">
+                  {selectedEpgProg.image && (
+                    <div className="w-full h-24 rounded-lg overflow-hidden relative border border-white/10 bg-black select-none">
+                      <img 
+                        src={selectedEpgProg.image} 
+                        alt="" 
+                        referrerPolicy="no-referrer" 
+                        className="w-full h-full object-cover filter brightness-75 transition-transform duration-500 hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
+                      
+                      {/* Check if current active */}
+                      {(() => {
+                        const now = Date.now();
+                        const s = new Date(selectedEpgProg.start).getTime();
+                        const e = new Date(selectedEpgProg.stop).getTime();
+                        if (now >= s && now <= e) {
+                          return (
+                            <span className="absolute top-2 right-2 flex items-center gap-1.5 px-2 py-0.5 bg-red-600 border border-red-500/10 text-[8px] font-black tracking-widest text-white rounded uppercase animate-pulse shadow-sm shadow-red-600/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              En Cours
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <h4 className="text-xs font-extrabold text-[#00a8e1] tracking-wider uppercase">
+                      {selectedEpgProg.category || "Divertissement"}
+                    </h4>
+                    <h3 className="text-sm font-black text-white leading-snug line-clamp-2">
+                      {selectedEpgProg.title}
+                    </h3>
+                    <div className="text-[10px] text-gray-300 font-mono font-bold pt-1.5 flex items-center gap-1.5">
+                      <span className="bg-white/10 px-1.5 py-0.5 rounded text-gray-200">
+                        {formatEpgTime(selectedEpgProg.start)} — {formatEpgTime(selectedEpgProg.stop)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {selectedEpgProg.desc ? (
+                    <div className="bg-white/5 p-2.5 rounded-lg border border-white/5 max-h-24 overflow-y-auto">
+                      <p className="text-[11px] text-gray-300 leading-relaxed font-semibold">
+                        {selectedEpgProg.desc}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 italic font-semibold">
+                      Aucune description disponible pour cette émission.
+                    </p>
+                  )}
+
+                  {/* Progress bar visual for active show inside information panel */}
+                  {(() => {
+                    const now = Date.now();
+                    const s = new Date(selectedEpgProg.start).getTime();
+                    const e = new Date(selectedEpgProg.stop).getTime();
+                    if (now >= s && now <= e) {
+                      const pct = getEpgProgress(selectedEpgProg.start, selectedEpgProg.stop);
+                      return (
+                        <div className="space-y-1 pt-1">
+                          <div className="flex items-center justify-between text-[9px] font-mono font-bold text-gray-400">
+                            <span>Progression</span>
+                            <span className="text-[#00a8e1]">{pct}%</span>
+                          </div>
+                          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#00a8e1] rounded-full" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+
+              {/* Scrollable Schedule List Header */}
+              <div className="px-4 py-2 text-[10px] font-black text-gray-400 tracking-widest uppercase bg-black/20 sticky top-0 backdrop-blur-md">
+                Programme de la journée
+              </div>
+
+              {/* Programs list */}
+              {epgLoading ? (
+                <div className="flex flex-col items-center justify-center p-8 text-gray-400 gap-2">
+                  <RefreshCw className="animate-spin text-[#00a8e1] w-6 h-6" />
+                  <span className="text-xs font-bold font-mono">Chargement de la programmation...</span>
+                </div>
+              ) : epgProgrammes.length === 0 ? (
+                <div className="p-8 text-center text-xs text-gray-500 italic font-bold">
+                  Aucun guide horaire disponible
+                </div>
+              ) : (
+                <div className="divide-y divide-white/5">
+                  {epgProgrammes.map((prog, index) => {
+                    const isSelected = selectedEpgProg?.start === prog.start;
+                    const now = Date.now();
+                    const s = new Date(prog.start).getTime();
+                    const e = new Date(prog.stop).getTime();
+                    const isActive = now >= s && now <= e;
+                    const isPast = now > e;
+
+                    return (
+                      <div 
+                        key={index}
+                        onClick={() => setSelectedEpgProg(prog)}
+                        className={`p-3.5 flex items-start gap-3.5 cursor-pointer transition-all hover:bg-white/[0.04] text-left select-none relative ${isSelected ? "bg-white/[0.06]" : ""} ${isActive ? "border-l-4 border-l-[#00a8e1]" : ""}`}
+                      >
+                        {/* Time label */}
+                        <div className="flex flex-col font-mono text-[10px] font-bold text-gray-300 tracking-wider pt-0.5 shrink-0 w-11 mt-1 text-center bg-white/5 py-0.5 rounded border border-white/5">
+                          <span>{formatEpgTime(prog.start)}</span>
+                        </div>
+
+                        {/* Title details */}
+                        <div className="min-w-0 flex-grow">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className={`text-xs font-semibold tracking-tight ${isActive ? "text-white font-extrabold" : isPast ? "text-gray-400 line-through" : "text-gray-200"}`}>
+                              {prog.title}
+                            </h4>
+                            {isActive && (
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse inline-block animate-fade-in" />
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+                            {prog.category && (
+                              <span className="text-[#00a8e1]">
+                                {prog.category}
+                              </span>
+                            )}
+                            <span>•</span>
+                            <span className="font-mono text-[8px]">
+                              {Math.round((e - s) / (60 * 1000))} min
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Quick indicator icon if detail pane matches */}
+                        {isSelected && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#00a8e1] self-center shrink-0 shadow-sm shadow-[#00a8e1]" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

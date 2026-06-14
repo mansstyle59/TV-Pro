@@ -1,5 +1,5 @@
 import { motion } from "motion/react";
-import { Home, Tv, Search, Star, User, Trophy, Settings, Calendar, Plug } from "lucide-react";
+import { Home, Tv, Trophy, Settings, Plug } from "lucide-react";
 
 interface SidebarProps {
   activeTab: string;
@@ -9,31 +9,23 @@ interface SidebarProps {
 export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
   const tabs = [
     { id: "accueil", label: "Accueil", icon: Home },
-    { id: "chaines", label: "Chaînes TV", icon: Tv },
     { id: "sports", label: "Sports", icon: Trophy },
-    { id: "recherche", label: "Recherche", icon: Search },
-    { id: "favoris", label: "Favoris", icon: Star },
-    { id: "integrations", label: "Intégrations", icon: Plug },
+    { id: "integrations", label: "Serveur & APIs", icon: Plug },
+    { id: "settings_tab", label: "Paramètres", icon: Settings },
   ];
 
   return (
-    <aside className="hidden lg:flex flex-col w-64 h-screen sticky top-0 bg-gray-100 border-r border-[#151515] p-4 z-50">
-      <div className="flex items-center gap-3 px-2 mb-8" onClick={() => onTabChange("accueil")}>
-        <img 
-          src="./pwa-192x192.svg" 
-          alt="DenDenTV Logo" 
-          className="w-10 h-10 object-contain rounded-xl hover:scale-105 transition-transform duration-300 cursor-pointer" 
-          referrerPolicy="no-referrer"
-        />
-        <div className="cursor-pointer">
-          <h1 className="text-lg font-black tracking-tighter uppercase leading-none text-gray-900">DenDenTV</h1>
-          <p className="text-[8px] font-black text-[#FF7900]/80 uppercase tracking-[0.2em] mt-1">Premium Vision</p>
-        </div>
+    <aside className="hidden lg:flex flex-col w-60 h-screen sticky top-0 bg-[#040912]/40 backdrop-blur-3xl border-r border-white/[0.03] p-6 z-40 shrink-0">
+      {/* Editorial Typographic Header */}
+      <div className="flex items-center gap-2 px-1.5 mb-10 select-none">
+        <Tv size={15} className="text-[#00a8e1]" strokeWidth={2} />
+        <h1 className="text-sm font-bold tracking-[0.25em] text-white">
+          DENDEN<span className="text-[#00a8e1] font-extrabold">TV</span>
+        </h1>
       </div>
 
-      <nav className="flex-grow space-y-0.5">
-        <p className="px-4 py-2 text-[9px] font-bold text-[#A0A0A0] uppercase tracking-widest">Global</p>
-        
+      {/* Navigation list */}
+      <nav className="flex-grow space-y-1.5">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -42,46 +34,50 @@ export function Sidebar({ activeTab, onTabChange }: SidebarProps) {
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all duration-300 group ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all duration-300 group cursor-pointer relative ${
                 isActive 
-                  ? "bg-[#1A242F] text-[#FF7900]" 
-                  : "text-[#A0A0A0] hover:text-gray-900"
+                  ? "text-[#00a8e1] bg-[#00a8e1]/[0.03]" 
+                  : "text-gray-400 hover:text-gray-200 hover:bg-white/[0.015]"
               }`}
             >
-              <Icon 
-                size={18} 
-                className={`${isActive ? "text-[#FF7900]" : "group-hover:translate-x-0.5"} transition-all duration-300`} 
-                strokeWidth={isActive ? 3 : 2}
-              />
-              <span className={`text-xs font-bold tracking-tight uppercase ${isActive ? "text-gray-900" : "group-hover:translate-x-0.5"} transition-all duration-300`}>
-                {tab.label}
-              </span>
+              <div className="flex items-center gap-3">
+                <Icon 
+                  size={16} 
+                  className={`transition-colors duration-300 ${isActive ? "text-[#00a8e1]" : "text-gray-400 group-hover:text-gray-300"}`} 
+                  strokeWidth={1.5}
+                />
+                <span className="text-xs font-medium tracking-wide">
+                  {tab.label}
+                </span>
+              </div>
+
+              {isActive && (
+                <motion.div 
+                  layoutId="sidebarActiveIndicator"
+                  className="w-1 h-3.5 bg-[#00a8e1] rounded-full"
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                />
+              )}
             </button>
           );
         })}
       </nav>
 
-      <div className="mt-auto space-y-3">
-        <div className="bg-[#151515] p-4 rounded-xl border border-gray-200 relative overflow-hidden group">
-          <p className="text-[9px] font-bold text-[#FF7900] uppercase tracking-widest mb-1.5">Abonnement</p>
-          <h4 className="text-xs font-black text-gray-900 uppercase tracking-tight mb-0.5">PREMIUM 4K HDR</h4>
-          <p className="text-[8px] text-[#A0A0A0] font-bold uppercase tracking-widest">Accès illimité</p>
-          <button className="mt-3 w-full py-2 bg-white text-black rounded-lg text-[8px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all">
-            Gérer
-          </button>
+      {/* Premium Footer with minimalist design */}
+      <div className="mt-auto pt-6 border-t border-white/[0.03] flex items-center justify-between select-none px-1.5">
+        <div className="flex flex-col text-left">
+          <span className="text-[11px] font-semibold text-gray-200">Denis Dewulf</span>
+          <span className="text-[9px] text-[#00a8e1] font-semibold tracking-wider uppercase mt-0.5 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00a8e1] animate-pulse" />
+            Premium 4K
+          </span>
         </div>
-        
         <button 
-          onClick={() => onTabChange("profil")}
-          className="w-full text-left flex items-center gap-3 px-2 py-2.5 border-t border-[#151515] hover:bg-[#151515] rounded-xl transition-all group/sidebarprofile"
+          onClick={() => onTabChange("settings_tab")}
+          title="Paramètres de l'application"
+          className="p-1.5 rounded-lg hover:bg-white/[0.04] text-gray-400 hover:text-white transition-colors cursor-pointer"
         >
-           <div className="w-8 h-8 bg-brand-500 text-gray-900 rounded-full border border-brand-500/20 group-hover/sidebarprofile:border-brand-500/50 flex items-center justify-center text-[10px] font-black shadow-lg shadow-brand-500/10">
-             U
-           </div>
-           <div className="flex-grow">
-             <p className="text-[10px] font-bold text-gray-900 leading-none group-hover/sidebarprofile:text-brand-500 transition-colors">Utilisateur</p>
-             <p className="text-[7px] text-[#A0A0A0] font-bold uppercase tracking-widest mt-0.5">Abonné Premium</p>
-           </div>
+          <Settings size={14} strokeWidth={1.5} />
         </button>
       </div>
     </aside>

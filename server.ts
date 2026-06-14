@@ -157,27 +157,35 @@ async function fetchAppChannels(force = false): Promise<Channel[]> {
   }
 
   console.log("Fetching channels from Vavoo to refresh cache...");
-  const response = await fetch("https://vavoo.to/channels", {
-    headers: {
-      "User-Agent": "VAVOO/2.6",
-      "X-VAVOO-CLIENT": "2.6",
-      "X-VAVOO-DEVICE": "berry",
-      "Accept": "application/json"
+  try {
+    const response = await fetch("https://vavoo.to/channels", {
+      headers: {
+        "User-Agent": "VAVOO/2.6",
+        "X-VAVOO-CLIENT": "2.6",
+        "X-VAVOO-DEVICE": "berry",
+        "Accept": "application/json"
+      }
+    });
+
+    if (!response.ok) {
+        console.error(`Vavoo fetch failed. Status: ${response.status}, text: ${await response.text()}`);
+        throw new Error(`Failed to fetch from Vavoo. Status: ${response.status}`);
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch from Vavoo. Status: ${response.status}`);
+    const channels: Channel[] = await response.json();
+    console.log(`Vavoo fetch successful. Channels received: ${channels.length}`);
+    allCachedChannels = channels; // Store raw unfiltered list for admin discovery
+
+    // Simply return all channels without filtering by country
+    cachedChannels = channels;
+    lastFetchTime = now;
+    console.log(`Cache updated. Found ${channels.length} channels (Total Vavoo).`);
+    return channels;
+
+  } catch (err: any) {
+    console.error("Vavoo fetch threw an error:", err);
+    throw err;
   }
-
-  const channels: Channel[] = await response.json();
-  allCachedChannels = channels; // Store raw unfiltered list for admin discovery
-
-  // Simply return all channels without filtering by country
-  cachedChannels = channels;
-  lastFetchTime = now;
-  console.log(`Cache updated. Found ${channels.length} channels (Total Vavoo).`);
-  return channels;
 }
 
 // ... existing EPG/Logo interfaces ...
@@ -1504,7 +1512,7 @@ async function handlePlaylistProxy(targetUrl: string, req: express.Request, res:
         const playlistText = await response.text();
         const lines = playlistText.split(/\r?\n/);
         const rewrittenLines = lines.map(line => {
-          const trimmed = line.trim();
+          const trimmed = (line || "").trim();
           if (!trimmed || trimmed.startsWith("#")) {
             return line;
           }
